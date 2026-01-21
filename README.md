@@ -317,7 +317,7 @@ MIT License - [LICENSE](LICENSE) faylini ko'ring
 ## 👨‍💻 **Muallif**
 
 **Sizning Ismingiz**
-- GitHub: [@yourusername](https://github.com/yourusername)
+- GitHub: [@yourusername](https://github.com/Javokhirrrr)
 - Email: your.email@example.com
 
 ---
