@@ -1,0 +1,66 @@
+{
+    "common": {
+        "save": "Сохранить",
+        "cancel": "Отмена",
+        "delete": "Удалить",
+        "edit": "Редактировать",
+        "add": "Добавить",
+        "search": "Поиск",
+        "loading": "Загрузка...",
+        "error": "Ошибка",
+        "success": "Успешно",
+        "confirm": "Подтвердить",
+        "yes": "Да",
+        "no": "Нет"
+    },
+    "nav": {
+        "dashboard": "Главная",
+        "patients": "Пациенты",
+        "doctors": "Врачи",
+        "appointments": "Приёмы",
+        "services": "Услуги",
+        "payments": "Платежи",
+        "users": "Пользователи",
+        "reports": "Отчёты",
+        "system": "Система",
+        "logout": "Выход"
+    },
+    "patients": {
+        "title": "Пациенты",
+        "addPatient": "Добавить пациента",
+        "firstName": "Имя",
+        "lastName": "Фамилия",
+        "phone": "Телефон",
+        "email": "Email",
+        "gender": "Пол",
+        "male": "Мужской",
+        "female": "Женский",
+        "dateOfBirth": "Дата рождения",
+        "cardNo": "Номер карты",
+        "notes": "Примечания",
+        "search": "Поиск пациентов..."
+    },
+    "appointments": {
+        "title": "Приёмы",
+        "newAppointment": "Новый приём",
+        "patient": "Пациент",
+        "doctor": "Врач",
+        "service": "Услуга",
+        "date": "Дата",
+        "time": "Время",
+        "status": "Статус",
+        "scheduled": "Запланирован",
+        "completed": "Завершён",
+        "cancelled": "Отменён"
+    },
+    "auth": {
+        "login": "Вход",
+        "register": "Регистрация",
+        "email": "Email",
+        "password": "Пароль",
+        "confirmPassword": "Подтвердите пароль",
+        "forgotPassword": "Забыли пароль?",
+        "clinicName": "Название клиники",
+        "name": "Имя"
+    }
+}

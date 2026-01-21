@@ -1,0 +1,92 @@
+version: "3.9"
+
+services:
+  # MongoDB Database
+  mongo:
+    image: mongo:7
+    container_name: klinika_crm_mongo_dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - mongo_data_dev:/data/db
+    networks:
+      - klinika_network_dev
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: klinika_crm_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - klinika_network_dev
+
+  # Backend API (Development with hot reload)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build
+    container_name: klinika_crm_api_dev
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file: .env
+    environment:
+      MONGO_URI: "mongodb://root:example@mongo:27017/klinika_crm?authSource=admin"
+      REDIS_URL: "redis://redis:6379"
+      NODE_ENV: development
+    depends_on:
+      - mongo
+      - redis
+    volumes:
+      - ./src:/app/src
+      - ./uploads:/app/uploads
+      - /app/node_modules
+    networks:
+      - klinika_network_dev
+    command: npm run dev
+
+  # Frontend (Development with hot reload)
+  frontend:
+    image: node:18-alpine
+    container_name: klinika_crm_frontend_dev
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./klinika-crm-frontend:/app
+      - /app/node_modules
+    networks:
+      - klinika_network_dev
+    command: sh -c "npm install && npm run dev -- --host"
+
+  # MongoDB Admin UI
+  mongo-express:
+    image: mongo-express:1.0.2
+    container_name: klinika_crm_mongo_express_dev
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_BASICAUTH: "false"
+    depends_on:
+      - mongo
+    networks:
+      - klinika_network_dev
+
+volumes:
+  mongo_data_dev:
+
+networks:
+  klinika_network_dev:
+    driver: bridge

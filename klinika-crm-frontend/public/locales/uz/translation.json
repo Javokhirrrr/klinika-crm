@@ -1,0 +1,66 @@
+{
+    "common": {
+        "save": "Saqlash",
+        "cancel": "Bekor qilish",
+        "delete": "O'chirish",
+        "edit": "Tahrirlash",
+        "add": "Qo'shish",
+        "search": "Qidirish",
+        "loading": "Yuklanmoqda...",
+        "error": "Xatolik",
+        "success": "Muvaffaqiyatli",
+        "confirm": "Tasdiqlash",
+        "yes": "Ha",
+        "no": "Yo'q"
+    },
+    "nav": {
+        "dashboard": "Bosh sahifa",
+        "patients": "Bemorlar",
+        "doctors": "Shifokorlar",
+        "appointments": "Qabullar",
+        "services": "Xizmatlar",
+        "payments": "To'lovlar",
+        "users": "Foydalanuvchilar",
+        "reports": "Hisobotlar",
+        "system": "Tizim",
+        "logout": "Chiqish"
+    },
+    "patients": {
+        "title": "Bemorlar",
+        "addPatient": "Bemor qo'shish",
+        "firstName": "Ism",
+        "lastName": "Familiya",
+        "phone": "Telefon",
+        "email": "Email",
+        "gender": "Jinsi",
+        "male": "Erkak",
+        "female": "Ayol",
+        "dateOfBirth": "Tug'ilgan sana",
+        "cardNo": "Karta raqami",
+        "notes": "Izohlar",
+        "search": "Bemorlarni qidirish..."
+    },
+    "appointments": {
+        "title": "Qabullar",
+        "newAppointment": "Yangi qabul",
+        "patient": "Bemor",
+        "doctor": "Shifokor",
+        "service": "Xizmat",
+        "date": "Sana",
+        "time": "Vaqt",
+        "status": "Holat",
+        "scheduled": "Rejalashtirilgan",
+        "completed": "Tugallangan",
+        "cancelled": "Bekor qilingan"
+    },
+    "auth": {
+        "login": "Kirish",
+        "register": "Ro'yxatdan o'tish",
+        "email": "Email",
+        "password": "Parol",
+        "confirmPassword": "Parolni tasdiqlang",
+        "forgotPassword": "Parolni unutdingizmi?",
+        "clinicName": "Klinika nomi",
+        "name": "Ism"
+    }
+}

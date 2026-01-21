@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Klinika CRM - Demo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- App Container -->
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="page-title">Klinika CRM</h1>
+        </header>
+
+        <!-- Content -->
+        <main class="content">
+            <!-- Dashboard -->
+            <div class="card">
+                <h2 style="margin-bottom: 8px;">Salom, Javohir!</h2>
+                <p style="color: var(--tg-theme-hint-color); font-size: 14px;">
+                    Klinika CRM'ga xush kelibsiz
+                </p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">1</div>
+                    <div class="stat-label">Navbatda</div>
+                </div>
+                <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <div class="stat-value">2</div>
+                    <div class="stat-label">Qabullar</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Tezkor havolalar</div>
+                <div class="list-item">
+                    <span class="list-icon">🎫</span>
+                    <div class="list-content">
+                        <div class="list-title">Navbatim</div>
+                        <div class="list-subtitle">Navbat holatini ko'rish</div>
+                    </div>
+                    <span class="list-arrow">›</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-icon">💳</span>
+                    <div class="list-content">
+                        <div class="list-title">To'lovlar</div>
+                        <div class="list-subtitle">To'lovlar tarixi</div>
+                    </div>
+                    <span class="list-arrow">›</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-icon">📋</span>
+                    <div class="list-content">
+                        <div class="list-title">Kasallik tarixi</div>
+                        <div class="list-subtitle">Tibbiy ma'lumotlar</div>
+                    </div>
+                    <span class="list-arrow">›</span>
+                </div>
+            </div>
+
+            <!-- Queue Example -->
+            <div class="card" style="margin-top: 20px;">
+                <div class="card-title">Navbat (Misol)</div>
+                <div class="queue-status">
+                    <div class="queue-number">№15</div>
+                    <div class="queue-info">Sizning navbatingiz</div>
+                    <div class="queue-info" style="margin-top: 12px;">
+                        👨‍⚕️ Dr. Aliyev<br>
+                        ⏰ Taxminiy: 14:30<br>
+                        ⏳ Kutish: ~45 daqiqa
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payments Example -->
+            <div class="card" style="margin-top: 20px;">
+                <div class="card-title">To'lovlar (Misol)</div>
+                <div class="list-item">
+                    <span class="list-icon">💳</span>
+                    <div class="list-content">
+                        <div class="list-title">150,000 so'm</div>
+                        <div class="list-subtitle">15.01.2026 • Umumiy ko'rik</div>
+                    </div>
+                    <span class="badge badge-success">To'landi</span>
+                </div>
+                <div class="list-item">
+                    <span class="list-icon">💳</span>
+                    <div class="list-content">
+                        <div class="list-title">200,000 so'm</div>
+                        <div class="list-subtitle">10.01.2026 • Analiz</div>
+                    </div>
+                    <span class="badge badge-success">To'landi</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active">
+                <span class="nav-icon">🏥</span>
+                <span class="nav-label">Asosiy</span>
+            </button>
+            <button class="nav-item">
+                <span class="nav-icon">🎫</span>
+                <span class="nav-label">Navbat</span>
+            </button>
+            <button class="nav-item">
+                <span class="nav-icon">💳</span>
+                <span class="nav-label">To'lovlar</span>
+            </button>
+            <button class="nav-item">
+                <span class="nav-icon">📋</span>
+                <span class="nav-label">Tarix</span>
+            </button>
+            <button class="nav-item">
+                <span class="nav-icon">⚙️</span>
+                <span class="nav-label">Sozlamalar</span>
+            </button>
+        </nav>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,66 @@
+{
+    "common": {
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "edit": "Edit",
+        "add": "Add",
+        "search": "Search",
+        "loading": "Loading...",
+        "error": "Error",
+        "success": "Success",
+        "confirm": "Confirm",
+        "yes": "Yes",
+        "no": "No"
+    },
+    "nav": {
+        "dashboard": "Dashboard",
+        "patients": "Patients",
+        "doctors": "Doctors",
+        "appointments": "Appointments",
+        "services": "Services",
+        "payments": "Payments",
+        "users": "Users",
+        "reports": "Reports",
+        "system": "System",
+        "logout": "Logout"
+    },
+    "patients": {
+        "title": "Patients",
+        "addPatient": "Add Patient",
+        "firstName": "First Name",
+        "lastName": "Last Name",
+        "phone": "Phone",
+        "email": "Email",
+        "gender": "Gender",
+        "male": "Male",
+        "female": "Female",
+        "dateOfBirth": "Date of Birth",
+        "cardNo": "Card Number",
+        "notes": "Notes",
+        "search": "Search patients..."
+    },
+    "appointments": {
+        "title": "Appointments",
+        "newAppointment": "New Appointment",
+        "patient": "Patient",
+        "doctor": "Doctor",
+        "service": "Service",
+        "date": "Date",
+        "time": "Time",
+        "status": "Status",
+        "scheduled": "Scheduled",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+    },
+    "auth": {
+        "login": "Login",
+        "register": "Register",
+        "email": "Email",
+        "password": "Password",
+        "confirmPassword": "Confirm Password",
+        "forgotPassword": "Forgot Password?",
+        "clinicName": "Clinic Name",
+        "name": "Name"
+    }
+}
