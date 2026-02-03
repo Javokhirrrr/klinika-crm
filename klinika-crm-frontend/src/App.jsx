@@ -10,6 +10,8 @@ import { ToastProvider } from "./components/Toast";
 // Pages
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import ReceptionDashboard from "./pages/ReceptionDashboard.jsx";
 import DirectorDashboard from "./pages/DirectorDashboard.jsx";
@@ -76,6 +78,8 @@ export default function App() {
               {/* --- Public routes --- */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* Telegram WebApp — PUBLIC, NO LAYOUT, NO AUTH */}
               <Route path="/twa" element={<Twa />} />
