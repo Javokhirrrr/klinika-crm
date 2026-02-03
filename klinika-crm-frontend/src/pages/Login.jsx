@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import http from "../lib/http";
 
-const RAW_API_BASE = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/,"");
+const RAW_API_BASE = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
 const API_BASE = RAW_API_BASE; // devda bo'sh bo'lishi mumkin
 const api = (path) => (API_BASE ? `${API_BASE}${path}` : `/api${path}`);
 
@@ -26,22 +26,29 @@ export default function Login() {
         ? { email: emailOrPhone.trim(), password }
         : { phone: emailOrPhone.trim(), password };
 
-      const res = await fetch(api('/auth/login'), {
+      const url = api('/auth/login');
+      console.log('🔵 Login attempt:', { url, payload: { ...payload, password: '***' } });
+
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include", // agar backend cookie ham bersa
         body: JSON.stringify(payload),
       });
 
+      console.log('🔵 Response status:', res.status, res.statusText);
+
       const data = await res.json().catch(() => ({}));
+      console.log('🔵 Response data:', data);
+
       if (!res.ok) {
         throw new Error(data?.message || "Login failed");
       }
 
-      const accessToken  = data.accessToken  || data.token         || data.access_token  || null;
+      const accessToken = data.accessToken || data.token || data.access_token || null;
       const refreshToken = data.refreshToken || data.refresh_token || null;
-      const user         = data.user || data.data?.user || data.profile || null;
-      const org          = data.org || null;
+      const user = data.user || data.data?.user || data.profile || null;
+      const org = data.org || null;
 
       // 🔴 MUHIM: tokenlarni http.js ga yozib qo'yamiz
       if (!accessToken) {
@@ -54,6 +61,7 @@ export default function Login() {
 
       nav("/dashboard", { replace: true });
     } catch (ex) {
+      console.error('❌ Login error:', ex);
       setErr(ex?.message || "Login failed");
     } finally {
       setBusy(false);
