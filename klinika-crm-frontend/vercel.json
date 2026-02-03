@@ -1,8 +1,4 @@
 {
-    "buildCommand": "npm run build",
-    "outputDirectory": "dist",
-    "installCommand": "npm install",
-    "framework": "vite",
     "rewrites": [
         {
             "source": "/(.*)",
@@ -19,10 +15,5 @@
                 }
             ]
         }
-    ],
-    "env": {
-        "VITE_API_URL": "@vite_api_url",
-        "VITE_APP_NAME": "Klinika CRM",
-        "VITE_TZ": "Asia/Tashkent"
-    }
+    ]
 }
