@@ -140,7 +140,7 @@ export default function Payments() {
 
     } catch (e) {
       // Endpoint bo'lmasa yoki xato bo'lsa
-      console.log("Stats error:", e);
+      // Silently fail - stats are optional
     }
   };
 

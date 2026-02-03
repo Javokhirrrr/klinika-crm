@@ -239,7 +239,21 @@ export default function Doctors() {
   const [loading, setLoading] = useState(false);
 
   // --------- modal (create/edit) ----------
-  const emptyForm = { _id: null, firstName: "", lastName: "", phone: "", spec: "", room: "", percent: 0, note: "", isActive: true };
+  const emptyForm = {
+    _id: null,
+    firstName: "",
+    lastName: "",
+    phone: "",
+    spec: "",
+    room: "",
+    percent: 0,
+    note: "",
+    isActive: true,
+    // Login access fields
+    createLoginAccess: false,
+    loginEmail: "",
+    loginPassword: "",
+  };
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const isEdit = useMemo(() => !!form._id, [form._id]);
@@ -302,6 +316,11 @@ export default function Doctors() {
       percent: Number(form.percent || 0),
       note: form.note,
       isActive: form.isActive,
+
+      // Login access data (only for create)
+      createLoginAccess: !isEdit && form.createLoginAccess,
+      loginEmail: form.loginEmail,
+      loginPassword: form.loginPassword,
     };
     try {
       if (isEdit) {
@@ -489,6 +508,53 @@ export default function Doctors() {
                 <input id="isActive" type="checkbox" checked={!!form.isActive} onChange={e => setForm({ ...form, isActive: e.target.checked })} />
                 <label htmlFor="isActive">Faol</label>
               </div>
+
+              {/* Login Access Section - Only for creating new doctors */}
+              {!isEdit && (
+                <>
+                  <div style={{ flex: "1 1 100%", borderTop: "1px solid #e5e7eb", paddingTop: 16, marginTop: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                      <input
+                        id="createLoginAccess"
+                        type="checkbox"
+                        checked={!!form.createLoginAccess}
+                        onChange={e => setForm({ ...form, createLoginAccess: e.target.checked })}
+                      />
+                      <label htmlFor="createLoginAccess" style={{ fontWeight: 600 }}>
+                        🔐 Tizimga kirish imkoniyati berish (Login yaratish)
+                      </label>
+                    </div>
+
+                    {form.createLoginAccess && (
+                      <div className="row" style={{ gap: 8, flexWrap: "wrap", background: "#f9fafb", padding: 12, borderRadius: 8 }}>
+                        <div style={{ flex: "1 1 220px" }}>
+                          <label className="muted">Email (Login uchun)</label>
+                          <input
+                            className="input"
+                            type="email"
+                            value={form.loginEmail}
+                            onChange={e => setForm({ ...form, loginEmail: e.target.value })}
+                            placeholder="doctor@example.com"
+                          />
+                        </div>
+                        <div style={{ flex: "1 1 220px" }}>
+                          <label className="muted">Parol</label>
+                          <input
+                            className="input"
+                            type="password"
+                            value={form.loginPassword}
+                            onChange={e => setForm({ ...form, loginPassword: e.target.value })}
+                            placeholder="Kamida 6 belgi"
+                          />
+                        </div>
+                        <div style={{ flex: "1 1 100%", fontSize: "0.875rem", color: "#6b7280" }}>
+                          💡 Shifokor uchun User account yaratiladi (role: doctor). U email va parol bilan tizimga kirib, o'z navbatlarini boshqara oladi.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
             {msg && <div className="muted" style={{ marginTop: 8 }}>{msg}</div>}
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
@@ -499,10 +565,11 @@ export default function Doctors() {
             </div>
           </div>
         </div>
-      )}
+      )
+      }
 
       {/* Preview Modal */}
       <DoctorPreviewModal open={showPreview} doctorId={previewId} onClose={() => setShowPreview(false)} />
-    </div>
+    </div >
   );
 }

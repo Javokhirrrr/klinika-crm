@@ -5,6 +5,9 @@ const DoctorSchema = new mongoose.Schema(
   {
     orgId: { type: mongoose.Schema.Types.ObjectId, ref: "Organization", index: true, required: true },
 
+    // Link to User account (for login access)
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
+
     firstName: { type: String, required: true, trim: true, index: true },
     lastName: { type: String, trim: true, default: "" },
     phone: { type: String, trim: true, default: "", index: true },

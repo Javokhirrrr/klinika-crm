@@ -36,6 +36,11 @@ export const clockIn = async (req, res) => {
         const isLate = clockInTime > workStartTime;
         const lateMinutes = isLate ? Math.floor((clockInTime - workStartTime) / (1000 * 60)) : 0;
 
+        // Handle location as object or string
+        const loc = typeof location === 'string'
+            ? { address: location }
+            : location;
+
         const attendance = await Attendance.create({
             orgId: req.user.orgId,
             userId,
@@ -43,7 +48,7 @@ export const clockIn = async (req, res) => {
             clockIn: clockInTime,
             status: isLate ? 'late' : 'on_time',
             lateMinutes,
-            clockInLocation: location
+            clockInLocation: loc
         });
 
         await attendance.populate('userId', 'name email');
@@ -91,7 +96,10 @@ export const clockOut = async (req, res) => {
         }
 
         attendance.clockOut = new Date();
-        attendance.clockOutLocation = location;
+        // Handle location as object or string
+        attendance.clockOutLocation = typeof location === 'string'
+            ? { address: location }
+            : location;
         attendance.status = attendance.status === 'late' ? 'late' : 'on_time';
 
         await attendance.save();  // workHours will be calculated by pre-save hook

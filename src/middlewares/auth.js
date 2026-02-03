@@ -47,8 +47,12 @@ export function authenticate(req, res, next) {
     req.orgId = payload.orgId;
     next();
   } catch (err) {
-    console.error('❌ Authentication failed:', err.message);
-    console.error('Token:', token.substring(0, 20) + '...');
+    if (err.name === 'TokenExpiredError' || err.message === 'jwt expired') {
+      console.warn('⚠️ Authentication: JWT expired');
+    } else {
+      console.error('❌ Authentication failed:', err.message);
+      console.error('Token:', token.substring(0, 20) + '...');
+    }
     return res.status(401).json({ ok: false, message: 'Invalid token', error: err.message });
   }
 }

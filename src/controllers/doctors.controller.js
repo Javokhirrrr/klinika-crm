@@ -3,21 +3,21 @@ import mongoose from "mongoose";
 import { Doctor } from "../models/Doctor.js";
 
 const okId = (v) => mongoose.isValidObjectId(v);
-const OID  = (v) => new mongoose.Types.ObjectId(v);
+const OID = (v) => new mongoose.Types.ObjectId(v);
 
 /** GET /api/doctors? q=&spec=&active=&from=&to=&page=1&limit=20&sort=createdAt:desc */
 export async function listDoctors(req, res) {
-  const page  = Math.max(parseInt(req.query.page)  || 1, 1);
+  const page = Math.max(parseInt(req.query.page) || 1, 1);
   const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 200);
-  const skip  = (page - 1) * limit;
+  const skip = (page - 1) * limit;
 
   const {
-    q     = "",             // ism/familiya/telefon izlash
-    spec  = "",             // aniq mutaxassislik
+    q = "",             // ism/familiya/telefon izlash
+    spec = "",             // aniq mutaxassislik
     active = "",            // "true" | "false"
-    from  = "",             // createdAt >=
-    to    = "",             // createdAt <=
-    sort  = "createdAt:desc",
+    from = "",             // createdAt >=
+    to = "",             // createdAt <=
+    sort = "createdAt:desc",
   } = req.query;
 
   const filters = { orgId: req.orgId, isDeleted: { $ne: true } };
@@ -26,19 +26,19 @@ export async function listDoctors(req, res) {
     const s = q.trim();
     filters.$or = [
       { firstName: { $regex: s, $options: "i" } },
-      { lastName:  { $regex: s, $options: "i" } },
-      { phone:     { $regex: s, $options: "i" } },
+      { lastName: { $regex: s, $options: "i" } },
+      { phone: { $regex: s, $options: "i" } },
     ];
   }
 
   if (spec && spec.trim()) filters.spec = spec.trim();
-  if (active === "true")  filters.isActive = true;
+  if (active === "true") filters.isActive = true;
   if (active === "false") filters.isActive = false;
 
   if (from || to) {
     filters.createdAt = {};
     if (from) filters.createdAt.$gte = new Date(from);
-    if (to)   filters.createdAt.$lte = new Date(`${to}T23:59:59.999Z`);
+    if (to) filters.createdAt.$lte = new Date(`${to}T23:59:59.999Z`);
   }
 
   const [sf, sd] = String(sort).split(":");
@@ -54,15 +54,29 @@ export async function listDoctors(req, res) {
 
 /** GET /api/doctors/specs — org bo‘yicha distinct mutaxassisliklar */
 export async function listSpecs(req, res) {
-  const specs = await Doctor.distinct("spec", { orgId: req.orgId, isDeleted: { $ne: true }, spec: { $ne: "" }});
+  const specs = await Doctor.distinct("spec", { orgId: req.orgId, isDeleted: { $ne: true }, spec: { $ne: "" } });
   res.json({ items: specs.sort() });
 }
 
 /** POST /api/doctors */
 export async function createDoctor(req, res) {
-  const { firstName, lastName = "", phone = "", spec = "", room = "", percent = 0, note = "" } = req.body || {};
+  const {
+    firstName,
+    lastName = "",
+    phone = "",
+    spec = "",
+    room = "",
+    percent = 0,
+    note = "",
+    // Login access fields
+    createLoginAccess = false,
+    loginEmail = "",
+    loginPassword = ""
+  } = req.body || {};
+
   if (!firstName || !firstName.trim()) return res.status(400).json({ message: "firstName is required" });
 
+  // Create doctor
   const doc = await Doctor.create({
     orgId: req.orgId,
     firstName: firstName.trim(),
@@ -73,6 +87,44 @@ export async function createDoctor(req, res) {
     percent: Number(percent || 0),
     note: (note || "").trim(),
   });
+
+  // If createLoginAccess is true, create a User account
+  let userId = null;
+  if (createLoginAccess && loginEmail && loginPassword) {
+    try {
+      const { User } = await import('../models/User.js');
+      const { hashPassword } = await import('../utils/passwords.js');
+      const { ROLE_PERMISSIONS } = await import('../constants/permissions.js');
+
+      const passwordHash = await hashPassword(loginPassword);
+
+      const user = await User.create({
+        orgId: req.orgId,
+        name: `${firstName} ${lastName}`.trim(),
+        email: loginEmail.toLowerCase().trim(),
+        phone: (phone || "").trim(),
+        role: 'doctor',
+        passwordHash,
+        isActive: true,
+        // Auto-assign default doctor permissions
+        permissions: ROLE_PERMISSIONS.doctor || [],
+      });
+
+      userId = user._id;
+
+      // Link doctor to user
+      doc.userId = userId;
+      await doc.save();
+    } catch (err) {
+      // If user creation fails, still return doctor but with error message
+      console.error('Failed to create user account for doctor:', err);
+      return res.status(201).json({
+        ...doc.toObject(),
+        userCreationError: err.message || 'Failed to create login account'
+      });
+    }
+  }
+
   res.status(201).json(doc);
 }
 
@@ -92,8 +144,8 @@ export async function updateDoctor(req, res) {
   if (!okId(id)) return res.status(400).json({ message: "Invalid id" });
 
   const payload = {};
-  const fields = ["firstName","lastName","phone","spec","room","note"];
-  fields.forEach(k=>{
+  const fields = ["firstName", "lastName", "phone", "spec", "room", "note"];
+  fields.forEach(k => {
     if (typeof req.body?.[k] === "string") payload[k] = req.body[k].trim();
   });
   if (req.body?.percent !== undefined) payload.percent = Number(req.body.percent || 0);
@@ -135,3 +187,19 @@ export async function toggleActive(req, res) {
 
   res.json({ _id: d._id, isActive: d.isActive });
 }
+
+/** POST /api/doctors/:id/restore (restore soft-deleted doctor) */
+export async function restoreDoctor(req, res) {
+  const { id } = req.params;
+  if (!okId(id)) return res.status(400).json({ message: "Invalid id" });
+
+  const restored = await Doctor.findOneAndUpdate(
+    { _id: OID(id), orgId: req.orgId },
+    { $set: { isDeleted: false, isActive: true } },
+    { new: true, lean: true }
+  );
+
+  if (!restored) return res.status(404).json({ message: "Not found" });
+  res.json({ ok: true });
+}
+

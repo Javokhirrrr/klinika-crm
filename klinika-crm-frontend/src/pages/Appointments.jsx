@@ -1,6 +1,6 @@
 // Appointments Page - Enhanced Version with Advanced Features
 import React, { useState, useEffect } from 'react';
-import { StatusBadge, LoadingSpinner } from '../components/UIComponents';
+import { StatusBadge, LoadingSpinner, Toast } from '../components/UIComponents';
 import http from '../lib/http';
 
 export default function Appointments() {
@@ -9,6 +9,7 @@ export default function Appointments() {
   const [doctors, setDoctors] = useState([]);
   const [services, setServices] = useState([]);
   const [queueData, setQueueData] = useState([]);
+  const [toast, setToast] = useState(null);
 
   // Filters
   const [filterDate, setFilterDate] = useState('today');
@@ -46,6 +47,14 @@ export default function Appointments() {
     completed: 0,
     cancelled: 0,
   });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
+
+  const hideToast = () => {
+    setToast(null);
+  };
 
   useEffect(() => {
     loadResources();
@@ -106,7 +115,7 @@ export default function Appointments() {
         // Queue ma'lumotlarini ham olish
         try {
           const queueRes = await http.get('/queue/current');
-          setQueueData(queueRes.data?.queue || []);
+          setQueueData(queueRes.queue || []);
         } catch (err) {
           console.error('Queue load error:', err);
           setQueueData([]);
@@ -149,12 +158,12 @@ export default function Appointments() {
 
   const createAppointment = async () => {
     if (!formData.patientId || !formData.doctorId || !formData.serviceId || !formData.scheduledAt) {
-      alert('Iltimos, barcha majburiy maydonlarni to\'ldiring');
+      showToast('Iltimos, barcha majburiy maydonlarni to\'ldiring', 'warning');
       return;
     }
 
     if (formData.makePayment && !formData.paymentAmount) {
-      alert('To\'lov summasini kiriting');
+      showToast('To\'lov summasini kiriting', 'warning');
       return;
     }
 
@@ -196,9 +205,14 @@ export default function Appointments() {
       setPatientSearch('');
 
       await loadAppointments();
-      alert(formData.makePayment ? 'Qabul va to\'lov muvaffaqiyatli yaratildi!' : 'Qabul muvaffaqiyatli yaratildi!');
+      showToast(
+        formData.makePayment
+          ? 'Qabul va to\'lov muvaffaqiyatli yaratildi!'
+          : 'Qabul muvaffaqiyatli yaratildi!',
+        'success'
+      );
     } catch (error) {
-      alert('Xatolik: ' + (error.response?.data?.message || error.message));
+      showToast('Xatolik: ' + (error.response?.data?.message || error.message), 'error');
     }
   };
 
@@ -207,8 +221,9 @@ export default function Appointments() {
       await http.patch(`/appointments/${id}`, { status: newStatus });
       await loadAppointments();
       setShowDetailModal(false);
+      showToast('Holat muvaffaqiyatli yangilandi!', 'success');
     } catch (error) {
-      alert('Xatolik: ' + (error.response?.data?.message || error.message));
+      showToast('Xatolik: ' + (error.response?.data?.message || error.message), 'error');
     }
   };
 
@@ -226,9 +241,10 @@ export default function Appointments() {
 
       // Reload to get fresh data
       await loadAppointments();
+      showToast('Qabul muvaffaqiyatli o\'chirildi!', 'success');
     } catch (error) {
       console.error('Delete error:', error);
-      alert('Xatolik: ' + (error.response?.data?.message || error.message || 'Noma\'lum xatolik'));
+      showToast('Xatolik: ' + (error.response?.data?.message || error.message || 'Noma\'lum xatolik'), 'error');
     }
   };
 
@@ -755,6 +771,15 @@ export default function Appointments() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+        />
       )}
     </div>
   );

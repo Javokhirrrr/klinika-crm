@@ -47,7 +47,6 @@ export default function Nav() {
         <Item to="/payments" onClick={closeMenu}>Payments</Item>
         <Item to="/users" onClick={closeMenu}>Users</Item>
         <Item to="/reports" onClick={closeMenu}>Reports</Item>
-        <Item to="/analytics" onClick={closeMenu}>Analytics</Item>
         <Item to="/calendar" onClick={closeMenu}>Calendar</Item>
         <Item to="/notifications" onClick={closeMenu}>Notifications</Item>
         <Item to="/system" onClick={closeMenu}>System</Item>

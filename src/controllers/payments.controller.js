@@ -14,6 +14,7 @@ import { generateAndSendReceipt } from '../utils/receipt.js';
 const createPaymentSchema = Joi.object({
   patientId: Joi.string().required(),
   appointmentId: Joi.string().allow(null, ''),
+  doctorId: Joi.string().allow(null, ''), // NEW: for Doctor Room payments
   amount: Joi.number().min(0).required(),
   method: Joi.string().valid('cash', 'card', 'transfer', 'online').required(),
   status: Joi.string().valid('completed', 'pending', 'failed', 'refunded'),
@@ -26,6 +27,29 @@ export async function listPayments(req, res) {
   const { patientId, method, status, from, to } = req.query;
 
   const q = qOrg(req, {});
+
+  // Role-based filtering: If doctor, only show their own payments
+  if (req.user.role === 'doctor') {
+    const { Doctor } = await import('../models/Doctor.js');
+    const doctor = await Doctor.findOne({
+      orgId: req.user.orgId,
+      userId: req.user._id,
+      isDeleted: { $ne: true }
+    }).lean();
+
+    if (doctor) {
+      // Find appointments for this doctor to filter payments
+      const { Appointment } = await import('../models/Appointment.js');
+      const doctorAppointments = await Appointment.find({ doctorId: doctor._id }).select('_id').lean();
+      const appointmentIds = doctorAppointments.map(a => a._id);
+
+      q.appointmentId = { $in: appointmentIds };
+    } else {
+      // If user is a doctor but no doctor profile found, return empty list for safety
+      return res.json({ items: [], total: 0, page, limit });
+    }
+  }
+
   if (patientId) q.patientId = patientId;
   if (method) q.method = method;
   if (status) q.status = status;
@@ -89,33 +113,56 @@ export async function createPayment(req, res) {
 
   // 💰 Auto-create commission if applicable
   try {
+    let doctorId = null;
+
+    // 1. Try to get doctor from appointment
     if (value.appointmentId) {
       const appt = await Appointment.findById(value.appointmentId).lean();
       if (appt && appt.doctorId) {
-        // Check if doctor has commission enabled
-        const { Doctor } = await import('../models/Doctor.js');
-        const doctor = await Doctor.findById(appt.doctorId).lean();
-
-        if (doctor && doctor.commissionEnabled && doctor.commissionRate > 0) {
-          const { Commission } = await import('../models/Commission.js');
-          const commissionAmount = (created.amount * doctor.commissionRate) / 100;
-
-          await Commission.create({
-            orgId: req.user.orgId,
-            userId: doctor._id,  // Doctor is also a user
-            paymentId: created._id,
-            appointmentId: value.appointmentId,
-            patientId: value.patientId,
-            amount: commissionAmount,
-            percentage: doctor.commissionRate,
-            baseAmount: created.amount,
-            status: 'pending'
-          });
-        }
+        doctorId = appt.doctorId;
       }
     }
+
+    // 2. If no appointment, check if payment body has doctorId (from Doctor Room)
+    if (!doctorId && value.doctorId) {
+      doctorId = value.doctorId;
+    }
+
+    // 3. If we have a doctor, create commission
+    if (doctorId) {
+      const { Doctor } = await import('../models/Doctor.js');
+      const doctor = await Doctor.findById(doctorId).lean();
+
+      // Support both commissionRate and percent fields
+      const commissionRate = doctor?.commissionRate || doctor?.percent || 0;
+      const commissionEnabled = doctor?.commissionEnabled !== false; // Default to true if not set
+
+      if (doctor && commissionEnabled && commissionRate > 0) {
+        const { Commission } = await import('../models/Commission.js');
+        const commissionAmount = (created.amount * commissionRate) / 100;
+
+        await Commission.create({
+          orgId: req.user.orgId,
+          userId: doctor.userId || doctor._id,
+          doctorId: doctor._id,
+          paymentId: created._id,
+          appointmentId: value.appointmentId || null,
+          patientId: value.patientId,
+          amount: commissionAmount,
+          percentage: commissionRate,
+          baseAmount: created.amount,
+          status: 'pending'
+        });
+
+        console.log(`✅ Commission created for doctor ${doctor.firstName}: ${commissionAmount.toLocaleString()} so'm (${commissionRate}% of ${created.amount.toLocaleString()})`);
+      } else {
+        console.log(`⚠️ No commission - doctor: ${doctor?.firstName || 'N/A'}, rate: ${commissionRate}%, enabled: ${commissionEnabled}`);
+      }
+    } else {
+      console.log(`ℹ️ No doctor found for payment - no commission created`);
+    }
   } catch (err) {
-    console.error('Commission creation error:', err);
+    console.error('❌ Commission creation error:', err);
     // Don't fail payment if commission creation fails
   }
 

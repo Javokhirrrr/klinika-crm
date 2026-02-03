@@ -3,6 +3,7 @@ import { Schema, model } from 'mongoose';
 const commissionSchema = new Schema({
     orgId: { type: Schema.Types.ObjectId, ref: 'Organization', index: true, required: true },
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    doctorId: { type: Schema.Types.ObjectId, ref: 'Doctor', index: true }, // NEW: for doctor commissions
 
     paymentId: { type: Schema.Types.ObjectId, ref: 'Payment', required: true },
     appointmentId: { type: Schema.Types.ObjectId, ref: 'Appointment' },

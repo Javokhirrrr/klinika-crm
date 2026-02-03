@@ -60,7 +60,7 @@ export function emitPatientCalled(orgId, queueEntry) {
             initials: patient ? `${patient.firstName.charAt(0)}. ${patient.lastName.charAt(0)}.` : 'B.',
             doctorName: doctor ? `${doctor.firstName} ${doctor.lastName}` : 'Shifokor',
             doctorId: queueEntry.doctorId._id || queueEntry.doctorId,
-            roomNumber: doctor?.roomNumber || '205'
+            roomNumber: doctor?.room || '205'
         });
 
         console.log('📡 Patient called event emitted:', queueEntry.queueNumber);

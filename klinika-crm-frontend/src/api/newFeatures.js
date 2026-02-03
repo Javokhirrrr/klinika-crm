@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const RAW_API_URL = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
+const API_URL = RAW_API_URL || "/api";
 
 const api = axios.create({
     baseURL: API_URL,
@@ -17,6 +18,80 @@ api.interceptors.request.use((config) => {
     }
     return config;
 });
+
+// Switch for avoiding infinite loops and handling concurrent 401s
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+    failedQueue = [];
+};
+
+// Handle 401 errors and refresh token
+api.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({ resolve, reject });
+                })
+                    .then(token => {
+                        originalRequest.headers['Authorization'] = 'Bearer ' + token;
+                        return api(originalRequest);
+                    })
+                    .catch(err => {
+                        return Promise.reject(err);
+                    });
+            }
+
+            originalRequest._retry = true;
+            isRefreshing = true;
+
+            const refreshToken = localStorage.getItem('refreshToken');
+
+            if (refreshToken) {
+                try {
+                    const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
+
+                    const newAccessToken = res.data?.accessToken;
+                    if (newAccessToken) {
+                        localStorage.setItem('accessToken', newAccessToken);
+
+                        // Update current and future requests
+                        api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+                        originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
+
+                        processQueue(null, newAccessToken);
+                        return api(originalRequest);
+                    }
+                } catch (refreshError) {
+                    processQueue(refreshError, null);
+                    console.error('❌ Token refresh failed via Axios:', refreshError);
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('refreshToken');
+                    window.location.href = '/login';
+                    return Promise.reject(refreshError);
+                } finally {
+                    isRefreshing = false;
+                }
+            } else {
+                window.location.href = '/login';
+            }
+        }
+
+        return Promise.reject(error);
+    }
+);
 
 // Attendance API
 export const attendanceAPI = {

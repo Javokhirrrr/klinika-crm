@@ -14,9 +14,9 @@ export const getCalendarEvents = async (req, res) => {
 
         const match = {
             orgId: new mongoose.Types.ObjectId(orgId),
-            appointmentDate: {
+            startAt: {
                 $gte: new Date(startDate),
-                $lte: new Date(endDate)
+                $lte: new Date(endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`)
             }
         };
 
@@ -27,22 +27,22 @@ export const getCalendarEvents = async (req, res) => {
         const appointments = await Appointment.find(match)
             .populate('patientId', 'firstName lastName phone')
             .populate('doctorId', 'firstName lastName')
-            .populate('services', 'name price')
-            .sort({ appointmentDate: 1, appointmentTime: 1 })
+            .populate('serviceIds', 'name price')
+            .sort({ startAt: 1 })
             .lean();
 
         // Format for calendar
         const events = appointments.map(apt => ({
             id: apt._id,
             title: `${apt.patientId?.firstName || ''} ${apt.patientId?.lastName || ''}`,
-            start: new Date(`${apt.appointmentDate.toISOString().split('T')[0]}T${apt.appointmentTime}`),
-            end: new Date(`${apt.appointmentDate.toISOString().split('T')[0]}T${apt.appointmentTime}`),
+            start: apt.startAt,
+            end: apt.endAt || apt.startAt,
             doctor: `${apt.doctorId?.firstName || ''} ${apt.doctorId?.lastName || ''}`,
             patient: apt.patientId,
-            services: apt.services,
+            services: apt.serviceIds,
             status: apt.status,
             isPaid: apt.isPaid,
-            notes: apt.notes,
+            notes: apt.notes || apt.note,
             resourceId: apt.doctorId?._id
         }));
 

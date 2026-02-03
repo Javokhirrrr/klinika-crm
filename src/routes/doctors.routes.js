@@ -5,7 +5,7 @@ import { requireOrg } from "../middlewares/tenant.js";
 import {
   listDoctors, listSpecs,
   createDoctor, getDoctor, updateDoctor, deleteDoctor,
-  toggleActive,
+  toggleActive, restoreDoctor,
 } from "../controllers/doctors.controller.js";
 
 // NEW controllers (certificates + schedule)
@@ -26,7 +26,7 @@ const r = Router();
 // har doim: auth + org
 r.use(authJwt, requireOrg);
 
-// Filtrlangan ro‘yxat
+// Filtrlangan ro'yxat
 r.get("/", listDoctors);
 
 // Distinct mutaxassisliklar
@@ -40,6 +40,9 @@ r.delete("/:id", deleteDoctor);
 
 // Active/Inactive
 r.patch("/:id/toggle-active", toggleActive);
+
+// Restore deleted doctor
+r.post("/:id/restore", restoreDoctor);
 
 // ======== Doctor Certificates (PDF only) ========
 r.get("/:id/certificates", listDoctorCerts);

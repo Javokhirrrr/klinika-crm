@@ -8,6 +8,7 @@ export async function listServices(req, res) {
   const limit = Math.max(1, Number(req.query.limit ?? 50));
   const search = (req.query.search || req.query.q || '').trim();
   const ids = (req.query.ids || '').split(',').map(x => x.trim()).filter(Boolean);
+  const includeDeleted = String(req.query.includeDeleted || 'false') === 'true';
 
   const q = {};
   const orgId = req.user?.orgId;
@@ -15,6 +16,11 @@ export async function listServices(req, res) {
   // Org filter: match orgId OR missing orgId
   if (orgId) {
     q.$or = [{ orgId }, { orgId: { $exists: false } }, { orgId: null }];
+  }
+
+  // Hide deleted services by default
+  if (!includeDeleted) {
+    q.isDeleted = { $ne: true };
   }
 
   if (ids.length) {
@@ -82,8 +88,39 @@ export async function updateService(req, res) {
 }
 
 export async function deleteService(req, res) {
-  const deleted = await Service.findOneAndDelete(qOrg(req, { _id: req.params.id })).lean();
-  if (!deleted) return res.status(404).json({ message: 'Service not found' });
-  await logAudit({ userId: req.user?.uid, action: 'delete', entity: 'service', entityId: deleted._id, meta: { name: deleted.name } });
-  res.json({ ok: true });
+  try {
+    const service = await Service.findOne(qOrg(req, { _id: req.params.id })).lean();
+    if (!service) return res.status(404).json({ message: 'Service not found' });
+
+    // Soft delete
+    const updated = await Service.findOneAndUpdate(
+      qOrg(req, { _id: req.params.id }),
+      { $set: { isDeleted: true, isActive: false } },
+      { new: true }
+    ).lean();
+
+    if (!updated) return res.status(404).json({ message: 'Service not found' });
+    await logAudit({ userId: req.user?.uid, action: 'delete', entity: 'service', entityId: updated._id, meta: { name: updated.name } });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('deleteService error:', e);
+    return res.status(500).json({ message: 'Internal error' });
+  }
+}
+
+export async function restoreService(req, res) {
+  try {
+    const restored = await Service.findOneAndUpdate(
+      qOrg(req, { _id: req.params.id }),
+      { $set: { isDeleted: false, isActive: true } },
+      { new: true }
+    ).lean();
+
+    if (!restored) return res.status(404).json({ message: 'Service not found' });
+    await logAudit({ userId: req.user?.uid, action: 'restore', entity: 'service', entityId: restored._id, meta: { name: restored.name } });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('restoreService error:', e);
+    return res.status(500).json({ message: 'Internal error' });
+  }
 }

@@ -1,9 +1,9 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Nav from "./components/Nav";
+import Sidebar from "./components/Sidebar";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/Toast";
 
@@ -11,6 +11,9 @@ import { ToastProvider } from "./components/Toast";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import ReceptionDashboard from "./pages/ReceptionDashboard.jsx";
+import DirectorDashboard from "./pages/DirectorDashboard.jsx";
+import DoctorDashboard from "./pages/DoctorDashboard.jsx";
 import Patients from "./pages/Patients.jsx";
 import Appointments from "./pages/Appointments.jsx";
 import Services from "./pages/Services.jsx";
@@ -31,17 +34,31 @@ import Queue from "./pages/Queue.jsx";
 import QueueDisplay from "./pages/QueueDisplay.jsx";
 // TWA (Telegram WebApp) — PUBLIC ROUTE
 import Twa from "./pages/Twa.jsx";
-import Analytics from "./pages/Analytics.jsx";
 import Calendar from "./pages/Calendar.jsx";
 import Notifications from "./pages/Notifications.jsx";
+import Salaries from "./pages/Salaries.jsx";
 
-// Topbar layout (sidebar = topbar)
+// Smart Dashboard Router - Routes to appropriate dashboard based on user role
+function SmartDashboard() {
+  const { user } = useAuth();
+  const userRole = user?.role || 'reception';
+
+  // Route to appropriate dashboard based on role
+  if (userRole === 'owner' || userRole === 'admin') {
+    return <DirectorDashboard />;
+  } else if (userRole === 'doctor') {
+    return <DoctorDashboard />;
+  } else {
+    // reception, accountant, nurse, etc.
+    return <ReceptionDashboard />;
+  }
+}
+
+// Sidebar layout
 function PrivateLayout() {
   return (
     <div className="layout">
-      <aside className="sidebar">
-        <Nav />
-      </aside>
+      <Sidebar />
       <main className="content">
         <Outlet />
       </main>
@@ -74,8 +91,11 @@ export default function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Dashboard />} />
-                <Route path="/dashboard" element={<Dashboard />} />
+                <Route index element={<SmartDashboard />} />
+                <Route path="/dashboard" element={<SmartDashboard />} />
+                <Route path="/dashboard/reception" element={<ReceptionDashboard />} />
+                <Route path="/dashboard/director" element={<DirectorDashboard />} />
+                <Route path="/dashboard/doctor" element={<DoctorDashboard />} />
                 <Route path="/patients" element={<Patients />} />
                 <Route path="/appointments" element={<Appointments />} />
                 <Route path="/doctor-room" element={<DoctorRoom />} />
@@ -84,7 +104,6 @@ export default function App() {
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/users" element={<Users />} />
                 <Route path="/reports" element={<Reports />} />
-                <Route path="/analytics" element={<Analytics />} />
                 <Route path="/calendar" element={<Calendar />} />
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/system" element={<System />} />
@@ -93,6 +112,7 @@ export default function App() {
                 <Route path="/attendance" element={<Attendance />} />
                 <Route path="/commissions" element={<Commissions />} />
                 <Route path="/queue" element={<Queue />} />
+                <Route path="/salaries" element={<Salaries />} />
 
                 {/* areas */}
                 <Route path="/cashier" element={<CashierApp />} />

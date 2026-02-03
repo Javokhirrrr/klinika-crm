@@ -8,6 +8,7 @@ import {
   createService,
   updateService,
   deleteService,
+  restoreService,
 } from "../controllers/services.controller.js";
 
 const r = Router();
@@ -30,4 +31,8 @@ r.put("/:id", updateService);
 // DELETE /api/services/:id  (soft-delete)
 r.delete("/:id", deleteService);
 
+// POST /api/services/:id/restore (restore deleted service)
+r.post("/:id/restore", restoreService);
+
 export default r;
+

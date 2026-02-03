@@ -12,6 +12,7 @@ export function authJwt(req, res, next) {
     }
 
     if (!token) {
+      console.log('❌ Authentication failed: No token provided');
       return res.status(401).json({ message: 'No access token' });
     }
 
@@ -28,6 +29,19 @@ export function authJwt(req, res, next) {
 
     next();
   } catch (e) {
-    return res.status(401).json({ message: 'Invalid or expired token' });
+    const isExpired = e.name === 'TokenExpiredError' || e.message === 'jwt expired';
+    if (isExpired) {
+      console.warn('⚠️ Authentication: JWT expired');
+    } else {
+      const auth = req.headers.authorization || '';
+      const token = auth.startsWith('Bearer ') ? auth.slice(7) : (req.cookies?.access_token || '');
+      console.log(`❌ Authentication failed: ${e.message}`);
+      console.log(`Token: ${token.slice(0, 20)}...`);
+    }
+
+    return res.status(401).json({
+      message: e.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid or expired token',
+      error: e.message
+    });
   }
 }

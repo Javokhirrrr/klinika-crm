@@ -38,6 +38,7 @@ import telegramRoutes from "./routes/telegram.routes.js";
 import medicalHistoryRoutes from "./routes/medicalHistory.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import calendarRoutes from "./routes/calendar.routes.js";
+import salaryRoutes from "./routes/salary.routes.js";
 
 const app = express();
 
@@ -105,6 +106,7 @@ app.use("/api/telegram", telegramRoutes);
 app.use("/api/medical-history", medicalHistoryRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/calendar", calendarRoutes);
+app.use("/api/salaries", salaryRoutes);
 
 // CORS xatosini ushlash
 app.use((err, _req, res, next) => {

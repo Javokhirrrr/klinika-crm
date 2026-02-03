@@ -1,6 +1,7 @@
 // Doctor Room - Queue System Integration
 import React, { useState, useEffect } from 'react';
 import { queueAPI } from '../api/newFeatures';
+import { Toast } from '../components/UIComponents';
 import http from '../lib/http';
 
 export default function DoctorRoom() {
@@ -12,6 +13,7 @@ export default function DoctorRoom() {
     completed: [],
   });
   const [stats, setStats] = useState(null);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     loadQueue();
@@ -19,6 +21,14 @@ export default function DoctorRoom() {
     const interval = setInterval(loadQueue, 5000); // 5 soniyada yangilanish
     return () => clearInterval(interval);
   }, []);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
+
+  const hideToast = () => {
+    setToast(null);
+  };
 
   const loadStats = async () => {
     try {
@@ -56,30 +66,33 @@ export default function DoctorRoom() {
   const handleCall = async (id) => {
     try {
       await queueAPI.call(id);
+      showToast('Bemor chaqirildi!', 'success');
       await loadQueue();
     } catch (error) {
       console.error('Call error:', error);
-      alert('Xatolik: ' + (error.response?.data?.message || error.message));
+      showToast('Xatolik: ' + (error.response?.data?.message || error.message), 'error');
     }
   };
 
   const handleStart = async (id) => {
     try {
       await queueAPI.startService(id);
+      showToast('Qabul boshlandi!', 'success');
       await loadQueue();
     } catch (error) {
       console.error('Start error:', error);
-      alert('Xatolik: ' + (error.response?.data?.message || error.message));
+      showToast('Xatolik: ' + (error.response?.data?.message || error.message), 'error');
     }
   };
 
   const handleComplete = async (id) => {
     try {
       await queueAPI.complete(id);
+      showToast('Qabul tugallandi!', 'success');
       await loadQueue();
     } catch (error) {
       console.error('Complete error:', error);
-      alert('Xatolik: ' + (error.response?.data?.message || error.message));
+      showToast('Xatolik: ' + (error.response?.data?.message || error.message), 'error');
     }
   };
 
@@ -253,6 +266,15 @@ export default function DoctorRoom() {
           )}
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={hideToast}
+        />
+      )}
     </div>
   );
 }

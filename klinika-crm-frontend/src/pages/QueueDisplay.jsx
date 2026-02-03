@@ -42,8 +42,6 @@ const QueueDisplay = () => {
                     const key = `${dept.doctorId}-${dept.currentPatient.queueNumber}`;
 
                     if (!lastCalledRef.current.has(key)) {
-                        console.log('🔔 NEW PATIENT CALLED:', dept.currentPatient);
-
                         // Play sound
                         if (audioRef.current) {
                             audioRef.current.currentTime = 0;

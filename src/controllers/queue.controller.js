@@ -9,7 +9,7 @@ import { sendQueueNotification } from '../services/telegram.service.js';
  */
 export const joinQueue = async (req, res) => {
     try {
-        const { patientId, doctorId, appointmentId, priority, notes } = req.body;
+        const { patientId, doctorId, serviceId, appointmentId, priority, notes } = req.body;
 
         // Check if patient already in queue
         const existing = await QueueEntry.findOne({
@@ -28,6 +28,7 @@ export const joinQueue = async (req, res) => {
             orgId: req.user.orgId,
             patientId,
             doctorId,
+            serviceId,
             appointmentId,
             priority: priority || 'normal',
             notes
@@ -35,7 +36,8 @@ export const joinQueue = async (req, res) => {
 
         await queueEntry.populate([
             { path: 'patientId', select: 'firstName lastName phone telegramChatId' },
-            { path: 'doctorId', select: 'firstName lastName spec' }
+            { path: 'doctorId', select: 'firstName lastName spec room' },
+            { path: 'serviceId', select: 'name price' }
         ]);
 
         // Emit WebSocket event
@@ -43,26 +45,30 @@ export const joinQueue = async (req, res) => {
         emitQueueUpdate(req.user.orgId, { action: 'patient_joined' });
 
         // Send Telegram notification
-        if (queueEntry.patientId.telegramChatId) {
-            const avgServiceTime = 20; // minutes
-            const position = await QueueEntry.countDocuments({
-                orgId: req.user.orgId,
-                doctorId,
-                status: 'waiting',
-                joinedAt: { $lt: queueEntry.joinedAt }
-            });
+        if (queueEntry.patientId?.telegramChatId) {
+            try {
+                const avgServiceTime = 20; // minutes
+                const position = await QueueEntry.countDocuments({
+                    orgId: req.user.orgId,
+                    doctorId,
+                    status: 'waiting',
+                    joinedAt: { $lt: queueEntry.joinedAt }
+                });
 
-            const waitTime = position * avgServiceTime;
-            const estimatedTime = new Date(Date.now() + waitTime * 60000)
-                .toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+                const waitTime = position * avgServiceTime;
+                const estimatedTime = new Date(Date.now() + waitTime * 60000)
+                    .toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
 
-            await sendQueueNotification(req.user.orgId, queueEntry.patientId.telegramChatId, {
-                type: 'added',
-                queueNumber: queueEntry.queueNumber,
-                doctorName: `${queueEntry.doctorId.firstName} ${queueEntry.doctorId.lastName}`,
-                estimatedTime,
-                waitTime
-            });
+                await sendQueueNotification(req.user.orgId, queueEntry.patientId.telegramChatId, {
+                    type: 'added',
+                    queueNumber: queueEntry.queueNumber,
+                    doctorName: queueEntry.doctorId ? `${queueEntry.doctorId.firstName} ${queueEntry.doctorId.lastName}` : 'Umumiy navbat',
+                    estimatedTime,
+                    waitTime
+                });
+            } catch (tgError) {
+                console.error('Telegram notification error (joining):', tgError);
+            }
         }
 
         res.status(StatusCodes.CREATED).json({
@@ -83,7 +89,25 @@ export const joinQueue = async (req, res) => {
  */
 export const getCurrentQueue = async (req, res) => {
     try {
-        const { doctorId, status } = req.query;
+        const { status } = req.query;
+        let { doctorId } = req.query;
+
+        // Role-based filtering: If doctor, only show their own queue
+        if (req.user.role === 'doctor') {
+            const { Doctor } = await import('../models/Doctor.js');
+            const doctor = await Doctor.findOne({
+                orgId: req.user.orgId,
+                userId: req.user._id,
+                isDeleted: { $ne: true }
+            }).lean();
+
+            if (doctor) {
+                doctorId = doctor._id.toString();
+            } else {
+                // If user is a doctor but no doctor profile found, return empty queue for safety
+                return res.json({ queue: [] });
+            }
+        }
 
         const query = {
             orgId: req.user.orgId,
@@ -194,7 +218,7 @@ export const callPatient = async (req, res) => {
         await queueEntry.save();
         await queueEntry.populate([
             { path: 'patientId', select: 'firstName lastName phone telegramChatId' },
-            { path: 'doctorId', select: 'firstName lastName spec roomNumber' }
+            { path: 'doctorId', select: 'firstName lastName spec room' }
         ]);
 
         // Emit WebSocket event
@@ -202,13 +226,17 @@ export const callPatient = async (req, res) => {
         emitQueueUpdate(req.user.orgId, { action: 'patient_called' });
 
         // Send Telegram notification
-        if (queueEntry.patientId.telegramChatId) {
-            await sendQueueNotification(req.user.orgId, queueEntry.patientId.telegramChatId, {
-                type: 'called',
-                queueNumber: queueEntry.queueNumber,
-                doctorName: `${queueEntry.doctorId.firstName} ${queueEntry.doctorId.lastName}`,
-                roomNumber: queueEntry.doctorId.roomNumber || '205'
-            });
+        if (queueEntry.patientId?.telegramChatId) {
+            try {
+                await sendQueueNotification(req.user.orgId, queueEntry.patientId.telegramChatId, {
+                    type: 'called',
+                    queueNumber: queueEntry.queueNumber,
+                    doctorName: `${queueEntry.doctorId?.firstName || 'D'} ${queueEntry.doctorId?.lastName || ''}`,
+                    roomNumber: queueEntry.doctorId?.room || '205'
+                });
+            } catch (tgError) {
+                console.error('Telegram notification error (calling):', tgError);
+            }
         }
 
         res.json({
@@ -250,7 +278,7 @@ export const startService = async (req, res) => {
         await queueEntry.save();
         await queueEntry.populate([
             { path: 'patientId', select: 'firstName lastName phone' },
-            { path: 'doctorId', select: 'firstName lastName specialization roomNumber' }
+            { path: 'doctorId', select: 'firstName lastName spec room' }
         ]);
 
         // Emit WebSocket events
@@ -544,7 +572,7 @@ export const getPublicDisplay = async (req, res) => {
             .sort({ priority: -1, joinedAt: 1 })
             .populate([
                 { path: 'patientId', select: 'firstName lastName' },
-                { path: 'doctorId', select: 'firstName lastName specialization roomNumber' }
+                { path: 'doctorId', select: 'firstName lastName spec room' }
             ])
             .lean();
 
@@ -556,7 +584,7 @@ export const getPublicDisplay = async (req, res) => {
             const doctorName = entry.doctorId
                 ? `${entry.doctorId.firstName} ${entry.doctorId.lastName}`
                 : 'Umumiy navbat';
-            const specialization = entry.doctorId?.specialization || '';
+            const specialization = entry.doctorId?.spec || '';
 
             if (!groupedByDoctor[doctorId]) {
                 groupedByDoctor[doctorId] = {

@@ -1,6 +1,6 @@
-// src/index.js
+// src/index.js (restarting to apply attendance fixes)
 import 'dotenv/config';
-import { env } from './config/env.js';
+import { env } from './config/env.js'; // restart trigger
 import app from './app.js';
 import { connectDB } from './db/connect.js';
 import mongoose from 'mongoose';

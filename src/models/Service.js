@@ -9,7 +9,7 @@ const serviceSchema = new Schema({
 
   // Enhanced Fields
   category: { type: String, trim: true, index: true },  // e.g., "Consultation", "Lab Test", "Surgery"
-  code: { type: String, trim: true, sparse: true },  // Service code for billing (index created separately below)
+  code: { type: String, trim: true },  // Service code for billing (index created separately below)
   description: { type: String, trim: true },
 
   isActive: { type: Boolean, default: true, index: true },

@@ -13,7 +13,7 @@ function setAuthCookies(res, { accessToken, refreshToken }) {
       httpOnly: true,
       sameSite: isProd ? 'none' : 'lax',
       secure: isProd,
-      maxAge: 15 * 60 * 1000,
+      maxAge: 60 * 60 * 1000, // 1 hour
       path: '/',
     });
   }

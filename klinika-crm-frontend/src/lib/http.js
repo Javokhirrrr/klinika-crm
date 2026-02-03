@@ -69,23 +69,54 @@ async function request(path, opts = {}) {
 
 async function tryRefresh() {
   try {
+    // Check if we have a refresh token
+    const currentRefreshToken = localStorage.getItem("refreshToken") || refreshToken;
+
+    if (!currentRefreshToken) {
+      console.warn('⚠️ No refresh token available, cannot refresh access token');
+      handleAuthFailure();
+      return false;
+    }
+
     const url = API_BASE ? `${API_BASE}/auth/refresh` : `/api/auth/refresh`;
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: refreshToken ? JSON.stringify({ refreshToken }) : undefined, // cookie bo'lmasa body orqali
+      body: JSON.stringify({ refreshToken: currentRefreshToken }),
     });
+
     const j = await r.json().catch(() => ({}));
+
     if (r.ok && j?.accessToken) {
       accessToken = j.accessToken;
-      localStorage.setItem("accessToken", j.accessToken); // Save to localStorage
-      onAuthChange({ accessToken, refreshToken });
+      localStorage.setItem("accessToken", j.accessToken);
+      onAuthChange({ accessToken, refreshToken: currentRefreshToken });
       return true;
+    } else {
+      console.warn('⚠️ Token refresh failed:', j?.message || 'Unknown error');
+      handleAuthFailure();
+      return false;
     }
+  } catch (error) {
+    console.error('❌ Token refresh error:', error);
+    handleAuthFailure();
     return false;
-  } catch {
-    return false;
+  }
+}
+
+function handleAuthFailure() {
+  // Clear all auth data
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("user");
+  localStorage.removeItem("org");
+  accessToken = "";
+  refreshToken = "";
+
+  // Redirect to login if not already there
+  if (window.location.pathname !== '/login') {
+    window.location.href = '/login';
   }
 }
 

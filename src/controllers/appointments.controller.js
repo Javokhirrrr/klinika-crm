@@ -13,15 +13,17 @@ const OID = (v) => new mongoose.Types.ObjectId(v);
 function normalizeBody(b = {}) {
   // frontend eski nomlar: startAt, services
   // yangi nomlar: startsAt, serviceIds
-  const startsAt = b.startsAt || b.startAt || null;
-  const serviceIds = Array.isArray(b.serviceIds) ? b.serviceIds : Array.isArray(b.services) ? b.services : [];
+  const startAt = b.startAt || b.startsAt || b.scheduledAt || b.appointmentDate || null;
+  const serviceIds = Array.isArray(b.serviceIds) ? b.serviceIds :
+    Array.isArray(b.services) ? b.services :
+      b.serviceId ? [b.serviceId] : [];
 
   return {
     patientId: b.patientId,
     doctorId: b.doctorId,
-    startsAt,
+    startAt,
     serviceIds,
-    note: b.note,
+    note: b.note || b.notes || "",
     status: b.status,
   };
 }
@@ -41,33 +43,53 @@ export async function listAppointments(req, res) {
     patientId = "",
     from = "",
     to = "",
-    sort = "startsAt:desc",
+    sort = "startAt:desc",
   } = req.query;
 
   const q = { orgId: req.orgId, isDeleted: { $ne: true } };
+
+  // Role-based filtering: If doctor, only show their own appointments
+  if (req.user.role === 'doctor') {
+    const doctor = await Doctor.findOne({
+      orgId: req.orgId,
+      userId: req.user._id,
+      isDeleted: { $ne: true }
+    }).lean();
+
+    if (doctor) {
+      q.doctorId = doctor._id;
+    } else {
+      // If user is a doctor but no doctor profile found, return empty list for safety
+      return res.json({ items: [], total: 0, page, limit });
+    }
+  } else if (okId(doctorId)) {
+    q.doctorId = OID(doctorId);
+  }
 
   if (status) {
     const arr = String(status).split(",").map((s) => s.trim()).filter(Boolean);
     if (arr.length) q.status = { $in: arr };
   }
 
-  if (okId(doctorId)) q.doctorId = OID(doctorId);
   if (okId(patientId)) q.patientId = OID(patientId);
 
   if (from || to) {
-    q.startsAt = {};
-    if (from) q.startsAt.$gte = new Date(from);
+    q.startAt = {};
+    if (from) q.startAt.$gte = new Date(from);
     if (to) {
       if (to.includes('T')) {
-        q.startsAt.$lte = new Date(to);
+        q.startAt.$lte = new Date(to);
       } else {
-        q.startsAt.$lte = new Date(`${to}T23:59:59.999Z`);
+        q.startAt.$lte = new Date(`${to}T23:59:59.999Z`);
       }
     }
   }
 
-  const [sf, sd] = String(sort).split(":");
-  const sortObj = sf ? { [sf]: sd === "asc" ? 1 : -1 } : { startsAt: -1 };
+  let [sf, sd] = String(sort).split(":");
+  // Field aliases for backward compatibility
+  if (sf === "startsAt" || sf === "appointmentDate" || sf === "scheduledAt") sf = "startAt";
+
+  const sortObj = sf ? { [sf]: sd === "asc" ? 1 : -1 } : { startAt: -1 };
 
   const [items, total] = await Promise.all([
     Appointment.find(q)
@@ -88,7 +110,7 @@ export async function listAppointments(req, res) {
     patient: item.patientId,
     doctor: item.doctorId,
     service: Array.isArray(item.serviceIds) && item.serviceIds.length > 0 ? item.serviceIds[0] : null,
-    scheduledAt: item.startsAt,
+    scheduledAt: item.startAt,
     status: item.status === 'waiting' ? 'scheduled' :
       item.status === 'done' ? 'completed' :
         item.status,
@@ -118,7 +140,7 @@ export async function createAppointment(req, res) {
     patientId: OID(b.patientId),
     doctorId: okId(b.doctorId) ? OID(b.doctorId) : undefined,
     serviceIds: serviceId ? [OID(serviceId)] : [],
-    startsAt: scheduledAt ? new Date(scheduledAt) : new Date(),
+    startAt: scheduledAt ? new Date(scheduledAt) : new Date(),
     note: typeof b.notes === "string" ? b.notes : (typeof b.note === "string" ? b.note : ""),
     status: "waiting",
     isPaid: false,
@@ -127,7 +149,7 @@ export async function createAppointment(req, res) {
   // 🎯 AVTOMATIK NAVBATGA QO'SHISH
   // Agar qabul bugun yoki hozir uchun bo'lsa, avtomatik navbatga qo'shamiz
   try {
-    const appointmentDate = doc.startsAt ? new Date(doc.startsAt) : new Date();
+    const appointmentDate = doc.startAt ? new Date(doc.startAt) : new Date();
     const today = new Date();
     const isToday = appointmentDate.toDateString() === today.toDateString();
 
@@ -182,7 +204,7 @@ export async function createAppointment(req, res) {
 
   // 🔔 Botga bildirishnoma
   try {
-    const when = doc.startsAt ? new Date(doc.startsAt) : new Date();
+    const when = doc.startAt ? new Date(doc.startAt) : new Date();
     let doctorName = "";
     if (doc.doctorId) {
       const d = await Doctor.findOne({ _id: doc.doctorId, orgId: req.orgId }).lean();
@@ -230,8 +252,8 @@ export async function updateAppointment(req, res) {
   const serviceId = b.serviceId || (Array.isArray(b.serviceIds) && b.serviceIds[0]);
   if (serviceId) payload.serviceIds = [OID(serviceId)];
 
-  const scheduledAt = b.scheduledAt || b.startsAt;
-  if (scheduledAt) payload.startsAt = new Date(scheduledAt);
+  const scheduledAt = b.scheduledAt || b.startsAt || b.startAt;
+  if (scheduledAt) payload.startAt = new Date(scheduledAt);
 
   if (typeof b.notes === "string") payload.note = b.notes;
   if (typeof b.note === "string") payload.note = b.note;

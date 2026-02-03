@@ -18,38 +18,75 @@ export const getDashboardStats = async (req, res) => {
         if (startDate) dateFilter.$gte = new Date(startDate);
         if (endDate) dateFilter.$lte = new Date(endDate);
 
+        // Role-based filtering: If doctor, only show their own stats
+        let doctorId = null;
+        if (req.user.role === 'doctor') {
+            const { Doctor } = await import('../models/Doctor.js');
+            const doctor = await Doctor.findOne({
+                orgId: req.user.orgId,
+                userId: req.user._id,
+                isDeleted: { $ne: true }
+            }).lean();
+
+            if (doctor) {
+                doctorId = doctor._id;
+            } else {
+                // If user is a doctor but no doctor profile found, return zeros
+                return res.json({
+                    stats: { totalRevenue: 0, totalPatients: 0, totalAppointments: 0, todayQueue: 0 },
+                    recentPayments: [],
+                    monthlyRevenue: []
+                });
+            }
+        }
+
         // Parallel queries
         const [
             totalRevenue,
-            totalPatients,
+            totalPatientsCount,
             totalAppointments,
             todayQueue,
             recentPayments,
             monthlyRevenue
         ] = await Promise.all([
-            // Total revenue
+            // Total revenue (for doctor: only their commissions' base amount or tied payments)
             Payment.aggregate([
                 {
                     $match: {
                         orgId: new mongoose.Types.ObjectId(orgId),
+                        ...(doctorId && {
+                            appointmentId: {
+                                $in: await (async () => {
+                                    const { Appointment } = await import('../models/Appointment.js');
+                                    const appts = await Appointment.find({ doctorId }).select('_id').lean();
+                                    return appts.map(a => a._id);
+                                })()
+                            }
+                        }),
                         ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
                     }
                 },
                 { $group: { _id: null, total: { $sum: '$amount' } } }
             ]),
 
-            // Total patients
-            Patient.countDocuments({ orgId }),
+            // Total patients (for doctor: only their unique patients)
+            doctorId ? (async () => {
+                const { Appointment } = await import('../models/Appointment.js');
+                const uniquePatients = await Appointment.distinct('patientId', { orgId, doctorId });
+                return uniquePatients.length;
+            })() : Patient.countDocuments({ orgId }),
 
             // Total appointments
             Appointment.countDocuments({
                 orgId,
+                ...(doctorId && { doctorId }),
                 ...(Object.keys(dateFilter).length > 0 && { createdAt: dateFilter })
             }),
 
             // Today's queue
             QueueEntry.countDocuments({
                 orgId,
+                ...(doctorId && { doctorId }),
                 status: { $in: ['waiting', 'called', 'in_service'] },
                 joinedAt: {
                     $gte: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -58,17 +95,34 @@ export const getDashboardStats = async (req, res) => {
             }),
 
             // Recent payments (last 5)
-            Payment.find({ orgId })
-                .sort({ createdAt: -1 })
-                .limit(5)
-                .populate('patientId', 'firstName lastName')
-                .lean(),
+            (async () => {
+                const query = { orgId };
+                if (doctorId) {
+                    const { Appointment } = await import('../models/Appointment.js');
+                    const appts = await Appointment.find({ doctorId }).select('_id').lean();
+                    query.appointmentId = { $in: appts.map(a => a._id) };
+                }
+                return Payment.find(query)
+                    .sort({ createdAt: -1 })
+                    .limit(5)
+                    .populate('patientId', 'firstName lastName')
+                    .lean();
+            })(),
 
             // Monthly revenue (last 6 months)
             Payment.aggregate([
                 {
                     $match: {
                         orgId: new mongoose.Types.ObjectId(orgId),
+                        ...(doctorId && {
+                            appointmentId: {
+                                $in: await (async () => {
+                                    const { Appointment } = await import('../models/Appointment.js');
+                                    const appts = await Appointment.find({ doctorId }).select('_id').lean();
+                                    return appts.map(a => a._id);
+                                })()
+                            }
+                        }),
                         createdAt: {
                             $gte: new Date(new Date().setMonth(new Date().getMonth() - 6))
                         }
@@ -91,7 +145,7 @@ export const getDashboardStats = async (req, res) => {
         res.json({
             stats: {
                 totalRevenue: totalRevenue[0]?.total || 0,
-                totalPatients,
+                totalPatients: totalPatientsCount,
                 totalAppointments,
                 todayQueue
             },
@@ -116,6 +170,19 @@ export const getFinancialReport = async (req, res) => {
         const orgId = req.user.orgId;
 
         const match = { orgId: new mongoose.Types.ObjectId(orgId) };
+
+        // Role-based filtering: If doctor, only show their own revenue
+        if (req.user.role === 'doctor') {
+            const { Doctor } = await import('../models/Doctor.js');
+            const doctor = await Doctor.findOne({ orgId, userId: req.user._id, isDeleted: { $ne: true } }).lean();
+            if (doctor) {
+                const { Appointment } = await import('../models/Appointment.js');
+                const appts = await Appointment.find({ doctorId: doctor._id }).select('_id').lean();
+                match.appointmentId = { $in: appts.map(a => a._id) };
+            } else {
+                return res.json({ revenue: [] });
+            }
+        }
 
         if (startDate || endDate) {
             match.createdAt = {};
@@ -180,33 +247,57 @@ export const getFinancialReport = async (req, res) => {
 export const getPatientStats = async (req, res) => {
     try {
         const orgId = req.user.orgId;
+        let doctorId = null;
+
+        if (req.user.role === 'doctor') {
+            const { Doctor } = await import('../models/Doctor.js');
+            const doctor = await Doctor.findOne({ orgId, userId: req.user._id, isDeleted: { $ne: true } }).lean();
+            if (doctor) doctorId = doctor._id;
+            else return res.json({ totalPatients: 0, newPatientsThisMonth: 0, patientsByGender: [], topPatients: [] });
+        }
 
         const [
-            totalPatients,
+            totalPatientsCount,
             newPatientsThisMonth,
             patientsByGender,
             topPatients
         ] = await Promise.all([
             // Total patients
-            Patient.countDocuments({ orgId }),
+            doctorId ? (async () => {
+                const { Appointment } = await import('../models/Appointment.js');
+                const uniquePatients = await Appointment.distinct('patientId', { orgId, doctorId });
+                return uniquePatients.length;
+            })() : Patient.countDocuments({ orgId }),
 
             // New patients this month
-            Patient.countDocuments({
+            doctorId ? (async () => {
+                const { Appointment } = await import('../models/Appointment.js');
+                const startOfMonth = new Date(new Date().setDate(1));
+                const uniquePatients = await Appointment.distinct('patientId', {
+                    orgId, doctorId, createdAt: { $gte: startOfMonth }
+                });
+                return uniquePatients.length;
+            })() : Patient.countDocuments({
                 orgId,
-                createdAt: {
-                    $gte: new Date(new Date().setDate(1))
-                }
+                createdAt: { $gte: new Date(new Date().setDate(1)) }
             }),
 
             // Patients by gender
-            Patient.aggregate([
+            doctorId ? (async () => {
+                const { Appointment } = await import('../models/Appointment.js');
+                const uniquePatients = await Appointment.distinct('patientId', { orgId, doctorId });
+                return Patient.aggregate([
+                    { $match: { _id: { $in: uniquePatients } } },
+                    { $group: { _id: '$gender', count: { $sum: 1 } } }
+                ]);
+            })() : Patient.aggregate([
                 { $match: { orgId: new mongoose.Types.ObjectId(orgId) } },
                 { $group: { _id: '$gender', count: { $sum: 1 } } }
             ]),
 
             // Top patients by visits
             Appointment.aggregate([
-                { $match: { orgId: new mongoose.Types.ObjectId(orgId) } },
+                { $match: { orgId: new mongoose.Types.ObjectId(orgId), ...(doctorId && { doctorId }) } },
                 { $group: { _id: '$patientId', visits: { $sum: 1 } } },
                 { $sort: { visits: -1 } },
                 { $limit: 10 },
@@ -223,16 +314,14 @@ export const getPatientStats = async (req, res) => {
                     $project: {
                         patientId: '$_id',
                         visits: 1,
-                        name: {
-                            $concat: ['$patient.firstName', ' ', '$patient.lastName']
-                        }
+                        name: { $concat: ['$patient.firstName', ' ', '$patient.lastName'] }
                     }
                 }
             ])
         ]);
 
         res.json({
-            totalPatients,
+            totalPatients: totalPatientsCount,
             newPatientsThisMonth,
             patientsByGender,
             topPatients
@@ -256,6 +345,14 @@ export const getDoctorPerformance = async (req, res) => {
 
         const match = { orgId: new mongoose.Types.ObjectId(orgId) };
 
+        // Role-based filtering: If doctor, only show their own performance
+        if (req.user.role === 'doctor') {
+            const { Doctor } = await import('../models/Doctor.js');
+            const doctor = await Doctor.findOne({ orgId, userId: req.user._id, isDeleted: { $ne: true } }).lean();
+            if (doctor) match.doctorId = doctor._id;
+            else return res.json({ performance: [] });
+        }
+
         if (startDate || endDate) {
             match.createdAt = {};
             if (startDate) match.createdAt.$gte = new Date(startDate);
@@ -275,25 +372,24 @@ export const getDoctorPerformance = async (req, res) => {
             },
             {
                 $lookup: {
-                    from: 'users',
+                    from: 'doctors',
                     localField: '_id',
                     foreignField: '_id',
                     as: 'doctor'
                 }
             },
-            { $unwind: '$doctor' },
+            { $unwind: { path: '$doctor', preserveNullAndEmptyArrays: true } },
             {
                 $project: {
                     doctorId: '$_id',
-                    doctorName: {
-                        $concat: ['$doctor.firstName', ' ', '$doctor.lastName']
-                    },
+                    doctorName: { $concat: [{ $ifNull: ['$doctor.firstName', 'Unknown'] }, ' ', { $ifNull: ['$doctor.lastName', ''] }] },
                     totalAppointments: 1,
                     completedAppointments: 1,
                     completionRate: {
-                        $multiply: [
-                            { $divide: ['$completedAppointments', '$totalAppointments'] },
-                            100
+                        $cond: [
+                            { $eq: ['$totalAppointments', 0] },
+                            0,
+                            { $multiply: [{ $divide: ['$completedAppointments', '$totalAppointments'] }, 100] }
                         ]
                     }
                 }

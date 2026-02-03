@@ -1,7 +1,7 @@
 // Quick Action Button Component - For Fast Workflows
 import React from 'react';
 
-export function QuickActionButton({ icon, label, onClick, variant = 'primary', size = 'md' }) {
+export function QuickActionButton({ icon, label, onClick, variant = 'primary', size = 'md', disabled = false, style = {} }) {
     const variants = {
         primary: 'btn-primary',
         success: 'btn-success',
@@ -17,7 +17,9 @@ export function QuickActionButton({ icon, label, onClick, variant = 'primary', s
     return (
         <button
             onClick={onClick}
+            disabled={disabled}
             className={`btn ${variants[variant]} ${sizes[size]}`}
+            style={style}
         >
             {icon && <span>{icon}</span>}
             <span>{label}</span>
@@ -79,26 +81,53 @@ export function LoadingSpinner({ size = 20 }) {
     );
 }
 
-// Toast Notification
-export function Toast({ message, type = 'success', onClose }) {
+// Toast Notification - Enhanced with auto-dismiss and stacking
+export function Toast({ message, type = 'success', onClose, duration = 3000 }) {
     React.useEffect(() => {
-        const timer = setTimeout(onClose, 3000);
-        return () => clearTimeout(timer);
-    }, [onClose]);
+        if (duration > 0) {
+            const timer = setTimeout(onClose, duration);
+            return () => clearTimeout(timer);
+        }
+    }, [onClose, duration]);
 
-    const icons = {
-        success: '✅',
-        error: '❌',
-        warning: '⚠️',
-        info: 'ℹ️',
+    const typeStyles = {
+        success: {
+            borderColor: 'var(--success-600)',
+            background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+            icon: '✅',
+        },
+        error: {
+            borderColor: 'var(--error-600)',
+            background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
+            icon: '❌',
+        },
+        warning: {
+            borderColor: 'var(--warning-600)',
+            background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+            icon: '⚠️',
+        },
+        info: {
+            borderColor: 'var(--primary-600)',
+            background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+            icon: 'ℹ️',
+        },
     };
 
+    const style = typeStyles[type] || typeStyles.info;
+
     return (
-        <div className="toast" style={{ borderLeftColor: `var(--${type}-600)` }}>
+        <div
+            className="toast"
+            style={{
+                borderLeftColor: style.borderColor,
+                background: style.background,
+                animation: 'slideIn 0.3s ease-out',
+            }}
+        >
             <div className="flex items-center gap-4">
-                <span style={{ fontSize: '1.5rem' }}>{icons[type]}</span>
+                <span style={{ fontSize: '1.5rem' }}>{style.icon}</span>
                 <div className="flex-1">
-                    <p className="font-medium">{message}</p>
+                    <p className="font-medium" style={{ color: 'var(--gray-900)' }}>{message}</p>
                 </div>
                 <button
                     onClick={onClose}
@@ -106,8 +135,10 @@ export function Toast({ message, type = 'success', onClose }) {
                         background: 'none',
                         border: 'none',
                         cursor: 'pointer',
-                        fontSize: '1.25rem',
+                        fontSize: '1.5rem',
                         color: 'var(--gray-400)',
+                        padding: '0 4px',
+                        lineHeight: 1,
                     }}
                 >
                     ×
@@ -115,6 +146,48 @@ export function Toast({ message, type = 'success', onClose }) {
             </div>
         </div>
     );
+}
+
+// Toast Container - Manages multiple toasts
+export function ToastContainer({ toasts = [], onRemove }) {
+    return (
+        <div style={{
+            position: 'fixed',
+            bottom: 'var(--space-6)',
+            right: 'var(--space-6)',
+            zIndex: 'var(--z-tooltip)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-3)',
+            maxWidth: '400px',
+        }}>
+            {toasts.map((toast) => (
+                <Toast
+                    key={toast.id}
+                    message={toast.message}
+                    type={toast.type}
+                    duration={toast.duration}
+                    onClose={() => onRemove(toast.id)}
+                />
+            ))}
+        </div>
+    );
+}
+
+// Hook for using toasts
+export function useToast() {
+    const [toasts, setToasts] = React.useState([]);
+
+    const addToast = React.useCallback((message, type = 'success', duration = 3000) => {
+        const id = Date.now() + Math.random();
+        setToasts(prev => [...prev, { id, message, type, duration }]);
+    }, []);
+
+    const removeToast = React.useCallback((id) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    }, []);
+
+    return { toasts, addToast, removeToast };
 }
 
 // Empty State Component

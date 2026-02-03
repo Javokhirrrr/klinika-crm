@@ -100,7 +100,12 @@ export const getAllCommissions = async (req, res) => {
 
         const query = { orgId: req.user.orgId };
 
-        if (userId) query.userId = userId;
+        // Role-based filtering: If doctor, only show their own commissions
+        if (req.user.role === 'doctor') {
+            query.userId = req.user._id;
+        } else if (userId) {
+            query.userId = userId;
+        }
         if (status) query.status = status;
         if (startDate || endDate) {
             query.createdAt = {};
