@@ -5,8 +5,8 @@ import { useAuth } from "../context/AuthContext";
 import http from "../lib/http";
 
 const RAW_API_BASE = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
-const API_BASE = RAW_API_BASE; // devda bo'sh bo'lishi mumkin
-const api = (path) => (API_BASE ? `${API_BASE}${path}` : `/api${path}`);
+const API_BASE = RAW_API_BASE ? `${RAW_API_BASE}/api` : "http://localhost:5000/api";
+const api = (path) => `${API_BASE}${path}`;
 
 export default function Login() {
   const { login } = useAuth();
