@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const RAW_API_URL = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
+const API_BASE = RAW_API_URL ? `${RAW_API_URL}/api` : "http://localhost:5000/api";
 
 export default function Register() {
   const nav = useNavigate();
@@ -33,10 +34,10 @@ export default function Register() {
       }
 
       // backend qaytaradi: { accessToken, refreshToken, user, org }
-      const accessToken  = data.accessToken || data.token || data.access_token || null;
+      const accessToken = data.accessToken || data.token || data.access_token || null;
       const refreshToken = data.refreshToken || data.refresh_token || null;
-      const user         = data.user || data.data?.user || null;
-      const org          = data.org || null;
+      const user = data.user || data.data?.user || null;
+      const org = data.org || null;
 
       // AuthContext ga yozamiz
       login({ user, accessToken, refreshToken, org });
@@ -60,19 +61,19 @@ export default function Register() {
 
         <form className="glass-card" onSubmit={submit}>
           <label className="label">Ism</label>
-          <input className="inputX" value={name} onChange={e=>setName(e.target.value)} required />
+          <input className="inputX" value={name} onChange={e => setName(e.target.value)} required />
 
           <label className="label">Klinika nomi</label>
-          <input className="inputX" value={clinicName} onChange={e=>setClinicName(e.target.value)} required />
+          <input className="inputX" value={clinicName} onChange={e => setClinicName(e.target.value)} required />
 
           <label className="label">Email</label>
-          <input className="inputX" type="email" value={email} onChange={e=>setEmail(e.target.value)} required />
+          <input className="inputX" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
 
           <label className="label">Parol</label>
-          <input className="inputX" type="password" value={password} onChange={e=>setPassword(e.target.value)} required />
+          <input className="inputX" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
 
           <label className="label">Parol (tasdiq)</label>
-          <input className="inputX" type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} required />
+          <input className="inputX" type="password" value={confirm} onChange={e => setConfirm(e.target.value)} required />
 
           {err && <div className="errorX">{err}</div>}
 

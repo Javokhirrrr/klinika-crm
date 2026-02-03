@@ -4,7 +4,8 @@ import http from "../lib/http";
 const Ctx = createContext(null);
 export const useAuth = () => useContext(Ctx);
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const RAW_API_URL = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
+const API_BASE = RAW_API_URL ? `${RAW_API_URL}/api` : "http://localhost:5000/api";
 
 /* ===============================
    Helpers
