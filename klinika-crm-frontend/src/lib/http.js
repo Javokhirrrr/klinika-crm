@@ -18,7 +18,9 @@ function setOnAuthChange(cb) {
 }
 
 async function request(path, opts = {}) {
-  const url = API_BASE ? `${API_BASE}${path}` : `/api${path}`;
+  // Always prepend /api to the path
+  const apiPath = path.startsWith('/api') ? path : `/api${path}`;
+  const url = API_BASE ? `${API_BASE}${apiPath}` : apiPath;
 
   // Always get fresh token from localStorage
   const currentToken = localStorage.getItem("accessToken") || accessToken;
@@ -78,7 +80,7 @@ async function tryRefresh() {
       return false;
     }
 
-    const url = API_BASE ? `${API_BASE}/auth/refresh` : `/api/auth/refresh`;
+    const url = API_BASE ? `${API_BASE}/api/auth/refresh` : `/api/auth/refresh`;
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
