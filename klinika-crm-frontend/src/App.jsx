@@ -40,6 +40,7 @@ import Calendar from "./pages/Calendar.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import Salaries from "./pages/Salaries.jsx";
 import SimpleDashboard from "./pages/SimpleDashboard.jsx";
+import SimplePatients from "./pages/SimplePatients.jsx";
 import ModernDashboard from "./pages/ModernDashboard/ModernDashboard.jsx";
 
 // Smart Dashboard Router - Now uses SimpleDashboard for everyone
@@ -93,7 +94,7 @@ export default function App() {
                 <Route path="/dashboard/reception" element={<ReceptionDashboard />} />
                 <Route path="/dashboard/director" element={<DirectorDashboard />} />
                 <Route path="/dashboard/doctor" element={<DoctorDashboard />} />
-                <Route path="/patients" element={<Patients />} />
+                <Route path="/patients" element={<SimplePatients />} />
                 <Route path="/appointments" element={<Appointments />} />
                 <Route path="/doctor-room" element={<DoctorRoom />} />
                 <Route path="/doctors" element={<Doctors />} /> {/* NEW */}
