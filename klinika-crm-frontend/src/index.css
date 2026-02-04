@@ -1,3 +1,6 @@
+/* Import Design System */
+@import './styles/design-system.css';
+
 /* Modern Design System - CSS Variables */
 :root {
   /* Primary Colors - Sky Blue Theme (matching Flutter app) */

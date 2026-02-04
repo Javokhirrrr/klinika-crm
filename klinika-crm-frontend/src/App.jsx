@@ -39,22 +39,13 @@ import Twa from "./pages/Twa.jsx";
 import Calendar from "./pages/Calendar.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import Salaries from "./pages/Salaries.jsx";
+import SimpleDashboard from "./pages/SimpleDashboard.jsx";
 import ModernDashboard from "./pages/ModernDashboard/ModernDashboard.jsx";
 
-// Smart Dashboard Router - Routes to appropriate dashboard based on user role
+// Smart Dashboard Router - Now uses SimpleDashboard for everyone
 function SmartDashboard() {
-  const { user } = useAuth();
-  const userRole = user?.role || 'reception';
-
-  // Route to appropriate dashboard based on role
-  if (userRole === 'owner' || userRole === 'admin') {
-    return <DirectorDashboard />;
-  } else if (userRole === 'doctor') {
-    return <DoctorDashboard />;
-  } else {
-    // reception, accountant, nurse, etc.
-    return <ReceptionDashboard />;
-  }
+  // Everyone gets the simple, intuitive dashboard
+  return <SimpleDashboard />;
 }
 
 // Sidebar layout
