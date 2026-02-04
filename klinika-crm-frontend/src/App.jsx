@@ -41,6 +41,16 @@ import Notifications from "./pages/Notifications.jsx";
 import Salaries from "./pages/Salaries.jsx";
 import SimpleDashboard from "./pages/SimpleDashboard.jsx";
 import SimplePatients from "./pages/SimplePatients.jsx";
+import SimpleAppointments from "./pages/SimpleAppointments.jsx";
+import SimplePayments from "./pages/SimplePayments.jsx";
+import SimpleQueue from "./pages/SimpleQueue.jsx";
+import SimpleAttendance from "./pages/SimpleAttendance.jsx";
+import SimpleReports from "./pages/SimpleReports.jsx";
+import SimpleSettings from "./pages/SimpleSettings.jsx";
+import SimpleSalaries from "./pages/SimpleSalaries.jsx";
+import SimpleDoctors from "./pages/SimpleDoctors.jsx";
+import SimpleServices from "./pages/SimpleServices.jsx";
+import SimpleCalendar from "./pages/SimpleCalendar.jsx";
 import ModernDashboard from "./pages/ModernDashboard/ModernDashboard.jsx";
 
 // Smart Dashboard Router - Now uses SimpleDashboard for everyone
@@ -95,22 +105,22 @@ export default function App() {
                 <Route path="/dashboard/director" element={<DirectorDashboard />} />
                 <Route path="/dashboard/doctor" element={<DoctorDashboard />} />
                 <Route path="/patients" element={<SimplePatients />} />
-                <Route path="/appointments" element={<Appointments />} />
+                <Route path="/appointments" element={<SimpleAppointments />} />
                 <Route path="/doctor-room" element={<DoctorRoom />} />
-                <Route path="/doctors" element={<Doctors />} /> {/* NEW */}
-                <Route path="/services" element={<Services />} />
-                <Route path="/payments" element={<Payments />} />
+                <Route path="/doctors" element={<SimpleDoctors />} />
+                <Route path="/services" element={<SimpleServices />} />
+                <Route path="/payments" element={<SimplePayments />} />
                 <Route path="/users" element={<Users />} />
-                <Route path="/reports" element={<Reports />} />
-                <Route path="/calendar" element={<Calendar />} />
+                <Route path="/reports" element={<SimpleReports />} />
+                <Route path="/calendar" element={<SimpleCalendar />} />
                 <Route path="/notifications" element={<Notifications />} />
-                <Route path="/system" element={<System />} />
+                <Route path="/system" element={<SimpleSettings />} />
 
                 {/* NEW FEATURES */}
-                <Route path="/attendance" element={<Attendance />} />
+                <Route path="/attendance" element={<SimpleAttendance />} />
                 <Route path="/commissions" element={<Commissions />} />
-                <Route path="/queue" element={<Queue />} />
-                <Route path="/salaries" element={<Salaries />} />
+                <Route path="/queue" element={<SimpleQueue />} />
+                <Route path="/salaries" element={<SimpleSalaries />} />
 
                 {/* areas */}
                 <Route path="/cashier" element={<CashierApp />} />
