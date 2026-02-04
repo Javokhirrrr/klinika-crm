@@ -39,6 +39,7 @@ import Twa from "./pages/Twa.jsx";
 import Calendar from "./pages/Calendar.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import Salaries from "./pages/Salaries.jsx";
+import ModernDashboard from "./pages/ModernDashboard/ModernDashboard.jsx";
 
 // Smart Dashboard Router - Routes to appropriate dashboard based on user role
 function SmartDashboard() {
@@ -97,6 +98,7 @@ export default function App() {
               >
                 <Route index element={<SmartDashboard />} />
                 <Route path="/dashboard" element={<SmartDashboard />} />
+                <Route path="/modern-dashboard" element={<ModernDashboard />} />
                 <Route path="/dashboard/reception" element={<ReceptionDashboard />} />
                 <Route path="/dashboard/director" element={<DirectorDashboard />} />
                 <Route path="/dashboard/doctor" element={<DoctorDashboard />} />
