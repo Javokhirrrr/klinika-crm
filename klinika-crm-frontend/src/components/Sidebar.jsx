@@ -15,11 +15,15 @@ export default function Sidebar() {
   const menuItems = [
     { to: "/", icon: FiHome, label: "Bosh Sahifa" },
     { to: "/patients", icon: FiUsers, label: "Bemorlar" },
+    { to: "/doctors", icon: FiUserCheck, label: "Shifokorlar" },
     { to: "/appointments", icon: FiCalendar, label: "Qabullar" },
+    { to: "/services", icon: FiGrid, label: "Xizmatlar" },
     { to: "/payments", icon: FiDollarSign, label: "To'lovlar" },
     { to: "/queue", icon: FiClock, label: "Navbat" },
-    { to: "/attendance", icon: FiUserCheck, label: "Davomat" },
+    { to: "/attendance", icon: FiActivity, label: "Davomat" },
+    { to: "/salaries", icon: FiDollarSign, label: "Maosh" },
     { to: "/reports", icon: FiTrendingUp, label: "Hisobotlar" },
+    { to: "/calendar", icon: FiCalendar, label: "Kalendar" },
     { to: "/system", icon: FiSettings, label: "Sozlamalar" },
   ];
 
