@@ -58,44 +58,177 @@ export default function SimplePatients() {
     };
 
     const generatePatientCard = (patient) => {
-        // Generate patient ID card number
-        const cardNumber = `P${Date.now().toString().slice(-8)}`;
+        // Generate 8-digit patient ID
+        const patientId = String(Math.floor(10000000 + Math.random() * 90000000));
 
-        // Create printable card
+        // Create beautiful printable card
         const cardHTML = `
-            <div style="width: 350px; padding: 20px; border: 2px solid #007AFF; border-radius: 12px; font-family: Arial;">
-                <div style="text-align: center; margin-bottom: 15px;">
-                    <h2 style="margin: 0; color: #007AFF;">BEMOR KARTOCHKASI</h2>
-                    <p style="margin: 5px 0; font-size: 14px; color: #666;">Klinika CRM</p>
-                </div>
-                <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                    <div style="font-size: 24px; font-weight: bold; text-align: center; color: #007AFF;">
-                        ${cardNumber}
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Bemor Kartasi - ${patient.firstName} ${patient.lastName}</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { 
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        padding: 20px;
+                        background: #f5f5f5;
+                    }
+                    .card {
+                        width: 400px;
+                        margin: 0 auto;
+                        background: white;
+                        border-radius: 16px;
+                        overflow: hidden;
+                        box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+                    }
+                    .header {
+                        background: linear-gradient(135deg, #007AFF, #00C6FF);
+                        color: white;
+                        padding: 30px 20px;
+                        text-align: center;
+                    }
+                    .header h1 {
+                        font-size: 24px;
+                        margin-bottom: 5px;
+                    }
+                    .header p {
+                        font-size: 14px;
+                        opacity: 0.9;
+                    }
+                    .patient-id {
+                        background: #f8f9fa;
+                        padding: 20px;
+                        text-align: center;
+                        border-bottom: 2px dashed #dee2e6;
+                    }
+                    .patient-id .label {
+                        font-size: 12px;
+                        color: #6c757d;
+                        margin-bottom: 8px;
+                    }
+                    .patient-id .code {
+                        font-size: 36px;
+                        font-weight: bold;
+                        color: #007AFF;
+                        letter-spacing: 4px;
+                        font-family: 'Courier New', monospace;
+                    }
+                    .content {
+                        padding: 25px;
+                    }
+                    .info-row {
+                        display: flex;
+                        padding: 12px 0;
+                        border-bottom: 1px solid #f0f0f0;
+                    }
+                    .info-row:last-child {
+                        border-bottom: none;
+                    }
+                    .info-label {
+                        font-size: 13px;
+                        color: #6c757d;
+                        width: 120px;
+                        flex-shrink: 0;
+                    }
+                    .info-value {
+                        font-size: 14px;
+                        font-weight: 600;
+                        color: #212529;
+                        flex: 1;
+                    }
+                    .footer {
+                        background: #f8f9fa;
+                        padding: 20px;
+                        text-align: center;
+                        font-size: 12px;
+                        color: #6c757d;
+                        line-height: 1.6;
+                    }
+                    .qr-placeholder {
+                        width: 100px;
+                        height: 100px;
+                        background: #e9ecef;
+                        margin: 15px auto;
+                        border-radius: 8px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 10px;
+                        color: #6c757d;
+                    }
+                    @media print {
+                        body { background: white; padding: 0; }
+                        .card { box-shadow: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <div class="header">
+                        <h1>BEMOR KARTASI</h1>
+                        <p>Klinika CRM Tizimi</p>
+                    </div>
+                    
+                    <div class="patient-id">
+                        <div class="label">Bemor ID Raqami</div>
+                        <div class="code">${patientId}</div>
+                    </div>
+                    
+                    <div class="content">
+                        <div class="info-row">
+                            <div class="info-label">Ism Familiya:</div>
+                            <div class="info-value">${patient.firstName} ${patient.lastName}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Telefon:</div>
+                            <div class="info-value">${patient.phone}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Tug'ilgan sana:</div>
+                            <div class="info-value">${patient.birthDate ? new Date(patient.birthDate).toLocaleDateString('uz-UZ') : 'Kiritilmagan'}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Yosh:</div>
+                            <div class="info-value">${calculateAge(patient.birthDate)} yosh</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Jins:</div>
+                            <div class="info-value">${patient.gender === 'male' ? 'Erkak' : 'Ayol'}</div>
+                        </div>
+                        ${patient.address ? `
+                        <div class="info-row">
+                            <div class="info-label">Manzil:</div>
+                            <div class="info-value">${patient.address}</div>
+                        </div>
+                        ` : ''}
+                        <div class="info-row">
+                            <div class="info-label">Ro'yxatdan o'tgan:</div>
+                            <div class="info-value">${new Date().toLocaleDateString('uz-UZ')}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="footer">
+                        <div class="qr-placeholder">QR KOD</div>
+                        <strong>Muhim eslatma:</strong><br>
+                        Ushbu kartochkani har safar klinikaga kelganingizda ko'rsating.<br>
+                        ID raqamingizni eslab qoling yoki saqlang.
                     </div>
                 </div>
-                <div style="margin-bottom: 10px;">
-                    <strong>Ism:</strong> ${patient.firstName} ${patient.lastName}
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <strong>Telefon:</strong> ${patient.phone}
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <strong>Tug'ilgan sana:</strong> ${patient.birthDate ? new Date(patient.birthDate).toLocaleDateString('uz-UZ') : 'N/A'}
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <strong>Jins:</strong> ${patient.gender === 'male' ? 'Erkak' : 'Ayol'}
-                </div>
-                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd; text-align: center; font-size: 12px; color: #666;">
-                    Ushbu kartochkani har safar klinikaga kelganingizda ko'rsating
-                </div>
-            </div>
+            </body>
+            </html>
         `;
 
         // Open print window
-        const printWindow = window.open('', '', 'width=400,height=600');
+        const printWindow = window.open('', '', 'width=500,height=700');
         printWindow.document.write(cardHTML);
         printWindow.document.close();
-        printWindow.print();
+
+        // Auto print after load
+        setTimeout(() => {
+            printWindow.print();
+        }, 250);
     };
 
     const handleViewDetails = async (patient) => {
@@ -147,14 +280,14 @@ export default function SimplePatients() {
                     <h1>Bemorlar</h1>
                     <p className="text-muted">Jami: {patients.length} ta bemor</p>
                 </div>
-                <button className="btn btn-primary btn-lg" onClick={() => setShowModal(true)}>
+                <button className="btn btn-primary btn-lg" onClick={() => setShowModal(true)} style={{ zIndex: 10 }}>
                     <FiPlus />
                     Yangi Bemor
                 </button>
             </div>
 
-            {/* Filters */}
-            <div className="filters-bar">
+            {/* Search and Filters */}
+            <div className="filters-container">
                 <div className="search-box">
                     <FiSearch className="search-icon" />
                     <input
@@ -166,26 +299,32 @@ export default function SimplePatients() {
                     />
                 </div>
 
-                <div className="filters">
-                    <select
-                        className="filter-select"
-                        value={filterGender}
-                        onChange={(e) => setFilterGender(e.target.value)}
-                    >
-                        <option value="all">Barcha jinslar</option>
-                        <option value="male">Erkak</option>
-                        <option value="female">Ayol</option>
-                    </select>
+                <div className="filters-row">
+                    <div className="filter-group">
+                        <label className="filter-label">Jins:</label>
+                        <select
+                            className="filter-select"
+                            value={filterGender}
+                            onChange={(e) => setFilterGender(e.target.value)}
+                        >
+                            <option value="all">Barchasi</option>
+                            <option value="male">Erkak</option>
+                            <option value="female">Ayol</option>
+                        </select>
+                    </div>
 
-                    <select
-                        className="filter-select"
-                        value={filterDebt}
-                        onChange={(e) => setFilterDebt(e.target.value)}
-                    >
-                        <option value="all">Barcha bemorlar</option>
-                        <option value="has_debt">Qarzdorlar</option>
-                        <option value="no_debt">Qarzi yo'q</option>
-                    </select>
+                    <div className="filter-group">
+                        <label className="filter-label">Qarz:</label>
+                        <select
+                            className="filter-select"
+                            value={filterDebt}
+                            onChange={(e) => setFilterDebt(e.target.value)}
+                        >
+                            <option value="all">Barchasi</option>
+                            <option value="has_debt">Qarzdorlar</option>
+                            <option value="no_debt">Qarzi yo'q</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
