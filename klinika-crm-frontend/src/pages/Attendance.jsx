@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { FiClock, FiLogIn, FiLogOut, FiCalendar, FiCheckCircle, FiAlertCircle, FiTrendingUp } from 'react-icons/fi';
 import { attendanceAPI } from '../api/newFeatures';
 import './Attendance.css';
 
@@ -10,6 +11,7 @@ export default function Attendance() {
     const [success, setSuccess] = useState('');
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
+    const [stats, setStats] = useState({ totalDays: 0, onTime: 0, late: 0, avgHours: 0 });
 
     useEffect(() => {
         loadTodayAttendance();
@@ -31,6 +33,14 @@ export default function Attendance() {
             const { data } = await attendanceAPI.getMyHistory({ page, limit: 20 });
             setHistory(data.attendances);
             setTotal(data.pagination.total);
+
+            // Calculate stats
+            const totalDays = data.attendances.length;
+            const onTime = data.attendances.filter(a => a.status === 'on_time').length;
+            const late = data.attendances.filter(a => a.status === 'late').length;
+            const avgHours = data.attendances.reduce((sum, a) => sum + (a.workHours || 0), 0) / totalDays || 0;
+
+            setStats({ totalDays, onTime, late, avgHours: avgHours.toFixed(1) });
         } catch (err) {
             setError('Tarixni yuklashda xatolik');
         } finally {
@@ -76,123 +86,262 @@ export default function Attendance() {
 
     const formatDate = (date) => {
         if (!date) return '-';
-        return new Date(date).toLocaleDateString('uz-UZ');
+        return new Date(date).toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+
+    const formatDuration = (minutes) => {
+        if (!minutes || minutes === 0) return '-';
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        if (hours > 0 && mins > 0) return `${hours}s ${mins}daq`;
+        if (hours > 0) return `${hours} soat`;
+        return `${mins} daq`;
     };
 
     const getStatusBadge = (status) => {
         const badges = {
-            on_time: { text: 'O\'z vaqtida', class: 'badge-success' },
-            late: { text: 'Kechikdi', class: 'badge-warning' },
-            working: { text: 'Ishda', class: 'badge-info' },
-            absent: { text: 'Kelmadi', class: 'badge-danger' },
-            half_day: { text: 'Yarim kun', class: 'badge-secondary' },
+            on_time: { text: 'O\'z vaqtida', class: 'status-success', icon: <FiCheckCircle /> },
+            late: { text: 'Kechikdi', class: 'status-warning', icon: <FiAlertCircle /> },
+            working: { text: 'Ishda', class: 'status-info', icon: <FiClock /> },
+            absent: { text: 'Kelmadi', class: 'status-danger', icon: <FiAlertCircle /> },
+            half_day: { text: 'Yarim kun', class: 'status-secondary', icon: <FiClock /> },
         };
-        const badge = badges[status] || { text: status, class: 'badge-secondary' };
-        return <span className={`badge ${badge.class}`}>{badge.text}</span>;
+        const badge = badges[status] || { text: status, class: 'status-secondary', icon: <FiClock /> };
+        return (
+            <span className={`status-badge ${badge.class}`}>
+                {badge.icon}
+                <span>{badge.text}</span>
+            </span>
+        );
     };
 
     return (
         <div className="attendance-page">
+            {/* Header */}
             <div className="page-header">
-                <h1>⏰ Davomat</h1>
-                <p>Ishga kelish va ketish vaqtini belgilang</p>
+                <div className="header-content">
+                    <div className="header-icon">
+                        <FiClock />
+                    </div>
+                    <div>
+                        <h1>Davomat Tizimi</h1>
+                        <p>Ishga kelish va ketish vaqtini belgilang</p>
+                    </div>
+                </div>
             </div>
 
-            {error && <div className="alert alert-error">{error}</div>}
-            {success && <div className="alert alert-success">{success}</div>}
+            {/* Alerts */}
+            {error && (
+                <div className="alert alert-error">
+                    <FiAlertCircle />
+                    <span>{error}</span>
+                </div>
+            )}
+            {success && (
+                <div className="alert alert-success">
+                    <FiCheckCircle />
+                    <span>{success}</span>
+                </div>
+            )}
+
+            {/* Stats Cards */}
+            <div className="stats-grid">
+                <div className="stat-card">
+                    <div className="stat-icon stat-primary">
+                        <FiCalendar />
+                    </div>
+                    <div className="stat-content">
+                        <div className="stat-label">Jami kunlar</div>
+                        <div className="stat-value">{stats.totalDays}</div>
+                    </div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-icon stat-success">
+                        <FiCheckCircle />
+                    </div>
+                    <div className="stat-content">
+                        <div className="stat-label">O'z vaqtida</div>
+                        <div className="stat-value">{stats.onTime}</div>
+                    </div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-icon stat-warning">
+                        <FiAlertCircle />
+                    </div>
+                    <div className="stat-content">
+                        <div className="stat-label">Kechikish</div>
+                        <div className="stat-value">{stats.late}</div>
+                    </div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-icon stat-info">
+                        <FiTrendingUp />
+                    </div>
+                    <div className="stat-content">
+                        <div className="stat-label">O'rtacha ish soati</div>
+                        <div className="stat-value">{stats.avgHours}s</div>
+                    </div>
+                </div>
+            </div>
 
             {/* Today's Status */}
-            <div className="today-status-card">
-                <h2>Bugungi holat</h2>
+            <div className="today-card">
+                <div className="card-header">
+                    <h2>Bugungi Holat</h2>
+                    <div className="current-time">
+                        {new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                </div>
+
                 {todayAttendance ? (
-                    <div className="status-grid">
-                        <div className="status-item">
-                            <span className="label">Kelish vaqti:</span>
-                            <span className="value">{formatTime(todayAttendance.clockIn)}</span>
+                    <div className="today-content">
+                        <div className="time-display-grid">
+                            <div className="time-display">
+                                <div className="time-icon clock-in">
+                                    <FiLogIn />
+                                </div>
+                                <div className="time-info">
+                                    <div className="time-label">Kelish vaqti</div>
+                                    <div className="time-value">{formatTime(todayAttendance.clockIn)}</div>
+                                </div>
+                            </div>
+
+                            <div className="time-display">
+                                <div className="time-icon clock-out">
+                                    <FiLogOut />
+                                </div>
+                                <div className="time-info">
+                                    <div className="time-label">Ketish vaqti</div>
+                                    <div className="time-value">{formatTime(todayAttendance.clockOut)}</div>
+                                </div>
+                            </div>
+
+                            <div className="time-display">
+                                <div className="time-icon work-hours">
+                                    <FiClock />
+                                </div>
+                                <div className="time-info">
+                                    <div className="time-label">Ish soati</div>
+                                    <div className="time-value">{todayAttendance.workHours || 0} soat</div>
+                                </div>
+                            </div>
+
+                            <div className="time-display">
+                                <div className="time-icon status">
+                                    <FiCheckCircle />
+                                </div>
+                                <div className="time-info">
+                                    <div className="time-label">Holat</div>
+                                    <div className="time-value">{getStatusBadge(todayAttendance.status)}</div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="status-item">
-                            <span className="label">Ketish vaqti:</span>
-                            <span className="value">{formatTime(todayAttendance.clockOut)}</span>
-                        </div>
-                        <div className="status-item">
-                            <span className="label">Ish soati:</span>
-                            <span className="value">{todayAttendance.workHours || 0} soat</span>
-                        </div>
-                        <div className="status-item">
-                            <span className="label">Holat:</span>
-                            <span className="value">{getStatusBadge(todayAttendance.status)}</span>
-                        </div>
+
                         {todayAttendance.lateMinutes > 0 && (
-                            <div className="status-item">
-                                <span className="label">Kechikish:</span>
-                                <span className="value text-warning">{todayAttendance.lateMinutes} daqiqa</span>
+                            <div className="late-notice">
+                                <FiAlertCircle />
+                                <span>Kechikish: <strong>{todayAttendance.lateMinutes} daqiqa</strong></span>
                             </div>
                         )}
                     </div>
                 ) : (
-                    <p className="no-data">Bugun hali ishga kelmagansiz</p>
+                    <div className="no-attendance">
+                        <FiClock className="no-attendance-icon" />
+                        <p>Bugun hali ishga kelmagansiz</p>
+                    </div>
                 )}
 
-                {/* Clock In/Out Buttons */}
-                <div className="action-buttons">
+                {/* Action Buttons */}
+                <div className="action-section">
                     {!todayAttendance ? (
                         <button
-                            className="btn btn-primary btn-large"
+                            className="action-btn btn-clock-in"
                             onClick={handleClockIn}
                             disabled={loading}
                         >
-                            🕐 Ishga kelish
+                            <FiLogIn />
+                            <span>Ishga Kelish</span>
                         </button>
                     ) : !todayAttendance.clockOut ? (
                         <button
-                            className="btn btn-danger btn-large"
+                            className="action-btn btn-clock-out"
                             onClick={handleClockOut}
                             disabled={loading}
                         >
-                            🏠 Ishdan ketish
+                            <FiLogOut />
+                            <span>Ishdan Ketish</span>
                         </button>
                     ) : (
-                        <div className="completed-message">
-                            ✅ Bugungi ish kuni yakunlandi
+                        <div className="completed-badge">
+                            <FiCheckCircle />
+                            <span>Bugungi ish kuni yakunlandi</span>
                         </div>
                     )}
                 </div>
             </div>
 
             {/* History Table */}
-            <div className="history-section">
-                <h2>Davomat tarixi</h2>
-                {loading && <div className="loading">Yuklanmoqda...</div>}
+            <div className="history-card">
+                <div className="card-header">
+                    <h2>Davomat Tarixi</h2>
+                    <div className="total-badge">Jami: {total}</div>
+                </div>
+
+                {loading && <div className="loading-spinner">Yuklanmoqda...</div>}
+
                 {!loading && history.length === 0 && (
-                    <p className="no-data">Davomat tarixi yo'q</p>
+                    <div className="no-data">
+                        <FiCalendar className="no-data-icon" />
+                        <p>Davomat tarixi yo'q</p>
+                    </div>
                 )}
+
                 {!loading && history.length > 0 && (
                     <>
-                        <div className="table-container">
-                            <table className="data-table">
+                        <div className="table-wrapper">
+                            <table className="modern-table">
                                 <thead>
                                     <tr>
-                                        <th>Sana</th>
-                                        <th>Kelish</th>
-                                        <th>Ketish</th>
-                                        <th>Ish soati</th>
-                                        <th>Holat</th>
-                                        <th>Kechikish</th>
+                                        <th>SANA</th>
+                                        <th>KELISH</th>
+                                        <th>KETISH</th>
+                                        <th>ISH SOATI</th>
+                                        <th>HOLAT</th>
+                                        <th>KECHIKISH</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {history.map((att) => (
                                         <tr key={att._id}>
-                                            <td>{formatDate(att.date)}</td>
-                                            <td>{formatTime(att.clockIn)}</td>
-                                            <td>{formatTime(att.clockOut)}</td>
-                                            <td>{att.workHours ? `${att.workHours} soat` : '-'}</td>
+                                            <td>
+                                                <div className="date-cell">
+                                                    <FiCalendar />
+                                                    <span>{formatDate(att.date)}</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="time-cell clock-in">
+                                                    {formatTime(att.clockIn)}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="time-cell clock-out">
+                                                    {formatTime(att.clockOut)}
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div className="hours-cell">
+                                                    {att.workHours ? `${att.workHours} soat` : '-'}
+                                                </div>
+                                            </td>
                                             <td>{getStatusBadge(att.status)}</td>
                                             <td>
-                                                {att.lateMinutes > 0 ? (
-                                                    <span className="text-warning">{att.lateMinutes} daq</span>
+                                                {att.lateMinutes && att.lateMinutes > 0 ? (
+                                                    <span className="late-badge">
+                                                        {formatDuration(att.lateMinutes)}
+                                                    </span>
                                                 ) : (
-                                                    '-'
+                                                    <span className="on-time-badge">-</span>
                                                 )}
                                             </td>
                                         </tr>
@@ -207,17 +356,17 @@ export default function Attendance() {
                                 <button
                                     onClick={() => setPage(p => Math.max(1, p - 1))}
                                     disabled={page === 1}
-                                    className="btn btn-secondary"
+                                    className="pagination-btn"
                                 >
                                     ← Oldingi
                                 </button>
-                                <span className="page-info">
-                                    Sahifa {page} / {Math.ceil(total / 20)}
+                                <span className="page-indicator">
+                                    Sahifa <strong>{page}</strong> / {Math.ceil(total / 20)}
                                 </span>
                                 <button
                                     onClick={() => setPage(p => p + 1)}
                                     disabled={page >= Math.ceil(total / 20)}
-                                    className="btn btn-secondary"
+                                    className="pagination-btn"
                                 >
                                     Keyingi →
                                 </button>
