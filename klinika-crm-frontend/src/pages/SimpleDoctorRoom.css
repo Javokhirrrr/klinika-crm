@@ -1,0 +1,236 @@
+/* ============================================
+   DOCTOR ROOM - SHIFOKOR XONASI
+   ============================================ */
+
+.doctor-room-layout {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 2rem;
+    height: calc(100vh - 200px);
+}
+
+/* Appointments Sidebar */
+.appointments-sidebar {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid var(--gray-200);
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.appointments-sidebar h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0 0 1rem 0;
+    color: var(--gray-900);
+}
+
+.appointments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.appointment-item {
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--gray-200);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.appointment-item:hover {
+    border-color: var(--primary-500);
+    background: var(--primary-50);
+}
+
+.appointment-item.active {
+    border-color: var(--primary-500);
+    background: var(--primary-100);
+}
+
+.appointment-time {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--primary-600);
+    margin-bottom: 0.25rem;
+}
+
+.appointment-patient {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+/* Work Area */
+.work-area {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid var(--gray-200);
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+/* Patient Card */
+.patient-card {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, var(--primary-50), var(--medical-50));
+    border-radius: 16px;
+    margin-bottom: 2rem;
+}
+
+.patient-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-500), var(--medical-500));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+}
+
+.patient-info h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin: 0 0 0.5rem 0;
+}
+
+.patient-details {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.875rem;
+    color: var(--gray-600);
+}
+
+/* Section */
+.section {
+    margin-bottom: 2rem;
+}
+
+.section h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin: 0 0 1rem 0;
+}
+
+.section h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin: 1rem 0 0.5rem 0;
+}
+
+/* Services Grid */
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.service-btn {
+    padding: 1rem;
+    border: 2px solid var(--gray-300);
+    border-radius: 12px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.service-btn:hover {
+    border-color: var(--primary-500);
+    background: var(--primary-50);
+}
+
+.service-btn.selected {
+    border-color: var(--primary-500);
+    background: var(--primary-100);
+}
+
+.service-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: 0.5rem;
+}
+
+.service-price {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--success);
+}
+
+/* Selected Services */
+.selected-services {
+    padding: 1rem;
+    background: var(--gray-50);
+    border-radius: 12px;
+    margin-top: 1rem;
+}
+
+.selected-service-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.selected-service-item button {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: var(--danger-light);
+    color: var(--danger);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.total {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem;
+    background: var(--primary-50);
+    border-radius: 8px;
+    margin-top: 0.5rem;
+    font-size: 1.125rem;
+}
+
+/* Actions */
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--gray-200);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .doctor-room-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .appointments-sidebar {
+        max-height: 300px;
+    }
+}

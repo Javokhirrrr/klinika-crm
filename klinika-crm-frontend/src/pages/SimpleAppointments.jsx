@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiCalendar, FiClock, FiUser, FiCheck, FiX } from 'react-icons/fi';
+import { FiPlus, FiCalendar, FiClock, FiUser, FiCheck, FiX, FiDollarSign, FiPrinter } from 'react-icons/fi';
 import http from '../lib/http';
 import '../styles/simple-pages.css';
 
@@ -9,12 +9,19 @@ export default function SimpleAppointments() {
     const [doctors, setDoctors] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [formData, setFormData] = useState({
         patientId: '',
         doctorId: '',
         date: new Date().toISOString().split('T')[0],
         time: '09:00',
         notes: ''
+    });
+    const [paymentData, setPaymentData] = useState({
+        amount: 0,
+        method: 'cash',
+        received: 0
     });
 
     useEffect(() => {
@@ -51,7 +58,44 @@ export default function SimpleAppointments() {
             loadData();
         } catch (error) {
             console.error('Create error:', error);
+            alert('Xatolik yuz berdi!');
         }
+    };
+
+    const handleOpenPayment = (apt) => {
+        setSelectedAppointment(apt);
+        setPaymentData({
+            amount: apt.totalAmount || 0,
+            method: 'cash',
+            received: apt.totalAmount || 0
+        });
+        setShowPaymentModal(true);
+    };
+
+    const handlePayment = async () => {
+        try {
+            await http.post('/payments', {
+                appointmentId: selectedAppointment._id,
+                patientId: selectedAppointment.patientId._id,
+                amount: paymentData.amount,
+                method: paymentData.method
+            });
+
+            await http.put(`/appointments/${selectedAppointment._id}`, {
+                status: 'completed'
+            });
+
+            alert('To\'lov muvaffaqiyatli amalga oshirildi!');
+            setShowPaymentModal(false);
+            loadData();
+        } catch (error) {
+            console.error('Payment error:', error);
+            alert('To\'lov xatolik!');
+        }
+    };
+
+    const calculateChange = () => {
+        return paymentData.received - paymentData.amount;
     };
 
     const getStatusBadge = (status) => {
@@ -93,6 +137,7 @@ export default function SimpleAppointments() {
                                 <th>VAQT</th>
                                 <th>BEMOR</th>
                                 <th>SHIFOKOR</th>
+                                <th>SUMMA</th>
                                 <th>HOLAT</th>
                                 <th>AMALLAR</th>
                             </tr>
@@ -126,13 +171,24 @@ export default function SimpleAppointments() {
                                             </div>
                                         </td>
                                         <td>
+                                            <div style={{ fontWeight: 700, color: 'var(--success)' }}>
+                                                {apt.totalAmount?.toLocaleString() || '0'} so'm
+                                            </div>
+                                        </td>
+                                        <td>
                                             <span className={badge.class}>{badge.label}</span>
                                         </td>
                                         <td>
                                             <div className="action-buttons">
-                                                <button className="action-btn primary" title="Boshlash">
-                                                    <FiCheck />
-                                                </button>
+                                                {apt.status === 'scheduled' && (
+                                                    <button
+                                                        className="action-btn primary"
+                                                        title="To'lov"
+                                                        onClick={() => handleOpenPayment(apt)}
+                                                    >
+                                                        <FiDollarSign />
+                                                    </button>
+                                                )}
                                                 <button className="action-btn danger" title="Bekor qilish">
                                                     <FiX />
                                                 </button>
@@ -146,6 +202,7 @@ export default function SimpleAppointments() {
                 </div>
             )}
 
+            {/* Add Appointment Modal */}
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
                     <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -226,6 +283,111 @@ export default function SimpleAppointments() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Payment Modal */}
+            {showPaymentModal && selectedAppointment && (
+                <div className="modal-overlay" onClick={() => setShowPaymentModal(false)}>
+                    <div className="modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>To'lov</h2>
+                            <button className="close-btn" onClick={() => setShowPaymentModal(false)}>×</button>
+                        </div>
+                        <div className="modal-body">
+                            <div style={{ padding: '1rem', background: 'var(--gray-50)', borderRadius: '12px', marginBottom: '1.5rem' }}>
+                                <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>
+                                    {selectedAppointment.patientId?.firstName} {selectedAppointment.patientId?.lastName}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', color: 'var(--gray-600)' }}>
+                                    {new Date(selectedAppointment.startsAt).toLocaleDateString('uz-UZ')}
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Summa *</label>
+                                <input
+                                    type="number"
+                                    className="input"
+                                    required
+                                    value={paymentData.amount}
+                                    onChange={(e) => setPaymentData({ ...paymentData, amount: Number(e.target.value) })}
+                                    style={{ fontSize: '1.25rem', fontWeight: 700 }}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>To'lov usuli *</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <button
+                                        type="button"
+                                        className={`btn ${paymentData.method === 'cash' ? 'btn-primary' : 'btn-secondary'}`}
+                                        onClick={() => setPaymentData({ ...paymentData, method: 'cash' })}
+                                    >
+                                        💵 Naqd
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`btn ${paymentData.method === 'card' ? 'btn-primary' : 'btn-secondary'}`}
+                                        onClick={() => setPaymentData({ ...paymentData, method: 'card' })}
+                                    >
+                                        💳 Karta
+                                    </button>
+                                </div>
+                            </div>
+
+                            {paymentData.method === 'cash' && (
+                                <>
+                                    <div className="form-group">
+                                        <label>Qabul qilingan summa</label>
+                                        <input
+                                            type="number"
+                                            className="input"
+                                            value={paymentData.received}
+                                            onChange={(e) => setPaymentData({ ...paymentData, received: Number(e.target.value) })}
+                                            style={{ fontSize: '1.25rem', fontWeight: 700 }}
+                                        />
+                                    </div>
+
+                                    <div style={{
+                                        padding: '1.5rem',
+                                        background: calculateChange() >= 0 ? 'var(--success-light)' : 'var(--danger-light)',
+                                        borderRadius: '12px',
+                                        marginTop: '1rem'
+                                    }}>
+                                        <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem', color: 'var(--gray-700)' }}>
+                                            Qaytim:
+                                        </div>
+                                        <div style={{
+                                            fontSize: '2rem',
+                                            fontWeight: 700,
+                                            color: calculateChange() >= 0 ? 'var(--success)' : 'var(--danger)'
+                                        }}>
+                                            {calculateChange().toLocaleString()} so'm
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        <div className="modal-footer">
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => setShowPaymentModal(false)}
+                            >
+                                Bekor qilish
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-success"
+                                onClick={handlePayment}
+                                disabled={paymentData.method === 'cash' && calculateChange() < 0}
+                            >
+                                <FiPrinter />
+                                To'lov va Check
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -16,6 +16,7 @@ export default function Sidebar() {
     { to: "/", icon: FiHome, label: "Bosh Sahifa" },
     { to: "/patients", icon: FiUsers, label: "Bemorlar" },
     { to: "/doctors", icon: FiUserCheck, label: "Shifokorlar" },
+    { to: "/doctor-room", icon: FiActivity, label: "Shifokor Xonasi" },
     { to: "/appointments", icon: FiCalendar, label: "Qabullar" },
     { to: "/services", icon: FiGrid, label: "Xizmatlar" },
     { to: "/payments", icon: FiDollarSign, label: "To'lovlar" },
