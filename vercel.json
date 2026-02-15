@@ -7,7 +7,7 @@
         },
         {
             "source": "/(.*)",
-            "destination": "/klinika-crm-frontend/$1"
+            "destination": "/index.html"
         }
     ],
     "functions": {
