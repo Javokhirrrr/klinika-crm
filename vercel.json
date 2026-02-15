@@ -1,0 +1,18 @@
+{
+    "version": 2,
+    "rewrites": [
+        {
+            "source": "/api/(.*)",
+            "destination": "/src/index.js"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/klinika-crm-frontend/$1"
+        }
+    ],
+    "functions": {
+        "src/index.js": {
+            "maxDuration": 60
+        }
+    }
+}
