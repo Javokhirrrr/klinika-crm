@@ -24,19 +24,17 @@ async function main() {
   // Initialize Telegram Bot
   initTelegramBot();
 
-  // Only listen if not running on Vercel (Vercel handles the server via export)
-  if (!process.env.VERCEL) {
-    server = httpServer.listen(PORT, '0.0.0.0', () => {
-      console.log(`✅ API listening on port ${PORT}`);
-      console.log(`✅ WebSocket server initialized`);
-    });
+  // Start server
+  server = httpServer.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ API listening on port ${PORT}`);
+    console.log(`✅ WebSocket server initialized`);
+  });
 
-    server.on('error', (err) => {
-      if (err.code === 'EADDRINUSE') console.error(`❌ Port ${PORT} already in use`);
-      else console.error(err);
-      process.exit(1);
-    });
-  }
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') console.error(`❌ Port ${PORT} already in use`);
+    else console.error(err);
+    process.exit(1);
+  });
 }
 
 main().catch((err) => {
