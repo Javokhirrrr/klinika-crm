@@ -25,7 +25,7 @@ async function main() {
   initTelegramBot();
 
   // Only listen if not running on Vercel (Vercel handles the server via export)
-  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  if (!process.env.VERCEL) {
     server = httpServer.listen(PORT, '0.0.0.0', () => {
       console.log(`✅ API listening on port ${PORT}`);
       console.log(`✅ WebSocket server initialized`);

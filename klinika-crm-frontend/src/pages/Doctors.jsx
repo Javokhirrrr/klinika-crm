@@ -6,8 +6,7 @@ const fmtPhone = (s) => (s || "").replace(/[^\d+]/g, "");
 const fmtDT = (d) => (d ? new Date(d).toLocaleString() : "—");
 
 // ⬇️ API bazaviy URL (nisbiy URL’larni to‘liq qilamiz)
-const RAW_API_URL = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
-const API_BASE = RAW_API_URL ? `${RAW_API_URL}/api` : "http://localhost:5000/api";
+const API_BASE = "https://web-production-2e51b.up.railway.app/api";
 
 /* --------------------- Doctor Preview (modal) — PDF only --------------------- */
 function DoctorPreviewModal({ open, doctorId, onClose }) {
