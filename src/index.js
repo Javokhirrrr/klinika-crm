@@ -1,6 +1,6 @@
-// src/index.js (restarting to apply attendance fixes)
+// src/index.js
 import 'dotenv/config';
-import { env } from './config/env.js'; // restart trigger
+import { env } from './config/env.js';
 import app from './app.js';
 import { connectDB } from './db/connect.js';
 import mongoose from 'mongoose';
@@ -32,7 +32,7 @@ async function main() {
 
     // Initialize Telegram Bot
     console.log('⏳ Initializing Telegram Bot...');
-    await initTelegramBot(); // Await this to catch errors
+    await initTelegramBot();
     console.log('✅ Telegram Bot initialized');
 
     // Start server
