@@ -1,0 +1,205 @@
+/* LiveQueue.css */
+
+.queue-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.queue-section {
+    background: #fff;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    height: calc(100vh - 200px);
+    display: flex;
+    flex-direction: column;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.header-icon {
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+
+.section-header h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    flex: 1;
+}
+
+.count-badge {
+    background: var(--primary-light);
+    color: var(--primary);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.875rem;
+}
+
+/* Active Cards */
+.queue-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+}
+
+.queue-card {
+    border-radius: 12px;
+    padding: 1.25rem;
+    border: 2px solid transparent;
+    background: var(--gray-50);
+    transition: all 0.3s;
+}
+
+.queue-card.in-service {
+    background: #f0f7ff;
+    border-color: #007AFF;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.card-header .time {
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.doctor-tag {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+    background: #fff;
+    padding: 0.125rem 0.5rem;
+    border-radius: 4px;
+}
+
+.patient-name {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+/* Waiting List */
+.queue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    overflow-y: auto;
+}
+
+.queue-list-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 10px;
+    background: #fff;
+    border: 1px solid var(--gray-100);
+    transition: all 0.2s;
+}
+
+.queue-list-item:hover {
+    transform: translateX(4px);
+    border-color: var(--primary-light);
+}
+
+.next-in-line {
+    background: #fdf4ff;
+    border-color: #d946ef;
+}
+
+.queue-time {
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    min-width: 60px;
+}
+
+.queue-content {
+    flex: 1;
+}
+
+.p-name {
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+.d-name {
+    font-size: 0.75rem;
+    color: var(--gray-500);
+}
+
+.queue-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.next-badge {
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    font-weight: 800;
+    background: #d946ef;
+    color: #fff;
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+}
+
+/* Header Filter */
+.header-filters {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--gray-200);
+}
+
+.filter-icon {
+    color: var(--gray-400);
+}
+
+.filter-select {
+    border: none;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--gray-700);
+    outline: none;
+    cursor: pointer;
+}
+
+.empty-queue-card {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--gray-400);
+    font-size: 0.875rem;
+    background: var(--gray-50);
+    border-radius: 12px;
+    border: 2px dashed var(--gray-200);
+}
+
+@media (max-width: 1024px) {
+    .queue-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .queue-section {
+        height: auto;
+        min-height: 400px;
+    }
+}

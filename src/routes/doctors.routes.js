@@ -21,6 +21,31 @@ import {
   putDoctorSchedule,
 } from "../controllers/doctorSchedule.controller.js";
 
+// Wallet controllers
+import {
+  getDoctorWallet,
+  getWalletTransactions,
+  processWithdrawal,
+  addBonus,
+  addPenalty,
+  getWalletStats
+} from "../controllers/doctorWallet.controller.js";
+
+// Status controllers
+import {
+  updateDoctorStatus,
+  getDoctorStatus,
+  getAllDoctorsStatus
+} from "../controllers/doctorStatus.controller.js";
+
+// Services controllers
+import {
+  getDoctorServices,
+  addServiceToDoctor,
+  removeServiceFromDoctor,
+  updateDoctorService
+} from "../controllers/doctorServices.controller.js";
+
 const r = Router();
 
 // har doim: auth + org
@@ -31,6 +56,9 @@ r.get("/", listDoctors);
 
 // Distinct mutaxassisliklar
 r.get("/specs/list", listSpecs);
+
+// All doctors status
+r.get("/status/all", getAllDoctorsStatus);
 
 // CRUD
 r.post("/", createDoctor);
@@ -43,6 +71,24 @@ r.patch("/:id/toggle-active", toggleActive);
 
 // Restore deleted doctor
 r.post("/:id/restore", restoreDoctor);
+
+// ======== Doctor Status ========
+r.get("/:id/status", getDoctorStatus);
+r.patch("/:id/status", updateDoctorStatus);
+
+// ======== Doctor Services ========
+r.get("/:id/services", getDoctorServices);
+r.post("/:id/services", addServiceToDoctor);
+r.delete("/:id/services/:serviceId", removeServiceFromDoctor);
+r.patch("/:id/services/:serviceId", updateDoctorService);
+
+// ======== Doctor Wallet ========
+r.get("/:id/wallet", getDoctorWallet);
+r.get("/:id/wallet/transactions", getWalletTransactions);
+r.get("/:id/wallet/stats", getWalletStats);
+r.post("/:id/wallet/withdrawal", processWithdrawal);
+r.post("/:id/wallet/bonus", addBonus);
+r.post("/:id/wallet/penalty", addPenalty);
 
 // ======== Doctor Certificates (PDF only) ========
 r.get("/:id/certificates", listDoctorCerts);

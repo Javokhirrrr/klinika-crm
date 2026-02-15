@@ -1,30 +1,45 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiSearch, FiPhone, FiCalendar, FiDollarSign, FiFilter, FiDownload, FiX } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+} from '@/components/ui/dialog';
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import {
+    Plus, Search, Phone, Calendar, MoreVertical, Printer, Eye, UserPlus
+} from 'lucide-react';
 import http from '../lib/http';
-import '../styles/design-system.css';
-import './SimplePatients.css';
 
 export default function SimplePatients() {
+    const navigate = useNavigate();
     const [patients, setPatients] = useState([]);
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
-    const [showDetailsModal, setShowDetailsModal] = useState(false);
-    const [selectedPatient, setSelectedPatient] = useState(null);
-    const [filterGender, setFilterGender] = useState('all');
-    const [filterDebt, setFilterDebt] = useState('all');
+    const [showPrintPreview, setShowPrintPreview] = useState(false);
+    const [selectedPatientForPrint, setSelectedPatientForPrint] = useState(null);
     const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        phone: '',
-        birthDate: '',
-        gender: 'male',
-        address: ''
+        firstName: '', lastName: '', phone: '',
+        birthDate: '', gender: 'male', address: '', cardNo: ''
     });
 
+    useEffect(() => { loadPatients(); }, []);
+
+    // Avtomatik 8 xonali karta raqami generatsiya qilish
     useEffect(() => {
-        loadPatients();
-    }, []);
+        if (showModal && !formData.cardNumber) {
+            const cardNumber = String(Math.floor(10000000 + Math.random() * 90000000));
+            setFormData(prev => ({ ...prev, cardNumber }));
+        }
+    }, [showModal]);
 
     const loadPatients = async () => {
         try {
@@ -41,15 +56,9 @@ export default function SimplePatients() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const newPatient = await http.post('/patients', formData);
-
-            // Generate patient card
-            if (newPatient._id) {
-                generatePatientCard(newPatient);
-            }
-
+            await http.post('/patients', formData);
             setShowModal(false);
-            setFormData({ firstName: '', lastName: '', phone: '', birthDate: '', gender: 'male', address: '' });
+            setFormData({ firstName: '', lastName: '', phone: '', birthDate: '', gender: 'male', address: '', cardNumber: '' });
             loadPatients();
         } catch (error) {
             console.error('Create error:', error);
@@ -57,208 +66,45 @@ export default function SimplePatients() {
         }
     };
 
-    const generatePatientCard = (patient) => {
-        // Generate 8-digit patient ID
-        const patientId = String(Math.floor(10000000 + Math.random() * 90000000));
+    const printPatientCard = (patient) => {
+        setSelectedPatientForPrint(patient);
+        setShowPrintPreview(true);
+    };
 
-        // Create beautiful printable card
-        const cardHTML = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>Bemor Kartasi - ${patient.firstName} ${patient.lastName}</title>
-                <style>
-                    * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body { 
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        padding: 20px;
-                        background: #f5f5f5;
-                    }
-                    .card {
-                        width: 400px;
-                        margin: 0 auto;
-                        background: white;
-                        border-radius: 16px;
-                        overflow: hidden;
-                        box-shadow: 0 4px 24px rgba(0,0,0,0.1);
-                    }
-                    .header {
-                        background: linear-gradient(135deg, #007AFF, #00C6FF);
-                        color: white;
-                        padding: 30px 20px;
-                        text-align: center;
-                    }
-                    .header h1 {
-                        font-size: 24px;
-                        margin-bottom: 5px;
-                    }
-                    .header p {
-                        font-size: 14px;
-                        opacity: 0.9;
-                    }
-                    .patient-id {
-                        background: #f8f9fa;
-                        padding: 20px;
-                        text-align: center;
-                        border-bottom: 2px dashed #dee2e6;
-                    }
-                    .patient-id .label {
-                        font-size: 12px;
-                        color: #6c757d;
-                        margin-bottom: 8px;
-                    }
-                    .patient-id .code {
-                        font-size: 36px;
-                        font-weight: bold;
-                        color: #007AFF;
-                        letter-spacing: 4px;
-                        font-family: 'Courier New', monospace;
-                    }
-                    .content {
-                        padding: 25px;
-                    }
-                    .info-row {
-                        display: flex;
-                        padding: 12px 0;
-                        border-bottom: 1px solid #f0f0f0;
-                    }
-                    .info-row:last-child {
-                        border-bottom: none;
-                    }
-                    .info-label {
-                        font-size: 13px;
-                        color: #6c757d;
-                        width: 120px;
-                        flex-shrink: 0;
-                    }
-                    .info-value {
-                        font-size: 14px;
-                        font-weight: 600;
-                        color: #212529;
-                        flex: 1;
-                    }
-                    .footer {
-                        background: #f8f9fa;
-                        padding: 20px;
-                        text-align: center;
-                        font-size: 12px;
-                        color: #6c757d;
-                        line-height: 1.6;
-                    }
-                    .qr-placeholder {
-                        width: 100px;
-                        height: 100px;
-                        background: #e9ecef;
-                        margin: 15px auto;
-                        border-radius: 8px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-size: 10px;
-                        color: #6c757d;
-                    }
-                    @media print {
-                        body { background: white; padding: 0; }
-                        .card { box-shadow: none; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="card">
-                    <div class="header">
-                        <h1>BEMOR KARTASI</h1>
-                        <p>Klinika CRM Tizimi</p>
-                    </div>
-                    
-                    <div class="patient-id">
-                        <div class="label">Bemor ID Raqami</div>
-                        <div class="code">${patientId}</div>
-                    </div>
-                    
-                    <div class="content">
-                        <div class="info-row">
-                            <div class="info-label">Ism Familiya:</div>
-                            <div class="info-value">${patient.firstName} ${patient.lastName}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-label">Telefon:</div>
-                            <div class="info-value">${patient.phone}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-label">Tug'ilgan sana:</div>
-                            <div class="info-value">${patient.birthDate ? new Date(patient.birthDate).toLocaleDateString('uz-UZ') : 'Kiritilmagan'}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-label">Yosh:</div>
-                            <div class="info-value">${calculateAge(patient.birthDate)} yosh</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="info-label">Jins:</div>
-                            <div class="info-value">${patient.gender === 'male' ? 'Erkak' : 'Ayol'}</div>
-                        </div>
-                        ${patient.address ? `
-                        <div class="info-row">
-                            <div class="info-label">Manzil:</div>
-                            <div class="info-value">${patient.address}</div>
-                        </div>
-                        ` : ''}
-                        <div class="info-row">
-                            <div class="info-label">Ro'yxatdan o'tgan:</div>
-                            <div class="info-value">${new Date().toLocaleDateString('uz-UZ')}</div>
-                        </div>
-                    </div>
-                    
-                    <div class="footer">
-                        <div class="qr-placeholder">QR KOD</div>
-                        <strong>Muhim eslatma:</strong><br>
-                        Ushbu kartochkani har safar klinikaga kelganingizda ko'rsating.<br>
-                        ID raqamingizni eslab qoling yoki saqlang.
-                    </div>
-                </div>
-            </body>
-            </html>
-        `;
+    const handlePrint = () => {
+        if (!selectedPatientForPrint) return;
 
-        // Open print window
-        const printWindow = window.open('', '', 'width=500,height=700');
-        printWindow.document.write(cardHTML);
-        printWindow.document.close();
+        const patient = selectedPatientForPrint;
+        const cardHTML = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Bemor Kartasi - ${patient.firstName} ${patient.lastName}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:20px;background:#f5f5f5}.card{width:400px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.1)}.header{background:linear-gradient(135deg,#1e293b,#334155);color:white;padding:30px 20px;text-align:center}.header h1{font-size:24px;margin-bottom:5px}.header p{font-size:14px;opacity:0.9}.patient-id{background:#f8f9fa;padding:20px;text-align:center;border-bottom:2px dashed #dee2e6}.patient-id .label{font-size:12px;color:#6c757d;margin-bottom:8px}.patient-id .code{font-size:36px;font-weight:bold;color:#1e293b;letter-spacing:4px;font-family:'Courier New',monospace}.content{padding:25px}.info-row{display:flex;padding:12px 0;border-bottom:1px solid #f0f0f0}.info-row:last-child{border-bottom:none}.info-label{font-size:13px;color:#6c757d;width:120px;flex-shrink:0}.info-value{font-size:14px;font-weight:600;color:#212529;flex:1}.footer{background:#f8f9fa;padding:20px;text-center;font-size:12px;color:#6c757d;line-height:1.6}@media print{body{background:white;padding:0}.card{box-shadow:none;border-radius:0}}</style></head><body><div class="card"><div class="header"><h1>BEMOR KARTASI</h1><p>Klinika CRM Tizimi</p></div><div class="patient-id"><div class="label">Bemor Karta Raqami</div><div class="code">${patient.cardNo || '00000000'}</div></div><div class="content"><div class="info-row"><div class="info-label">Ism Familiya:</div><div class="info-value">${patient.firstName} ${patient.lastName}</div></div><div class="info-row"><div class="info-label">Telefon:</div><div class="info-value">${patient.phone}</div></div><div class="info-row"><div class="info-label">Tug'ilgan sana:</div><div class="info-value">${patient.birthDate ? new Date(patient.birthDate).toLocaleDateString('uz-UZ') : 'Kiritilmagan'}</div></div><div class="info-row"><div class="info-label">Yosh:</div><div class="info-value">${calculateAge(patient.birthDate)} yosh</div></div><div class="info-row"><div class="info-label">Jins:</div><div class="info-value">${patient.gender === 'male' ? 'Erkak' : 'Ayol'}</div></div>${patient.address ? `<div class="info-row"><div class="info-label">Manzil:</div><div class="info-value">${patient.address}</div></div>` : ''}<div class="info-row"><div class="info-label">Ro'yxatdan o'tgan:</div><div class="info-value">${new Date().toLocaleDateString('uz-UZ')}</div></div></div><div class="footer"><strong>Muhim eslatma:</strong><br>Ushbu kartochkani har safar klinikaga kelganingizda ko'rsating.<br>Karta raqamingizni eslab qoling yoki saqlang.</div></div></body></html>`;
 
-        // Auto print after load
+        // Create iframe for printing
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = 'none';
+        document.body.appendChild(iframe);
+
+        const iframeDoc = iframe.contentWindow.document;
+        iframeDoc.open();
+        iframeDoc.write(cardHTML);
+        iframeDoc.close();
+
+        // Wait for content to load, then print
         setTimeout(() => {
-            printWindow.print();
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+
+            // Remove iframe after printing
+            setTimeout(() => {
+                document.body.removeChild(iframe);
+            }, 100);
         }, 250);
     };
 
-    const handleViewDetails = async (patient) => {
-        try {
-            // Load patient details with history
-            const [appointments, payments] = await Promise.all([
-                http.get('/appointments', { patientId: patient._id }).catch(() => ({ items: [] })),
-                http.get('/payments', { patientId: patient._id }).catch(() => ({ items: [] }))
-            ]);
-
-            setSelectedPatient({
-                ...patient,
-                appointments: appointments.items || appointments || [],
-                payments: payments.items || payments || []
-            });
-            setShowDetailsModal(true);
-        } catch (error) {
-            console.error('Load details error:', error);
-        }
-    };
-
-    const filteredPatients = patients.filter(p => {
-        const matchesSearch = `${p.firstName} ${p.lastName} ${p.phone}`.toLowerCase().includes(search.toLowerCase());
-        const matchesGender = filterGender === 'all' || p.gender === filterGender;
-        const matchesDebt = filterDebt === 'all' ||
-            (filterDebt === 'has_debt' && p.debt > 0) ||
-            (filterDebt === 'no_debt' && (!p.debt || p.debt === 0));
-
-        return matchesSearch && matchesGender && matchesDebt;
-    });
+    const filteredPatients = patients.filter(p =>
+        `${p.firstName} ${p.lastName} ${p.phone} ${p.cardNumber || ''}`.toLowerCase().includes(search.toLowerCase())
+    );
 
     const calculateAge = (birthDate) => {
         if (!birthDate) return '-';
@@ -266,296 +112,315 @@ export default function SimplePatients() {
         const birth = new Date(birthDate);
         let age = today.getFullYear() - birth.getFullYear();
         const monthDiff = today.getMonth() - birth.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-            age--;
-        }
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
         return age;
     };
 
     return (
-        <div className="simple-page">
+        <div className="space-y-6 w-full">
             {/* Header */}
-            <div className="page-header">
+            <div className="flex items-center justify-between">
                 <div>
-                    <h1>Bemorlar</h1>
-                    <p className="text-muted">Jami: {patients.length} ta bemor</p>
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">Bemorlar</h1>
+                    <p className="text-gray-500 mt-1 text-sm font-medium">Jami: {patients.length} ta bemor</p>
                 </div>
-                <button className="btn btn-primary btn-lg" onClick={() => setShowModal(true)} style={{ zIndex: 10 }}>
-                    <FiPlus />
+                <Button
+                    onClick={() => setShowModal(true)}
+                    className="h-11 bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 rounded-xl px-5 font-semibold transition-all hover:-translate-y-0.5"
+                >
+                    <UserPlus className="h-5 w-5 mr-2" />
                     Yangi Bemor
-                </button>
+                </Button>
             </div>
 
-            {/* Search and Filters */}
-            <div className="filters-container">
-                <div className="search-box">
-                    <FiSearch className="search-icon" />
-                    <input
-                        type="text"
-                        className="search-input"
-                        placeholder="Bemor qidirish (ism, telefon)..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                    />
-                </div>
-
-                <div className="filters-row">
-                    <div className="filter-group">
-                        <label className="filter-label">Jins:</label>
-                        <select
-                            className="filter-select"
-                            value={filterGender}
-                            onChange={(e) => setFilterGender(e.target.value)}
-                        >
-                            <option value="all">Barchasi</option>
-                            <option value="male">Erkak</option>
-                            <option value="female">Ayol</option>
-                        </select>
-                    </div>
-
-                    <div className="filter-group">
-                        <label className="filter-label">Qarz:</label>
-                        <select
-                            className="filter-select"
-                            value={filterDebt}
-                            onChange={(e) => setFilterDebt(e.target.value)}
-                        >
-                            <option value="all">Barchasi</option>
-                            <option value="has_debt">Qarzdorlar</option>
-                            <option value="no_debt">Qarzi yo'q</option>
-                        </select>
-                    </div>
-                </div>
+            {/* Search */}
+            <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Input
+                    placeholder="Bemor qidirish (ism, telefon, karta raqami)..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-12 h-12 bg-white border-2 border-gray-200 focus:border-slate-300 rounded-xl text-sm font-medium"
+                />
             </div>
 
             {/* Patients Grid */}
             {loading ? (
-                <div className="loading-state">Yuklanmoqda...</div>
+                <div className="text-center py-12 text-gray-500">Yuklanmoqda...</div>
             ) : filteredPatients.length === 0 ? (
-                <div className="empty-state">
-                    <FiSearch size={64} />
-                    <p>Bemorlar topilmadi</p>
-                </div>
+                <Card className="border-2 border-dashed border-gray-200 bg-gray-50">
+                    <CardContent className="p-12 text-center">
+                        <p className="text-gray-500 font-medium">Bemorlar topilmadi</p>
+                    </CardContent>
+                </Card>
             ) : (
-                <div className="patients-grid">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {filteredPatients.map((patient) => (
-                        <div
+                        <Card
                             key={patient._id}
-                            className="patient-card"
-                            onClick={() => handleViewDetails(patient)}
+                            className="border-2 border-gray-200 hover:border-gray-300 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden group cursor-pointer"
+                            onClick={() => navigate(`/patients/${patient._id}`)}
                         >
-                            <div className="patient-avatar">
-                                {patient.firstName?.[0]}{patient.lastName?.[0]}
-                            </div>
-                            <div className="patient-info">
-                                <h3 className="patient-name">
-                                    {patient.firstName} {patient.lastName}
-                                </h3>
-                                <div className="patient-details">
-                                    <div className="detail-item">
-                                        <FiPhone size={14} />
-                                        <span>{patient.phone}</span>
+                            <CardContent className="p-6">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="h-12 w-12 border-2 border-white shadow-md ring-2 ring-gray-100">
+                                            <AvatarFallback className={cn(
+                                                "text-sm font-bold",
+                                                patient.gender === 'female' ? "bg-pink-100 text-pink-700" : "bg-blue-100 text-blue-700"
+                                            )}>
+                                                {patient.firstName?.[0]}{patient.lastName?.[0]}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <h3 className="font-bold text-slate-900 text-base leading-tight">
+                                                {patient.firstName} {patient.lastName}
+                                            </h3>
+                                            <p className="text-xs text-gray-500 font-medium mt-0.5">
+                                                {calculateAge(patient.birthDate)} yosh • {patient.gender === 'male' ? 'Erkak' : 'Ayol'}
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="detail-item">
-                                        <FiCalendar size={14} />
-                                        <span>{calculateAge(patient.birthDate)} yosh</span>
+
+                                    {/* 3 nuqta menyu */}
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-gray-100">
+                                                <MoreVertical className="h-4 w-4 text-gray-600" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-48">
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/patients/${patient._id}`); }}>
+                                                <Eye className="h-4 w-4 mr-2" />
+                                                Profilni ko'rish
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); printPatientCard(patient); }}>
+                                                <Printer className="h-4 w-4 mr-2" />
+                                                Kartani chop etish
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+
+                                <div className="space-y-2.5">
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <Phone className="h-4 w-4 text-gray-400" />
+                                        <span className="font-medium text-gray-700">{patient.phone}</span>
                                     </div>
-                                    {patient.debt > 0 && (
-                                        <div className="detail-item debt">
-                                            <FiDollarSign size={14} />
-                                            <span>Qarz: {patient.debt?.toLocaleString()} so'm</span>
+                                    {patient.cardNumber && (
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <Calendar className="h-4 w-4 text-gray-400" />
+                                            <span className="font-mono font-bold text-slate-900">{patient.cardNumber}</span>
                                         </div>
                                     )}
+                                    {patient.address && (
+                                        <p className="text-xs text-gray-500 line-clamp-1">{patient.address}</p>
+                                    )}
                                 </div>
-                            </div>
-                        </div>
+
+                                {patient.debt > 0 && (
+                                    <div className="mt-4 pt-4 border-t-2 border-gray-100">
+                                        <Badge variant="destructive" className="font-semibold">
+                                            Qarz: {patient.debt?.toLocaleString()} so'm
+                                        </Badge>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     ))}
                 </div>
             )}
 
             {/* Add Patient Modal */}
-            {showModal && (
-                <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2>Yangi Bemor</h2>
-                            <button className="close-btn" onClick={() => setShowModal(false)}>×</button>
+            <Dialog open={showModal} onOpenChange={setShowModal}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-bold">Yangi Bemor Qo'shish</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        {/* Bemor Karta Raqami - Avtomatik */}
+                        <div>
+                            <Label className="text-sm font-bold text-gray-700">Bemor Karta Raqami</Label>
+                            <Input
+                                value={formData.cardNumber}
+                                readOnly
+                                className="mt-1.5 bg-gray-50 font-mono font-bold text-lg text-slate-900 border-2"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Avtomatik generatsiya qilingan</p>
                         </div>
-                        <form onSubmit={handleSubmit}>
-                            <div className="modal-body">
-                                <div className="form-group">
-                                    <label>Ism *</label>
-                                    <input
-                                        type="text"
-                                        className="input"
-                                        required
-                                        value={formData.firstName}
-                                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Familiya *</label>
-                                    <input
-                                        type="text"
-                                        className="input"
-                                        required
-                                        value={formData.lastName}
-                                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Telefon *</label>
-                                    <input
-                                        type="tel"
-                                        className="input"
-                                        required
-                                        placeholder="+998 90 123 45 67"
-                                        value={formData.phone}
-                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Tug'ilgan sana</label>
-                                    <input
-                                        type="date"
-                                        className="input"
-                                        value={formData.birthDate}
-                                        onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Jins</label>
-                                    <select
-                                        className="input"
-                                        value={formData.gender}
-                                        onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                                    >
-                                        <option value="male">Erkak</option>
-                                        <option value="female">Ayol</option>
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label>Manzil</label>
-                                    <textarea
-                                        className="input"
-                                        rows="2"
-                                        value={formData.address}
-                                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                            <div className="modal-footer">
-                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
-                                    Bekor qilish
-                                </button>
-                                <button type="submit" className="btn btn-primary">
-                                    <FiDownload />
-                                    Saqlash va Kartochka
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
 
-            {/* Patient Details Modal */}
-            {showDetailsModal && selectedPatient && (
-                <div className="modal-overlay" onClick={() => setShowDetailsModal(false)}>
-                    <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2>{selectedPatient.firstName} {selectedPatient.lastName}</h2>
-                            <button className="close-btn" onClick={() => setShowDetailsModal(false)}>×</button>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label className="text-sm font-bold text-gray-700">Ism *</Label>
+                                <Input
+                                    required
+                                    value={formData.firstName}
+                                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                                    className="mt-1.5"
+                                />
+                            </div>
+                            <div>
+                                <Label className="text-sm font-bold text-gray-700">Familiya *</Label>
+                                <Input
+                                    required
+                                    value={formData.lastName}
+                                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                                    className="mt-1.5"
+                                />
+                            </div>
                         </div>
-                        <div className="modal-body">
-                            {/* Patient Info */}
-                            <div className="patient-info-section">
-                                <h3>Asosiy Ma'lumotlar</h3>
-                                <div className="info-grid">
-                                    <div className="info-item">
-                                        <span className="info-label">Telefon:</span>
-                                        <span className="info-value">{selectedPatient.phone}</span>
+
+                        <div>
+                            <Label className="text-sm font-bold text-gray-700">Telefon *</Label>
+                            <Input
+                                required
+                                type="tel"
+                                placeholder="+998 90 123 45 67"
+                                value={formData.phone}
+                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                className="mt-1.5"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label className="text-sm font-bold text-gray-700">Tug'ilgan sana</Label>
+                                <Input
+                                    type="date"
+                                    value={formData.birthDate}
+                                    onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                                    className="mt-1.5"
+                                />
+                            </div>
+                            <div>
+                                <Label className="text-sm font-bold text-gray-700">Jins</Label>
+                                <select
+                                    value={formData.gender}
+                                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                                    className="mt-1.5 w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm font-medium"
+                                >
+                                    <option value="male">Erkak</option>
+                                    <option value="female">Ayol</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <Label className="text-sm font-bold text-gray-700">Manzil</Label>
+                            <Input
+                                value={formData.address}
+                                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                className="mt-1.5"
+                            />
+                        </div>
+
+                        <DialogFooter className="gap-2">
+                            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
+                                Bekor qilish
+                            </Button>
+                            <Button type="submit" className="bg-slate-900 hover:bg-slate-800">
+                                Saqlash
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Print Preview Modal */}
+            <Dialog open={showPrintPreview} onOpenChange={setShowPrintPreview}>
+                <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-bold">Bemor Kartasi - Preview</DialogTitle>
+                    </DialogHeader>
+
+                    {selectedPatientForPrint && (
+                        <div className="space-y-4">
+                            {/* Card Preview */}
+                            <div className="border-2 border-gray-200 rounded-2xl overflow-hidden bg-white">
+                                {/* Header */}
+                                <div className="bg-gradient-to-br from-slate-800 to-slate-900 text-white p-6 text-center">
+                                    <h1 className="text-2xl font-black mb-1">BEMOR KARTASI</h1>
+                                    <p className="text-sm opacity-90">Klinika CRM Tizimi</p>
+                                </div>
+
+                                {/* Card Number */}
+                                <div className="bg-gray-50 p-5 text-center border-b-2 border-dashed border-gray-200">
+                                    <div className="text-xs text-gray-500 font-bold uppercase mb-2">Bemor Karta Raqami</div>
+                                    <div className="text-4xl font-black text-slate-900 font-mono tracking-wider">
+                                        {selectedPatientForPrint.cardNo || '00000000'}
                                     </div>
-                                    <div className="info-item">
-                                        <span className="info-label">Yosh:</span>
-                                        <span className="info-value">{calculateAge(selectedPatient.birthDate)} yosh</span>
+                                </div>
+
+                                {/* Info */}
+                                <div className="p-6 space-y-3">
+                                    <div className="flex border-b border-gray-100 pb-3">
+                                        <span className="text-sm text-gray-500 font-medium w-32">Ism Familiya:</span>
+                                        <span className="text-sm font-bold text-slate-900">
+                                            {selectedPatientForPrint.firstName} {selectedPatientForPrint.lastName}
+                                        </span>
                                     </div>
-                                    <div className="info-item">
-                                        <span className="info-label">Jins:</span>
-                                        <span className="info-value">{selectedPatient.gender === 'male' ? 'Erkak' : 'Ayol'}</span>
+                                    <div className="flex border-b border-gray-100 pb-3">
+                                        <span className="text-sm text-gray-500 font-medium w-32">Telefon:</span>
+                                        <span className="text-sm font-bold text-slate-900">{selectedPatientForPrint.phone}</span>
                                     </div>
-                                    {selectedPatient.debt > 0 && (
-                                        <div className="info-item">
-                                            <span className="info-label">Qarz:</span>
-                                            <span className="info-value" style={{ color: 'var(--danger)', fontWeight: 700 }}>
-                                                {selectedPatient.debt?.toLocaleString()} so'm
-                                            </span>
+                                    <div className="flex border-b border-gray-100 pb-3">
+                                        <span className="text-sm text-gray-500 font-medium w-32">Tug'ilgan sana:</span>
+                                        <span className="text-sm font-bold text-slate-900">
+                                            {selectedPatientForPrint.birthDate
+                                                ? new Date(selectedPatientForPrint.birthDate).toLocaleDateString('uz-UZ')
+                                                : 'Kiritilmagan'}
+                                        </span>
+                                    </div>
+                                    <div className="flex border-b border-gray-100 pb-3">
+                                        <span className="text-sm text-gray-500 font-medium w-32">Yosh:</span>
+                                        <span className="text-sm font-bold text-slate-900">
+                                            {calculateAge(selectedPatientForPrint.birthDate)} yosh
+                                        </span>
+                                    </div>
+                                    <div className="flex border-b border-gray-100 pb-3">
+                                        <span className="text-sm text-gray-500 font-medium w-32">Jins:</span>
+                                        <span className="text-sm font-bold text-slate-900">
+                                            {selectedPatientForPrint.gender === 'male' ? 'Erkak' : 'Ayol'}
+                                        </span>
+                                    </div>
+                                    {selectedPatientForPrint.address && (
+                                        <div className="flex border-b border-gray-100 pb-3">
+                                            <span className="text-sm text-gray-500 font-medium w-32">Manzil:</span>
+                                            <span className="text-sm font-bold text-slate-900">{selectedPatientForPrint.address}</span>
                                         </div>
                                     )}
+                                    <div className="flex">
+                                        <span className="text-sm text-gray-500 font-medium w-32">Ro'yxatdan o'tgan:</span>
+                                        <span className="text-sm font-bold text-slate-900">
+                                            {new Date().toLocaleDateString('uz-UZ')}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Footer */}
+                                <div className="bg-gray-50 p-5 text-center text-xs text-gray-600 leading-relaxed">
+                                    <strong className="text-gray-900">Muhim eslatma:</strong><br />
+                                    Ushbu kartochkani har safar klinikaga kelganingizda ko'rsating.<br />
+                                    Karta raqamingizni eslab qoling yoki saqlang.
                                 </div>
                             </div>
-
-                            {/* Appointments History */}
-                            <div className="history-section">
-                                <h3>Qabullar Tarixi ({selectedPatient.appointments?.length || 0})</h3>
-                                {selectedPatient.appointments?.length > 0 ? (
-                                    <div className="history-list">
-                                        {selectedPatient.appointments.map((apt) => (
-                                            <div key={apt._id} className="history-item">
-                                                <div className="history-date">
-                                                    {new Date(apt.startsAt).toLocaleDateString('uz-UZ')}
-                                                </div>
-                                                <div className="history-content">
-                                                    <div><strong>Shifokor:</strong> {apt.doctorId?.name || 'N/A'}</div>
-                                                    {apt.diagnosis && <div><strong>Tashxis:</strong> {apt.diagnosis}</div>}
-                                                    {apt.prescription && <div><strong>Retsept:</strong> {apt.prescription}</div>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-muted">Qabullar tarixi yo'q</p>
-                                )}
-                            </div>
-
-                            {/* Payments History */}
-                            <div className="history-section">
-                                <h3>To'lovlar Tarixi ({selectedPatient.payments?.length || 0})</h3>
-                                {selectedPatient.payments?.length > 0 ? (
-                                    <div className="history-list">
-                                        {selectedPatient.payments.map((payment) => (
-                                            <div key={payment._id} className="history-item">
-                                                <div className="history-date">
-                                                    {new Date(payment.createdAt).toLocaleDateString('uz-UZ')}
-                                                </div>
-                                                <div className="history-content">
-                                                    <div style={{ fontWeight: 700, color: 'var(--success)' }}>
-                                                        {payment.amount?.toLocaleString()} so'm
-                                                    </div>
-                                                    <div style={{ fontSize: '0.875rem', color: 'var(--gray-600)' }}>
-                                                        {payment.method === 'cash' ? 'Naqd' : 'Karta'}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-muted">To'lovlar tarixi yo'q</p>
-                                )}
-                            </div>
                         </div>
-                        <div className="modal-footer">
-                            <button
-                                type="button"
-                                className="btn btn-primary"
-                                onClick={() => generatePatientCard(selectedPatient)}
-                            >
-                                <FiDownload />
-                                Kartochka Chop Etish
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                    )}
+
+                    <DialogFooter className="gap-2">
+                        <Button type="button" variant="outline" onClick={() => setShowPrintPreview(false)}>
+                            Yopish
+                        </Button>
+                        <Button
+                            onClick={handlePrint}
+                            className="bg-slate-900 hover:bg-slate-800"
+                        >
+                            <Printer className="h-4 w-4 mr-2" />
+                            Chop Etish
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

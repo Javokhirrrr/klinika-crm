@@ -1,6 +1,7 @@
 // Improved Quick Payment Modal - Better Design
 import React, { useState, useEffect } from 'react';
 import { QuickActionButton, LoadingSpinner, Toast, StatusBadge } from './UIComponents';
+import { Combobox } from '@/components/ui/combobox';
 import http from '../lib/http';
 
 export default function QuickPaymentModal({ isOpen, onClose, onSuccess, prefilledPatient = null }) {
@@ -178,20 +179,15 @@ export default function QuickPaymentModal({ isOpen, onClose, onSuccess, prefille
                     {/* Service Selection */}
                     <div style={styles.formGroup}>
                         <label style={styles.label}>🏥 Xizmat</label>
-                        <select
-                            className="input"
+                        <Combobox
+                            options={services.map(s => ({ value: s._id, label: `${s.name} - ${s.price?.toLocaleString()} so'm` }))}
                             value={formData.serviceId}
-                            onChange={(e) => handleServiceChange(e.target.value)}
+                            onValueChange={(val) => handleServiceChange(val)}
+                            placeholder="Xizmatni tanlang"
+                            searchPlaceholder="Xizmat nomini yozing..."
+                            emptyText="Xizmat topilmadi"
                             disabled={!formData.patientId}
-                            style={styles.select}
-                        >
-                            <option value="">Tanlang...</option>
-                            {services.map(service => (
-                                <option key={service._id} value={service._id}>
-                                    {service.name} - {service.price?.toLocaleString()} so'm
-                                </option>
-                            ))}
-                        </select>
+                        />
                     </div>
 
                     {/* Amount */}

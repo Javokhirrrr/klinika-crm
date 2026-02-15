@@ -57,7 +57,48 @@ const DoctorSchema = new mongoose.Schema(
 
     // Commission Settings
     commissionRate: { type: Number, min: 0, max: 100, default: 0 },
-    commissionEnabled: { type: Boolean, default: false }
+    commissionEnabled: { type: Boolean, default: false },
+
+    // Services (Xizmatlar)
+    services: [{
+      serviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service' },
+      customPrice: { type: Number, min: 0 },  // Shifokor uchun maxsus narx
+      isActive: { type: Boolean, default: true },
+      addedAt: { type: Date, default: Date.now }
+    }],
+
+    // Real-time Status (Bandlik holati)
+    currentStatus: {
+      type: String,
+      enum: ['available', 'busy', 'break', 'offline'],
+      default: 'offline',
+      index: true
+    },
+    lastStatusUpdate: { type: Date },
+    currentPatientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Patient' },
+    currentAppointmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Appointment' },
+
+    // Work History (Ish tarixi)
+    workHistory: [{
+      organization: { type: String, trim: true },
+      position: { type: String, trim: true },
+      startDate: { type: Date },
+      endDate: { type: Date },
+      description: { type: String, trim: true },
+      isCurrent: { type: Boolean, default: false }
+    }],
+
+    // Achievements (Yutuqlar)
+    achievements: [{
+      title: { type: String, trim: true },
+      description: { type: String, trim: true },
+      date: { type: Date },
+      icon: { type: String, trim: true }
+    }],
+
+    // Department (Bo'lim)
+    departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
+    departmentName: { type: String, trim: true }  // Cache for quick access
   },
   { timestamps: true }
 );

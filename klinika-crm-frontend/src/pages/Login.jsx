@@ -1,72 +1,44 @@
-// src/pages/Login.jsx
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import http from "../lib/http";
-
-const RAW_API_BASE = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
-const API_BASE = RAW_API_BASE ? `${RAW_API_BASE}/api` : "http://localhost:5000/api";
-const api = (path) => `${API_BASE}${path}`;
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
+  const navigate = useNavigate();
   const { login } = useAuth();
-  const nav = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const [emailOrPhone, setEmailOrPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-
-  async function submit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setErr("");
-    setBusy(true);
+    setError('');
+    setLoading(true);
     try {
-      const payload = emailOrPhone.includes("@")
-        ? { email: emailOrPhone.trim(), password }
-        : { phone: emailOrPhone.trim(), password };
-
-      const url = api('/auth/login');
-      console.log('🔵 Login attempt:', { url, payload: { ...payload, password: '***' } });
-
-      const res = await fetch(url, {
+      const res = await fetch(`/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // agar backend cookie ham bersa
-        body: JSON.stringify(payload),
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
       });
-
-      console.log('🔵 Response status:', res.status, res.statusText);
-
       const data = await res.json().catch(() => ({}));
-      console.log('🔵 Response data:', data);
-
       if (!res.ok) {
-        throw new Error(data?.message || "Login failed");
+        throw new Error(data?.message || "Login amalga oshmadi");
       }
 
       const accessToken = data.accessToken || data.token || data.access_token || null;
       const refreshToken = data.refreshToken || data.refresh_token || null;
-      const user = data.user || data.data?.user || data.profile || null;
+      const user = data.user || data.data?.user || null;
       const org = data.org || null;
 
-      // 🔴 MUHIM: tokenlarni http.js ga yozib qo'yamiz
-      if (!accessToken) {
-        throw new Error("Access token olinmadi (backend javobini tekshiring).");
-      }
-      http.setTokens(accessToken, refreshToken || "");
-
-      // Auth kontekstni yangilash (ui uchun)
       login({ user, accessToken, refreshToken, org });
-
-      nav("/dashboard", { replace: true });
-    } catch (ex) {
-      console.error('❌ Login error:', ex);
-      setErr(ex?.message || "Login failed");
+      navigate('/', { replace: true });
+    } catch (err) {
+      setError(err?.message || 'Login xatosi');
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="auth-shell">
@@ -77,14 +49,14 @@ export default function Login() {
           <div className="brand-sub">Kirish</div>
         </div>
 
-        <form onSubmit={submit} className="glass-card">
+        <form className="glass-card" onSubmit={handleSubmit}>
           <label className="label">Email yoki Telefon</label>
           <input
             className="inputX"
-            value={emailOrPhone}
-            onChange={(e) => setEmailOrPhone(e.target.value)}
+            type="text"
             placeholder="email@example.com yoki +99890..."
-            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
 
@@ -92,21 +64,20 @@ export default function Login() {
           <input
             className="inputX"
             type="password"
+            placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            autoComplete="current-password"
             required
           />
 
-          {err && <div className="errorX">{err}</div>}
+          {error && <div className="errorX">{error}</div>}
 
-          <button className="btnX primary" type="submit" disabled={busy} style={{ marginTop: 10 }}>
-            {busy ? "Yuklanmoqda…" : "Kirish"}
+          <button className="btnX primary" type="submit" disabled={loading} style={{ marginTop: 16 }}>
+            {loading ? 'Yuklanmoqda…' : 'Kirish'}
           </button>
 
-          <div className="mutedX" style={{ marginTop: 10 }}>
-            Hali ro'yhatdan o'tmadizmi? <Link to="/register">Ro‘yxatdan o‘tish</Link>
+          <div className="mutedX" style={{ marginTop: 12 }}>
+            Hali ro'yhatdan o'tmadizsiz? <Link to="/register">Ro'yxatdan o'tish</Link>
           </div>
         </form>
       </section>
@@ -114,8 +85,8 @@ export default function Login() {
       <aside className="hero-panel">
         <div className="hero-inner">
           <h1 className="hero-title">Soddalashtirilgan klinika boshqaruvi</h1>
-          <p className="hero-text">Qabulni rejalashtiring, bemorlar va to‘lovlarni yuriting, hisobotlarni avtomatik oling.</p>
-          <div className="hero-figure"><div className="card" /></div>
+          <p className="hero-text">Qabulni rejalashtiring, bemorlar va to'lovlarni yuriting, hisobotlarni avtomatik oling.</p>
+          <div className="hero-figure" />
         </div>
       </aside>
     </div>

@@ -1,30 +1,37 @@
 /**
  * Notification Service
  * 
- * Bu servis kelajakda Telegram va SMS bildirishnomalar uchun ishlatiladi.
- * Hozircha faqat struktura yaratilgan.
+ * Telegram va SMS bildirishnomalar uchun servis.
  */
+
+import { sendTelegramMessage } from '../lib/telegramBot.js';
+import { sendSMS } from '../lib/sms.js';
 
 /**
  * Telegram bot orqali xabar yuborish
  * 
- * @param {string} patientId - Bemor ID
- * @param {string} message - Yuborilad message
- * 
- * Kerakli sozlamalar:
- * - TELEGRAM_BOT_TOKEN - .env faylida
- * - Patient model'da telegramChatId field
+ * @param {string} userId - User ID (telegramId olish uchun)
+ * @param {string} message - Yuboriladi message
  */
-export const sendTelegramNotification = async (patientId, message) => {
+export const sendTelegramNotification = async (userId, message) => {
     try {
-        // TODO: Telegram bot integratsiyasi
-        // const patient = await Patient.findById(patientId);
-        // if (patient.telegramChatId) {
-        //     await telegramBot.sendMessage(patient.telegramChatId, message);
-        // }
+        const { User } = await import('../models/User.js');
+        const user = await User.findById(userId).select('telegramId').lean();
 
-        console.log(`📱 Telegram xabari yuborilishi kerak: ${patientId} - ${message}`);
-        return { success: true, message: 'Telegram bot sozlanmagan' };
+        if (!user || !user.telegramId) {
+            console.log(`[TELEGRAM] User ${userId} has no Telegram ID`);
+            return { success: false, message: 'No Telegram ID' };
+        }
+
+        const result = await sendTelegramMessage(user.telegramId, message);
+
+        if (result.success) {
+            console.log(`📱 [TELEGRAM] Sent to ${user.telegramId}`);
+        } else {
+            console.error(`📱 [TELEGRAM] Failed:`, result.error);
+        }
+
+        return result;
     } catch (error) {
         console.error('Telegram notification error:', error);
         return { success: false, error: error.message };
@@ -36,24 +43,18 @@ export const sendTelegramNotification = async (patientId, message) => {
  * 
  * @param {string} phone - Telefon raqami
  * @param {string} message - Yuboriladi message
- * 
- * Kerakli sozlamalar:
- * - SMS_PROVIDER_API_KEY - .env faylida
- * - SMS_PROVIDER_URL - .env faylida
- * 
- * Tavsiya: Eskiz.uz, Playmobile.uz yoki boshqa SMS provider
  */
 export const sendSMSNotification = async (phone, message) => {
     try {
-        // TODO: SMS provider integratsiyasi
-        // const response = await axios.post(process.env.SMS_PROVIDER_URL, {
-        //     phone,
-        //     message,
-        //     api_key: process.env.SMS_PROVIDER_API_KEY
-        // });
+        const result = await sendSMS(phone, message);
 
-        console.log(`📨 SMS yuborilishi kerak: ${phone} - ${message}`);
-        return { success: true, message: 'SMS provider sozlanmagan' };
+        if (result.success) {
+            console.log(`📨 [SMS] Sent to ${phone}`);
+        } else {
+            console.error(`📨 [SMS] Failed:`, result.error);
+        }
+
+        return result;
     } catch (error) {
         console.error('SMS notification error:', error);
         return { success: false, error: error.message };
@@ -116,8 +117,249 @@ export const notifyServiceCompleted = async (queueEntry) => {
     }
 };
 
-// Kelajakda qo'shilishi mumkin:
-// - notifyAppointmentReminder - Qabul eslatmasi (1 soat oldin)
-// - notifyAppointmentConfirmed - Qabul tasdiqlandi
-// - notifyAppointmentCancelled - Qabul bekor qilindi
-// - notifyPaymentReceived - To'lov qabul qilindi
+// ============ DOCTOR NOTIFICATIONS ============
+
+/**
+ * Shifokorga yangi qabul haqida bildirishnoma
+ */
+export const notifyDoctorNewAppointment = async (appointmentId) => {
+    try {
+        const { Appointment } = await import('../models/Appointment.js');
+
+        const appointment = await Appointment.findById(appointmentId)
+            .populate('patientId', 'firstName lastName phone')
+            .populate('doctorId', 'firstName lastName userId')
+            .populate('serviceIds', 'name')
+            .lean();
+
+        if (!appointment) return { success: false, message: 'Appointment not found' };
+
+        const doctor = appointment.doctorId;
+        const patient = appointment.patientId;
+        const services = appointment.serviceIds?.map(s => s.name).join(', ') || 'Konsultatsiya';
+        const time = appointment.startAt ? new Date(appointment.startAt).toLocaleString('uz-UZ') : '';
+
+        const message = `🔔 *Yangi qabul!*\n\n👤 Bemor: ${patient.firstName} ${patient.lastName}\n📞 Telefon: ${patient.phone || '-'}\n🩺 Xizmat: ${services}\n⏰ Vaqt: ${time}\n\nQabul tafsilotlari tizimda mavjud.`;
+
+        console.log(`[NOTIFICATION] Doctor ${doctor.firstName} ${doctor.lastName}:`, message);
+
+        // TODO: Send via Telegram/SMS to doctor
+        return { success: true, message };
+    } catch (error) {
+        console.error('Notify doctor new appointment error:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
+ * Shifokorga qabul bekor qilingani haqida bildirishnoma
+ */
+export const notifyDoctorCancelledAppointment = async (appointmentId, reason = '') => {
+    try {
+        const { Appointment } = await import('../models/Appointment.js');
+
+        const appointment = await Appointment.findById(appointmentId)
+            .populate('patientId', 'firstName lastName phone')
+            .populate('doctorId', 'firstName lastName')
+            .lean();
+
+        if (!appointment) return { success: false, message: 'Appointment not found' };
+
+        const doctor = appointment.doctorId;
+        const patient = appointment.patientId;
+        const time = appointment.startAt ? new Date(appointment.startAt).toLocaleString('uz-UZ') : '';
+
+        const message = `❌ *Qabul bekor qilindi*\n\n👤 Bemor: ${patient.firstName} ${patient.lastName}\n⏰ Vaqt: ${time}${reason ? `\n📝 Sabab: ${reason}` : ''}\n\nUshbu qabul bekor qilindi.`;
+
+        console.log(`[NOTIFICATION] Doctor ${doctor.firstName} ${doctor.lastName}:`, message);
+
+        return { success: true, message };
+    } catch (error) {
+        console.error('Notify doctor cancelled appointment error:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
+ * Shifokorga kunlik jadval haqida bildirishnoma
+ */
+export const notifyDoctorsDailySchedule = async () => {
+    try {
+        const { Appointment } = await import('../models/Appointment.js');
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const appointments = await Appointment.find({
+            startAt: { $gte: today, $lt: tomorrow },
+            status: { $in: ['scheduled', 'waiting'] }
+        })
+            .populate('doctorId', 'firstName lastName')
+            .populate('patientId', 'firstName lastName')
+            .lean();
+
+        // Group by doctor
+        const byDoctor = {};
+        appointments.forEach(apt => {
+            const docId = apt.doctorId._id.toString();
+            if (!byDoctor[docId]) {
+                byDoctor[docId] = {
+                    doctor: apt.doctorId,
+                    appointments: []
+                };
+            }
+            byDoctor[docId].appointments.push(apt);
+        });
+
+        // Send to each doctor
+        for (const docId in byDoctor) {
+            const { doctor, appointments } = byDoctor[docId];
+
+            const list = appointments
+                .map((apt, i) => {
+                    const time = new Date(apt.startAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+                    const patient = apt.patientId;
+                    return `${i + 1}. ${time} - ${patient.firstName} ${patient.lastName}`;
+                })
+                .join('\n');
+
+            const message = `📅 *Bugungi kun tartibi*\n\nHurmatli ${doctor.firstName} ${doctor.lastName}!\n\nBugun sizda ${appointments.length} ta qabul:\n\n${list}\n\nOmad tilaymiz! 💪`;
+
+            console.log(`[DAILY SCHEDULE] Doctor ${doctor.firstName}:`, message);
+        }
+
+        return { success: true, count: Object.keys(byDoctor).length };
+    } catch (error) {
+        console.error('Notify doctors daily schedule error:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
+ * Bemorga qabul eslatmasi
+ */
+export const notifyAppointmentReminder = async (appointmentId) => {
+    try {
+        const { Appointment } = await import('../models/Appointment.js');
+
+        const appointment = await Appointment.findById(appointmentId)
+            .populate('patientId', 'firstName lastName phone telegramId')
+            .populate('doctorId', 'firstName lastName spec')
+            .populate('serviceIds', 'name')
+            .lean();
+
+        if (!appointment) return { success: false, message: 'Appointment not found' };
+
+        const patient = appointment.patientId;
+        const doctor = appointment.doctorId;
+        const services = appointment.serviceIds?.map(s => s.name).join(', ') || 'Konsultatsiya';
+        const time = appointment.startAt ? new Date(appointment.startAt).toLocaleString('uz-UZ') : '';
+
+        const message = `🔔 *Qabul eslatmasi*\n\nHurmatli ${patient.firstName}!\n\nSizning qabulingiz:\n👨‍⚕️ Shifokor: ${doctor.firstName} ${doctor.lastName} (${doctor.spec || ''})\n🩺 Xizmat: ${services}\n⏰ Vaqt: ${time}\n\nIltimos, o'z vaqtida keling!`;
+
+        // Send via Telegram if available
+        if (patient.telegramId) {
+            await sendTelegramNotification(patient._id, message);
+        }
+
+        console.log(`[REMINDER] Patient ${patient.firstName} ${patient.lastName}:`, message);
+
+        return { success: true, message };
+    } catch (error) {
+        console.error('Notify appointment reminder error:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
+ * Qabul tasdiqlandi bildirishnomasi
+ */
+export const notifyAppointmentConfirmed = async (appointmentId) => {
+    try {
+        const { Appointment } = await import('../models/Appointment.js');
+
+        const appointment = await Appointment.findById(appointmentId)
+            .populate('patientId', 'firstName lastName')
+            .populate('doctorId', 'firstName lastName spec')
+            .lean();
+
+        if (!appointment) return { success: false, message: 'Appointment not found' };
+
+        const patient = appointment.patientId;
+        const doctor = appointment.doctorId;
+        const time = appointment.startAt ? new Date(appointment.startAt).toLocaleString('uz-UZ') : '';
+
+        const message = `✅ *Qabul tasdiqlandi*\n\nHurmatli ${patient.firstName}!\n\nSizning qabulingiz tasdiqlandi:\n👨‍⚕️ Shifokor: ${doctor.firstName} ${doctor.lastName}\n⏰ Vaqt: ${time}`;
+
+        await sendTelegramNotification(patient._id, message);
+
+        console.log(`[CONFIRMED] Patient ${patient.firstName}:`, message);
+
+        return { success: true, message };
+    } catch (error) {
+        console.error('Notify appointment confirmed error:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
+ * Qabul bekor qilindi bildirishnomasi (bemor uchun)
+ */
+export const notifyAppointmentCancelled = async (appointmentId, reason = '') => {
+    try {
+        const { Appointment } = await import('../models/Appointment.js');
+
+        const appointment = await Appointment.findById(appointmentId)
+            .populate('patientId', 'firstName lastName')
+            .populate('doctorId', 'firstName lastName')
+            .lean();
+
+        if (!appointment) return { success: false, message: 'Appointment not found' };
+
+        const patient = appointment.patientId;
+        const doctor = appointment.doctorId;
+        const time = appointment.startAt ? new Date(appointment.startAt).toLocaleString('uz-UZ') : '';
+
+        const message = `❌ *Qabul bekor qilindi*\n\nHurmatli ${patient.firstName}!\n\nSizning qabulingiz bekor qilindi:\n👨‍⚕️ Shifokor: ${doctor.firstName} ${doctor.lastName}\n⏰ Vaqt: ${time}${reason ? `\n📝 Sabab: ${reason}` : ''}`;
+
+        await sendTelegramNotification(patient._id, message);
+
+        console.log(`[CANCELLED] Patient ${patient.firstName}:`, message);
+
+        return { success: true, message };
+    } catch (error) {
+        console.error('Notify appointment cancelled error:', error);
+        return { success: false, error: error.message };
+    }
+};
+
+/**
+ * To'lov qabul qilindi bildirishnomasi
+ */
+export const notifyPaymentReceived = async (paymentId) => {
+    try {
+        const { Payment } = await import('../models/Payment.js');
+
+        const payment = await Payment.findById(paymentId)
+            .populate('patientId', 'firstName lastName')
+            .lean();
+
+        if (!payment) return { success: false, message: 'Payment not found' };
+
+        const patient = payment.patientId;
+        const amount = payment.amount || 0;
+
+        const message = `💰 *To'lov qabul qilindi*\n\nHurmatli ${patient.firstName}!\n\nTo'lovingiz qabul qilindi:\n💵 Summa: ${amount.toLocaleString()} so'm\n📅 Sana: ${new Date().toLocaleString('uz-UZ')}\n\nRahmat!`;
+
+        await sendTelegramNotification(patient._id, message);
+
+        console.log(`[PAYMENT] Patient ${patient.firstName}:`, message);
+
+        return { success: true, message };
+    } catch (error) {
+        console.error('Notify payment received error:', error);
+        return { success: false, error: error.message };
+    }
+};

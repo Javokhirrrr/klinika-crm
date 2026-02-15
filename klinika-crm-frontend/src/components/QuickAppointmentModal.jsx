@@ -1,6 +1,7 @@
 // Improved Quick Appointment Modal - Better Design
 import React, { useState } from 'react';
 import { QuickActionButton, LoadingSpinner, Toast } from './UIComponents';
+import { Combobox } from '@/components/ui/combobox';
 import http from '../lib/http';
 
 export default function QuickAppointmentModal({ isOpen, onClose, onSuccess }) {
@@ -203,36 +204,26 @@ export default function QuickAppointmentModal({ isOpen, onClose, onSuccess }) {
 
                             <div style={styles.formGroup}>
                                 <label style={styles.label}>Shifokor</label>
-                                <select
-                                    className="input"
+                                <Combobox
+                                    options={doctors.map(d => ({ value: d._id, label: `${d.firstName} ${d.lastName} - ${d.specialization || ''}` }))}
                                     value={formData.doctorId}
-                                    onChange={(e) => setFormData({ ...formData, doctorId: e.target.value })}
-                                    style={styles.select}
-                                >
-                                    <option value="">Tanlang...</option>
-                                    {doctors.map((d) => (
-                                        <option key={d._id} value={d._id}>
-                                            {d.firstName} {d.lastName} - {d.specialization}
-                                        </option>
-                                    ))}
-                                </select>
+                                    onValueChange={(val) => setFormData({ ...formData, doctorId: val })}
+                                    placeholder="Shifokorni tanlang"
+                                    searchPlaceholder="Shifokor ismini yozing..."
+                                    emptyText="Shifokor topilmadi"
+                                />
                             </div>
 
                             <div style={styles.formGroup}>
                                 <label style={styles.label}>Xizmat</label>
-                                <select
-                                    className="input"
+                                <Combobox
+                                    options={services.map(s => ({ value: s._id, label: `${s.name} - ${s.price?.toLocaleString()} so'm` }))}
                                     value={formData.serviceId}
-                                    onChange={(e) => setFormData({ ...formData, serviceId: e.target.value })}
-                                    style={styles.select}
-                                >
-                                    <option value="">Tanlang...</option>
-                                    {services.map((s) => (
-                                        <option key={s._id} value={s._id}>
-                                            {s.name} - {s.price?.toLocaleString()} so'm
-                                        </option>
-                                    ))}
-                                </select>
+                                    onValueChange={(val) => setFormData({ ...formData, serviceId: val })}
+                                    placeholder="Xizmatni tanlang"
+                                    searchPlaceholder="Xizmat nomini yozing..."
+                                    emptyText="Xizmat topilmadi"
+                                />
                             </div>
 
                             <div style={styles.actions}>

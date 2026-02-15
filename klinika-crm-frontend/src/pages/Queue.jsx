@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { queueAPI } from '../api/newFeatures';
 import http from '../lib/http';
+import { Combobox } from '@/components/ui/combobox';
 import './Queue.css';
 
 export default function Queue() {
@@ -337,34 +338,26 @@ export default function Queue() {
                         <div className="modal-body">
                             <div className="form-group">
                                 <label>👤 Bemor *</label>
-                                <select
+                                <Combobox
+                                    options={patients.map(p => ({ value: p._id, label: `${p.firstName} ${p.lastName} - ${p.phone}` }))}
                                     value={formData.patientId}
-                                    onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
-                                    className="form-control"
-                                >
-                                    <option value="">Tanlang...</option>
-                                    {patients.map(patient => (
-                                        <option key={patient._id} value={patient._id}>
-                                            {patient.firstName} {patient.lastName} - {patient.phone}
-                                        </option>
-                                    ))}
-                                </select>
+                                    onValueChange={(val) => setFormData({ ...formData, patientId: val })}
+                                    placeholder="Bemorni tanlang"
+                                    searchPlaceholder="Bemor ismini yozing..."
+                                    emptyText="Bemor topilmadi"
+                                />
                             </div>
 
                             <div className="form-group">
                                 <label>👨‍⚕️ Shifokor *</label>
-                                <select
+                                <Combobox
+                                    options={doctors.map(d => ({ value: d._id, label: `${d.firstName} ${d.lastName} - ${d.spec || ''}` }))}
                                     value={formData.doctorId}
-                                    onChange={(e) => setFormData({ ...formData, doctorId: e.target.value })}
-                                    className="form-control"
-                                >
-                                    <option value="">Tanlang...</option>
-                                    {doctors.map(doctor => (
-                                        <option key={doctor._id} value={doctor._id}>
-                                            {doctor.firstName} {doctor.lastName} - {doctor.spec}
-                                        </option>
-                                    ))}
-                                </select>
+                                    onValueChange={(val) => setFormData({ ...formData, doctorId: val })}
+                                    placeholder="Shifokorni tanlang"
+                                    searchPlaceholder="Shifokor ismini yozing..."
+                                    emptyText="Shifokor topilmadi"
+                                />
                             </div>
 
                             <div className="form-group">

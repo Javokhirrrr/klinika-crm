@@ -132,17 +132,22 @@ export async function createAppointment(req, res) {
   }
 
   // Accept both frontend (scheduledAt, serviceId) and backend (startsAt, serviceIds) formats
-  const scheduledAt = b.scheduledAt || b.startsAt;
+  const scheduledAt = b.scheduledAt || b.startsAt || b.startAt;
   const serviceId = b.serviceId || (Array.isArray(b.serviceIds) && b.serviceIds[0]);
+
+  // Extract date in YYYY-MM-DD format
+  const startDate = scheduledAt ? new Date(scheduledAt) : new Date();
+  const dateStr = b.date || startDate.toISOString().split('T')[0];
 
   const doc = await Appointment.create({
     orgId: req.orgId,
     patientId: OID(b.patientId),
     doctorId: okId(b.doctorId) ? OID(b.doctorId) : undefined,
     serviceIds: serviceId ? [OID(serviceId)] : [],
-    startAt: scheduledAt ? new Date(scheduledAt) : new Date(),
+    date: dateStr,
+    startAt: startDate,
     note: typeof b.notes === "string" ? b.notes : (typeof b.note === "string" ? b.note : ""),
-    status: "waiting",
+    status: b.status || "waiting",
     isPaid: false,
   });
 
@@ -253,7 +258,12 @@ export async function updateAppointment(req, res) {
   if (serviceId) payload.serviceIds = [OID(serviceId)];
 
   const scheduledAt = b.scheduledAt || b.startsAt || b.startAt;
-  if (scheduledAt) payload.startAt = new Date(scheduledAt);
+  if (scheduledAt) {
+    const d = new Date(scheduledAt);
+    payload.startAt = d;
+    payload.date = d.toISOString().split('T')[0];
+  }
+  if (b.date) payload.date = b.date;
 
   if (typeof b.notes === "string") payload.note = b.notes;
   if (typeof b.note === "string") payload.note = b.note;

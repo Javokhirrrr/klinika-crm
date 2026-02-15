@@ -62,6 +62,42 @@ const patientSchema = new Schema(
     telegramVerified: { type: Boolean, default: false },
     telegramVerifiedAt: { type: Date },
 
+    // Medical History (Kasallik tarixi)
+    medicalHistory: [{
+      date: { type: Date, default: Date.now },
+      doctorId: { type: Schema.Types.ObjectId, ref: 'Doctor' },
+      appointmentId: { type: Schema.Types.ObjectId, ref: 'Appointment' },
+      diagnosis: { type: String, trim: true },
+      symptoms: { type: String, trim: true },
+      prescription: { type: String, trim: true },
+      labResults: { type: String, trim: true },
+      notes: { type: String, trim: true },
+      files: [{
+        type: { type: String, enum: ['xray', 'lab_result', 'prescription', 'report', 'other'] },
+        filename: { type: String },
+        url: { type: String },
+        uploadedAt: { type: Date, default: Date.now }
+      }],
+      followUpDate: { type: Date },
+      status: { type: String, enum: ['active', 'resolved', 'ongoing'], default: 'active' }
+    }],
+
+    // Loyalty & Balance (Loyallik va balans)
+    loyaltyPoints: { type: Number, default: 0 },
+    balance: { type: Number, default: 0 }, // Qarz yoki avans
+    discountPercent: { type: Number, default: 0, min: 0, max: 100 },
+    membershipLevel: { type: String, enum: ['bronze', 'silver', 'gold', 'platinum'], default: 'bronze' },
+
+    // Payment History (To'lovlar tarixi)
+    paymentHistory: [{
+      date: { type: Date, default: Date.now },
+      amount: { type: Number, required: true },
+      paymentMethod: { type: String, enum: ['cash', 'card', 'transfer', 'insurance'] },
+      description: { type: String },
+      appointmentId: { type: Schema.Types.ObjectId, ref: 'Appointment' },
+      receiptNumber: { type: String }
+    }],
+
     // Soft Delete
     isDeleted: { type: Boolean, default: false }
   },

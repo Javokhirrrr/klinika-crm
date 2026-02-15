@@ -11,6 +11,11 @@ import {
   setAppointmentStatus,
   markAppointmentPaid,
 } from "../controllers/appointments.controller.js";
+import {
+  getAvailableSlots,
+  checkIn,
+  updateStatus,
+} from "../controllers/appointmentSlots.controller.js";
 
 const r = Router();
 
@@ -20,6 +25,10 @@ const r = Router();
  *  - requireOrg: token/header/cookiedan orgId olib req.orgId ga qo‘yadi
  */
 r.use(authJwt, requireOrg);
+
+r.get("/slots", getAvailableSlots);
+r.patch("/:id/check-in", checkIn);
+r.patch("/:id/update-status", updateStatus);
 
 // GET /api/appointments?status=&doctorId=&patientId=&from=&to=&page=1&limit=20&sort=startsAt:desc
 r.get("/", listAppointments);

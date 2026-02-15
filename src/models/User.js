@@ -23,7 +23,12 @@ const UserSchema = new mongoose.Schema({
 
   // Commission Settings (Shifokorlar uchun)
   commissionRate: { type: Number, min: 0, max: 100, default: 0 },
-  commissionEnabled: { type: Boolean, default: false }
+  commissionEnabled: { type: Boolean, default: false },
+
+  // Slot Management (Shifokorlar uchun)
+  shiftStart: { type: String, default: "09:00" }, // e.g. "09:00"
+  shiftEnd: { type: String, default: "17:00" },   // e.g. "17:00"
+  slotDuration: { type: Number, default: 20 },     // minutes
 }, { timestamps: true, versionKey: false });
 
 UserSchema.index({ orgId: 1, email: 1 }, { unique: true });

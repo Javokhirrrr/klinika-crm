@@ -40,6 +40,10 @@ import analyticsRoutes from "./routes/analytics.routes.js";
 import calendarRoutes from "./routes/calendar.routes.js";
 import salaryRoutes from "./routes/salary.routes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
+import departmentsRoutes from "./routes/departments.routes.js";
+import doctorRoomRoutes from "./routes/doctorRoom.routes.js";
+import settingsRoutes from "./routes/settings.routes.js";
+import receiptRoutes from "./routes/receipt.routes.js";
 
 const app = express();
 
@@ -47,7 +51,8 @@ const app = express();
 app.set('trust proxy', true);
 
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }, // aktivlar TWA'da ham ochilsin
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  frameguard: false, // Allow iframe embedding (for receipt printing)
 }));
 
 // CORS
@@ -109,6 +114,10 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/salaries", salaryRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/departments", departmentsRoutes);
+app.use("/api/doctor-room", doctorRoomRoutes);
+app.use("/api/settings", settingsRoutes);
+app.use("/api/receipts", receiptRoutes);
 
 // CORS xatosini ushlash
 app.use((err, _req, res, next) => {

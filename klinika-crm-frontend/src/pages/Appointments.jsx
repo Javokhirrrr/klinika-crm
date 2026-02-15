@@ -1,13 +1,27 @@
-// Appointments Page - Enhanced Version with Advanced Features
 import React, { useState, useEffect } from 'react';
 import { StatusBadge, LoadingSpinner, Toast } from '../components/UIComponents';
 import http from '../lib/http';
+import Receipt from '../components/Receipt';
 
 export default function Appointments() {
   const [loading, setLoading] = useState(true);
   const [appointments, setAppointments] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [services, setServices] = useState([]);
+
+  // Print State
+  const [printableData, setPrintableData] = useState({ appointment: null, payment: null });
+
+  const handlePrint = (appointment) => {
+    setPrintableData({
+      appointment: appointment,
+      payment: { amount: appointment.price, method: 'cash' }
+    });
+    setTimeout(() => {
+      window.print();
+    }, 500);
+  };
+
   const [queueData, setQueueData] = useState([]);
   const [toast, setToast] = useState(null);
 
@@ -765,6 +779,12 @@ export default function Appointments() {
             </div>
 
             <div style={styles.modalFooter}>
+              <button
+                onClick={() => handlePrint(selectedAppointment)}
+                style={{ ...styles.cancelBtn, background: '#6366f1', color: '#fff', marginRight: 'auto' }}
+              >
+                🖨️ Chek chiqarish
+              </button>
               <button onClick={() => setShowDetailModal(false)} style={styles.cancelBtn}>
                 Yopish
               </button>
@@ -781,6 +801,7 @@ export default function Appointments() {
           onClose={hideToast}
         />
       )}
+      <Receipt appointment={printableData.appointment} payment={printableData.payment} />
     </div>
   );
 }
