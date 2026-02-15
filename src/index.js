@@ -13,34 +13,48 @@ let server;
 let httpServer;
 
 async function main() {
-  await connectDB();
+  try {
+    console.log('⏳ Starting application...');
+    console.log('📌 Environment:', process.env.NODE_ENV);
+    console.log('📌 Port:', PORT);
 
-  // Create HTTP server
-  httpServer = createServer(app);
+    console.log('⏳ Connecting to MongoDB...');
+    await connectDB();
+    console.log('✅ MongoDB connected');
 
-  // Initialize Socket.IO
-  initializeSocket(httpServer);
+    // Create HTTP server
+    httpServer = createServer(app);
 
-  // Initialize Telegram Bot
-  initTelegramBot();
+    // Initialize Socket.IO
+    console.log('⏳ Initializing Socket.IO...');
+    initializeSocket(httpServer);
+    console.log('✅ Socket.IO initialized');
 
-  // Start server
-  server = httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`✅ API listening on port ${PORT}`);
-    console.log(`✅ WebSocket server initialized`);
-  });
+    // Initialize Telegram Bot
+    console.log('⏳ Initializing Telegram Bot...');
+    await initTelegramBot(); // Await this to catch errors
+    console.log('✅ Telegram Bot initialized');
 
-  server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') console.error(`❌ Port ${PORT} already in use`);
-    else console.error(err);
+    // Start server
+    console.log('⏳ Starting HTTP server...');
+    server = httpServer.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ API listening on port ${PORT}`);
+      console.log(`✅ WebSocket server initialized`);
+    });
+
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') console.error(`❌ Port ${PORT} already in use`);
+      else console.error('❌ Server error:', err);
+      process.exit(1);
+    });
+
+  } catch (err) {
+    console.error('❌ Startup CRASH:', err);
     process.exit(1);
-  });
+  }
 }
 
-main().catch((err) => {
-  console.error('❌ Startup failed', err);
-  process.exit(1);
-});
+main();
 
 // Export for Vercel
 export default app;
