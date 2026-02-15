@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "build": "cd klinika-crm-frontend && npm install && npm run build",
+    "build": "cd klinika-crm-frontend && npm install --include=dev && npm run build",
     "seed:admin": "node scripts/seedAdmin.js",
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "test:watch": "cross-env NODE_ENV=test jest --watch --runInBand",
