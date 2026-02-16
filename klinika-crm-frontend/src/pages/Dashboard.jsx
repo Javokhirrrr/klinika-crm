@@ -26,11 +26,11 @@ export default function Dashboard() {
         http.get('/services'),
       ]);
 
-      const allAppointments = appointmentsRes.items || [];
-      const allPayments = paymentsRes.items || [];
-      const allServices = servicesRes.items || [];
+      const allAppointments = Array.isArray(appointmentsRes.items) ? appointmentsRes.items : (Array.isArray(appointmentsRes) ? appointmentsRes : []);
+      const allPayments = Array.isArray(paymentsRes.items) ? paymentsRes.items : (Array.isArray(paymentsRes) ? paymentsRes : []);
+      const allServices = Array.isArray(servicesRes.items) ? servicesRes.items : (Array.isArray(servicesRes) ? servicesRes : []);
 
-      setRecentPatients(patientsRes.items || []);
+      setRecentPatients(Array.isArray(patientsRes.items) ? patientsRes.items : (Array.isArray(patientsRes) ? patientsRes : []));
 
       // Calculate real stats from database
       const totalRevenue = allPayments.reduce((sum, p) => sum + (p.amount || 0), 0);

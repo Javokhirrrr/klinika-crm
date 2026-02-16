@@ -37,7 +37,7 @@ export default function Queue() {
     const loadQueue = async () => {
         try {
             const { data } = await queueAPI.getCurrent();
-            setQueue(data.queue);
+            setQueue(data && Array.isArray(data.queue) ? data.queue : []);
         } catch (err) {
             console.error('Load queue error:', err);
         }
@@ -98,7 +98,7 @@ export default function Queue() {
     const loadPatients = async () => {
         try {
             const res = await http.get('/patients');
-            setPatients(res.items || res || []);
+            setPatients(res && Array.isArray(res.items) ? res.items : (Array.isArray(res) ? res : []));
         } catch (err) {
             console.error('Load patients error:', err);
         }
@@ -107,7 +107,7 @@ export default function Queue() {
     const loadDoctors = async () => {
         try {
             const res = await http.get('/doctors');
-            setDoctors(res.items || res || []);
+            setDoctors(res && Array.isArray(res.items) ? res.items : (Array.isArray(res) ? res : []));
         } catch (err) {
             console.error('Load doctors error:', err);
         }
@@ -159,8 +159,9 @@ export default function Queue() {
         return <span className={`status-badge ${badge.class}`}>{badge.text}</span>;
     };
 
-    const waitingQueue = queue.filter(q => q.status === 'waiting');
-    const activeQueue = queue.filter(q => ['called', 'in_service'].includes(q.status));
+    const safeQueue = Array.isArray(queue) ? queue : [];
+    const waitingQueue = safeQueue.filter(q => q.status === 'waiting');
+    const activeQueue = safeQueue.filter(q => ['called', 'in_service'].includes(q.status));
 
     return (
         <div className="queue-page">
