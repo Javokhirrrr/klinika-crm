@@ -1,7 +1,5 @@
 // src/lib/http.js
-const RAW = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
-// Devda VITE_API_URL bo'sh bo'lsa → relative /api ishlatamiz (Vite proxy)
-const API_BASE = RAW || ""; // "" => fetch("/api/...")
+const API_BASE = "https://klinika-crm-eng-yangi-production.up.railway.app";
 
 let accessToken = localStorage.getItem("accessToken") || "";
 let refreshToken = localStorage.getItem("refreshToken") || "";
