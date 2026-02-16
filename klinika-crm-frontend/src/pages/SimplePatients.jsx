@@ -45,7 +45,7 @@ export default function SimplePatients() {
         try {
             setLoading(true);
             const res = await http.get('/patients');
-            setPatients(res.items || res || []);
+            setPatients(res && Array.isArray(res.items) ? res.items : (Array.isArray(res) ? res : []));
         } catch (error) {
             console.error('Load error:', error);
         } finally {
@@ -102,7 +102,8 @@ export default function SimplePatients() {
         }, 250);
     };
 
-    const filteredPatients = patients.filter(p =>
+    const safePatients = Array.isArray(patients) ? patients : [];
+    const filteredPatients = safePatients.filter(p =>
         `${p.firstName} ${p.lastName} ${p.phone} ${p.cardNumber || ''}`.toLowerCase().includes(search.toLowerCase())
     );
 

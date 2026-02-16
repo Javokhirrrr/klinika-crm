@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Users, Calendar, Stethoscope, CreditCard,
@@ -8,10 +8,66 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '../context/AuthContext';
+import http from '../lib/http';
 
 export default function HippoDashboard() {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const [stats, setStats] = useState({
+        patients: 0, appointments: 0, doctors: 0, payments: 0,
+        todayPatients: 0, todayAppts: 0, todayDone: 0, todayCancelled: 0,
+        revenue: 0, growth: 0
+    });
+
+    useEffect(() => {
+        async function load() {
+            try {
+                const [p, a, d, py] = await Promise.all([
+                    http.get('/patients?limit=1000').catch(() => ({ items: [] })),
+                    http.get('/appointments?limit=1000').catch(() => ({ items: [] })),
+                    http.get('/doctors').catch(() => ({ items: [] })),
+                    http.get('/payments?limit=1000').catch(() => ({ items: [] }))
+                ]);
+
+                const pItems = Array.isArray(p?.items) ? p.items : (Array.isArray(p) ? p : []);
+                const aItems = Array.isArray(a?.items) ? a.items : (Array.isArray(a) ? a : []);
+                const dItems = Array.isArray(d?.items) ? d.items : (Array.isArray(d) ? d : []);
+                const pyItems = Array.isArray(py?.items) ? py.items : (Array.isArray(py) ? py : []);
+
+                // Calc today
+                const now = new Date();
+                const today = now.toISOString().split('T')[0];
+                const isToday = (d) => !!d && new Date(d).toISOString().split('T')[0] === today;
+
+                const todayPatients = pItems.filter(x => isToday(x.createdAt)).length;
+                const todayAppts = aItems.filter(x => isToday(x.startsAt || x.startAt || x.createdAt)).length;
+                const todayDone = aItems.filter(x => isToday(x.startsAt || x.startAt || x.createdAt) && (x.status === 'done' || x.status === 'completed')).length;
+                const todayCancelled = aItems.filter(x => isToday(x.startsAt || x.startAt || x.createdAt) && x.status === 'cancelled').length;
+
+                const revenue = pyItems.filter(x => isToday(x.createdAt)).reduce((s, x) => s + Number(x.amount || 0), 0);
+
+                // Compare with yesterday (very rough estimate)
+                const yesterday = new Date(now);
+                yesterday.setDate(yesterday.getDate() - 1);
+                const ydayStr = yesterday.toISOString().split('T')[0];
+                const ydayRevenue = pyItems.filter(x => !!x.createdAt && new Date(x.createdAt).toISOString().split('T')[0] === ydayStr).reduce((s, x) => s + Number(x.amount || 0), 0);
+
+                let growth = 0;
+                if (ydayRevenue > 0) growth = ((revenue - ydayRevenue) / ydayRevenue) * 100;
+                else if (revenue > 0) growth = 100;
+
+                setStats({
+                    patients: pItems.length,
+                    appointments: aItems.length,
+                    doctors: dItems.length,
+                    payments: pyItems.length,
+                    todayPatients, todayAppts, todayDone, todayCancelled,
+                    revenue, growth
+                });
+            } catch (e) { console.error(e); }
+        }
+        load();
+    }, []);
 
     const hour = new Date().getHours();
     const greeting = hour < 12 ? "Xayrli tong" : hour < 18 ? "Xayrli kun" : "Xayrli kech";
@@ -25,9 +81,9 @@ export default function HippoDashboard() {
             bgColor: 'bg-blue-50',
             textColor: 'text-blue-600',
             description: 'Bemorlarni ro\'yxatga olish',
-            count: 12,
+            count: stats.patients,
             path: '/patients',
-            label: 'NAVBATDA'
+            label: 'JAMI BEMORLAR'
         },
         {
             id: 'appointment',
@@ -37,21 +93,21 @@ export default function HippoDashboard() {
             bgColor: 'bg-emerald-50',
             textColor: 'text-emerald-600',
             description: 'Navbat va yozilish',
-            count: 8,
+            count: stats.appointments,
             path: '/appointments',
-            label: 'NAVBATDA'
+            label: 'JAMI QABULLAR'
         },
         {
             id: 'doctor',
-            title: 'Ko\'rik',
+            title: 'Shifokorlar',
             icon: Stethoscope,
             color: 'from-purple-500 to-purple-600',
             bgColor: 'bg-purple-50',
             textColor: 'text-purple-600',
             description: 'Shifokor ko\'rigi',
-            count: 4,
-            path: '/doctor-room',
-            label: 'NAVBATDA'
+            count: stats.doctors,
+            path: '/doctors',
+            label: 'JAMI SHIFOKORLAR'
         },
         {
             id: 'cashier',
@@ -61,9 +117,9 @@ export default function HippoDashboard() {
             bgColor: 'bg-amber-50',
             textColor: 'text-amber-600',
             description: 'To\'lovlar va cheklar',
-            count: 15,
+            count: stats.payments,
             path: '/payments',
-            label: 'NAVBATDA'
+            label: 'JAMI TO\'LOVLAR'
         }
     ];
 
@@ -178,10 +234,10 @@ export default function HippoDashboard() {
 
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             {[
-                                { label: "Yangi Bemorlar", value: "12", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
-                                { label: "Qabullar", value: "28", color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" },
-                                { label: "Yakunlangan", value: "15", color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200" },
-                                { label: "Bekor qilingan", value: "3", color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-200" },
+                                { label: "Yangi Bemorlar", value: stats.todayPatients, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
+                                { label: "Qabullar", value: stats.todayAppts, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" },
+                                { label: "Yakunlangan", value: stats.todayDone, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200" },
+                                { label: "Bekor qilingan", value: stats.todayCancelled, color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-200" },
                             ].map((stat, i) => (
                                 <div key={i} className={cn(
                                     "flex flex-col p-5 rounded-xl border-2 hover:shadow-lg transition-all cursor-pointer",
@@ -209,11 +265,11 @@ export default function HippoDashboard() {
                                 <span className="font-bold text-sm tracking-wider uppercase">Bugungi Tushum</span>
                             </div>
                             <h2 className="text-4xl font-black tracking-tight mb-4">
-                                8,450,000 <span className="text-lg font-normal opacity-70">so'm</span>
+                                {stats.revenue.toLocaleString()} <span className="text-lg font-normal opacity-70">so'm</span>
                             </h2>
                             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-400/30 backdrop-blur-md">
                                 <TrendingUp className="h-4 w-4" />
-                                +12.5% kechagiga nisbatan
+                                {stats.growth > 0 ? "+" : ""}{stats.growth.toFixed(1)}% kechagiga nisbatan
                             </div>
                         </div>
 
