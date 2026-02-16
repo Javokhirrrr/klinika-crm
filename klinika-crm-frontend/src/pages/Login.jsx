@@ -16,74 +16,73 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      try {
-        const res = await api.post('/api/auth/login', { email, password });
-        const data = res.data;
+      const res = await api.post('/api/auth/login', { email, password });
+      const data = res.data;
 
-        const accessToken = data.accessToken || data.token || data.access_token || null;
-        const refreshToken = data.refreshToken || data.refresh_token || null;
-        const user = data.user || data.data?.user || null;
-        const org = data.org || null;
+      const accessToken = data.accessToken || data.token || data.access_token || null;
+      const refreshToken = data.refreshToken || data.refresh_token || null;
+      const user = data.user || data.data?.user || null;
+      const org = data.org || null;
 
-        login({ user, accessToken, refreshToken, org });
-        navigate('/', { replace: true });
-      } catch (err) {
-        console.error("Login error:", err);
-        setError(err.response?.data?.message || err.message || 'Login xatosi');
-      } finally {
-        setLoading(false);
-      }
-    };
+      login({ user, accessToken, refreshToken, org });
+      navigate('/', { replace: true });
+    } catch (err) {
+      console.error("Login error:", err);
+      setError(err.response?.data?.message || err.message || 'Login xatosi');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-      <div className="auth-shell">
-        <section className="auth-side">
-          <div className="brandX">
-            <div className="logoDot" />
-            <div className="brand-title">Klinika <span className="brandAccent">CRM</span></div>
-            <div className="brand-sub">Kirish</div>
+  return (
+    <div className="auth-shell">
+      <section className="auth-side">
+        <div className="brandX">
+          <div className="logoDot" />
+          <div className="brand-title">Klinika <span className="brandAccent">CRM</span></div>
+          <div className="brand-sub">Kirish</div>
+        </div>
+
+        <form className="glass-card" onSubmit={handleSubmit}>
+          <label className="label">Email yoki Telefon</label>
+          <input
+            className="inputX"
+            type="text"
+            placeholder="email@example.com yoki +99890..."
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+
+          <label className="label">Parol</label>
+          <input
+            className="inputX"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+
+          {error && <div className="errorX">{error}</div>}
+
+          <button className="btnX primary" type="submit" disabled={loading} style={{ marginTop: 16 }}>
+            {loading ? 'Yuklanmoqda…' : 'Kirish'}
+          </button>
+
+          <div className="mutedX" style={{ marginTop: 12 }}>
+            Hali ro'yhatdan o'tmadizsiz? <Link to="/register">Ro'yxatdan o'tish</Link>
           </div>
+        </form>
+      </section>
 
-          <form className="glass-card" onSubmit={handleSubmit}>
-            <label className="label">Email yoki Telefon</label>
-            <input
-              className="inputX"
-              type="text"
-              placeholder="email@example.com yoki +99890..."
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-
-            <label className="label">Parol</label>
-            <input
-              className="inputX"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-
-            {error && <div className="errorX">{error}</div>}
-
-            <button className="btnX primary" type="submit" disabled={loading} style={{ marginTop: 16 }}>
-              {loading ? 'Yuklanmoqda…' : 'Kirish'}
-            </button>
-
-            <div className="mutedX" style={{ marginTop: 12 }}>
-              Hali ro'yhatdan o'tmadizsiz? <Link to="/register">Ro'yxatdan o'tish</Link>
-            </div>
-          </form>
-        </section>
-
-        <aside className="hero-panel">
-          <div className="hero-inner">
-            <h1 className="hero-title">Soddalashtirilgan klinika boshqaruvi</h1>
-            <p className="hero-text">Qabulni rejalashtiring, bemorlar va to'lovlarni yuriting, hisobotlarni avtomatik oling.</p>
-            <div className="hero-figure" />
-          </div>
-        </aside>
-      </div>
-    );
-  }
+      <aside className="hero-panel">
+        <div className="hero-inner">
+          <h1 className="hero-title">Soddalashtirilgan klinika boshqaruvi</h1>
+          <p className="hero-text">Qabulni rejalashtiring, bemorlar va to'lovlarni yuriting, hisobotlarni avtomatik oling.</p>
+          <div className="hero-figure" />
+        </div>
+      </aside>
+    </div>
+  );
+}
