@@ -1,10 +1,9 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import http from "../lib/http";
+import api from "../services/api";
 
 const Ctx = createContext(null);
 export const useAuth = () => useContext(Ctx);
-
-const API_BASE = "https://web-production-2e51b.up.railway.app/api";
 
 /* ===============================
    Helpers
@@ -55,38 +54,36 @@ export function AuthProvider({ children }) {
         if (at) setAccessToken(at);
 
         if (!u && !at) {
-          const res = await fetch(`${API_BASE}/auth/me`, {
-            method: "GET",
-            credentials: "include",
-            headers: { Accept: "application/json" },
-          });
-          if (!res.ok) throw new Error(`me ${res.status}`);
+          if (!u && !at) {
+            const res = await api.get('/api/auth/me');
+            const data = res.data;
+            // if (!res.ok) throw new Error(`me ${res.status}`); // api.get throws on error automatically
 
-          const data = await res.json().catch(() => null);
-          const usr = data?.user || data?.data?.user || data?.profile || null;
-          const tok = data?.accessToken || data?.token || data?.access_token || null;
-          const org = data?.org || null;
+            // const data = await res.json().catch(() => null);
+            const usr = data?.user || data?.data?.user || data?.profile || null;
+            const tok = data?.accessToken || data?.token || data?.access_token || null;
+            const org = data?.org || null;
 
-          if (!cancelled && usr) {
-            setUser(usr);
-            setCookieAuthed(true);
-            if (tok) {
-              setAccessToken(tok);
-              localStorage.setItem("accessToken", tok);
+            if (!cancelled && usr) {
+              setUser(usr);
+              setCookieAuthed(true);
+              if (tok) {
+                setAccessToken(tok);
+                localStorage.setItem("accessToken", tok);
+              }
+              if (org) {
+                setOrg(org);
+                localStorage.setItem("org", JSON.stringify(org));
+              }
+              localStorage.setItem("user", JSON.stringify(usr));
             }
-            if (org) {
-              setOrg(org);
-              localStorage.setItem("org", JSON.stringify(org));
-            }
-            localStorage.setItem("user", JSON.stringify(usr));
           }
+        } catch (e) {
+          console.warn("Auth bootstrap skipped:", e?.message || e);
+        } finally {
+          if (!cancelled) setLoading(false);
         }
-      } catch (e) {
-        console.warn("Auth bootstrap skipped:", e?.message || e);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
+      })();
     return () => { cancelled = true; };
   }, []);
 
@@ -113,10 +110,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await fetch(`${API_BASE}/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      }).catch(() => { });
+      await api.post('/api/auth/logout').catch(() => { });
     } finally {
       setUser(null);
       setOrg(null);
