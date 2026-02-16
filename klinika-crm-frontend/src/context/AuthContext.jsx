@@ -54,36 +54,33 @@ export function AuthProvider({ children }) {
         if (at) setAccessToken(at);
 
         if (!u && !at) {
-          if (!u && !at) {
-            const res = await api.get('/api/auth/me');
-            const data = res.data;
-            // if (!res.ok) throw new Error(`me ${res.status}`); // api.get throws on error automatically
+          const res = await api.get('/api/auth/me');
+          const data = res.data;
 
-            // const data = await res.json().catch(() => null);
-            const usr = data?.user || data?.data?.user || data?.profile || null;
-            const tok = data?.accessToken || data?.token || data?.access_token || null;
-            const org = data?.org || null;
+          const usr = data?.user || data?.data?.user || data?.profile || null;
+          const tok = data?.accessToken || data?.token || data?.access_token || null;
+          const orgData = data?.org || null;
 
-            if (!cancelled && usr) {
-              setUser(usr);
-              setCookieAuthed(true);
-              if (tok) {
-                setAccessToken(tok);
-                localStorage.setItem("accessToken", tok);
-              }
-              if (org) {
-                setOrg(org);
-                localStorage.setItem("org", JSON.stringify(org));
-              }
-              localStorage.setItem("user", JSON.stringify(usr));
+          if (!cancelled && usr) {
+            setUser(usr);
+            setCookieAuthed(true);
+            if (tok) {
+              setAccessToken(tok);
+              localStorage.setItem("accessToken", tok);
             }
+            if (orgData) {
+              setOrg(orgData);
+              localStorage.setItem("org", JSON.stringify(orgData));
+            }
+            localStorage.setItem("user", JSON.stringify(usr));
           }
-        } catch (e) {
-          console.warn("Auth bootstrap skipped:", e?.message || e);
-        } finally {
-          if (!cancelled) setLoading(false);
         }
-      })();
+      } catch (e) {
+        console.warn("Auth bootstrap skipped:", e?.message || e);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
     return () => { cancelled = true; };
   }, []);
 
