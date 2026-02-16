@@ -38,9 +38,13 @@ export default function SimpleDashboard() {
                 http.get('/payments').catch(() => ({ items: [] }))
             ]);
 
-            const pItems = patients.items || patients || [];
-            const aItems = appointments.items || appointments || [];
-            const payItems = payments.items || payments || [];
+            const patientsRes = patients && patients.items ? patients.items : (Array.isArray(patients) ? patients : []);
+            const appointmentsRes = appointments && appointments.items ? appointments.items : (Array.isArray(appointments) ? appointments : []);
+            const paymentsRes = payments && payments.items ? payments.items : (Array.isArray(payments) ? payments : []);
+
+            const pItems = Array.isArray(patientsRes) ? patientsRes : [];
+            const aItems = Array.isArray(appointmentsRes) ? appointmentsRes : [];
+            const payItems = Array.isArray(paymentsRes) ? paymentsRes : [];
             const today = new Date().toISOString().split('T')[0];
 
             const todayAppts = aItems.filter(a => a.date?.startsWith(today)).length;
