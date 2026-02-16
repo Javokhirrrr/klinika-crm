@@ -62,7 +62,15 @@ app.use(
   cors({
     origin(origin, cb) {
       if (!origin) return cb(null, true);
-      if (allowed.includes('*') || allowed.includes(origin)) return cb(null, true);
+      // Allow localhost, explicit list, OR any vercel.app subdomain
+      if (
+        allowed.includes('*') ||
+        allowed.includes(origin) ||
+        origin.endsWith('.vercel.app') ||
+        origin.endsWith('.railway.app')
+      ) {
+        return cb(null, true);
+      }
       return cb(new Error('Not allowed by CORS'));
     },
     credentials: true,
