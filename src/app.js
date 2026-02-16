@@ -119,6 +119,17 @@ app.use("/api/doctor-room", doctorRoomRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/receipts", receiptRoutes);
 
+// --- FRONTEND STATIC FILES ---
+const frontendDist = path.join(process.cwd(), 'klinika-crm-frontend', 'dist');
+
+// 1. Static fayllarni serve qilish
+app.use(express.static(frontendDist));
+
+// 2. Barcha boshqa so'rovlarni index.html ga yo'naltirish (SPA uchun)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendDist, 'index.html'));
+});
+
 // CORS xatosini ushlash
 app.use((err, _req, res, next) => {
   if (err && err.message === 'Not allowed by CORS') {
