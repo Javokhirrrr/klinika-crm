@@ -6,7 +6,7 @@ const fmtPhone = (s) => (s || "").replace(/[^\d+]/g, "");
 const fmtDT = (d) => (d ? new Date(d).toLocaleString() : "—");
 
 // ⬇️ API bazaviy URL (nisbiy URL’larni to‘liq qilamiz)
-const API_BASE = "https://web-production-2e51b.up.railway.app/api";
+const API_BASE = "https://klinika-crm-eng-yangi-production.up.railway.app/api";
 
 /* --------------------- Doctor Preview (modal) — PDF only --------------------- */
 function DoctorPreviewModal({ open, doctorId, onClose }) {
