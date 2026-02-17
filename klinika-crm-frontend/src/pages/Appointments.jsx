@@ -466,7 +466,7 @@ export default function Appointments() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto p-8 rounded-2xl">
           <DialogHeader className="mb-6">
-            <DialogTitle className="text-3xl font-black text-slate-900">Yangi Qabul</DialogTitle>
+            <DialogTitle className="text-3xl font-black text-slate-900 text-primary">YANGI QABUL (2.0)</DialogTitle>
             <DialogDescription className="text-base text-gray-500 mt-2">Bemor uchun yangi qabul belgilash formasi</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-6">
