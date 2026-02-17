@@ -66,17 +66,10 @@ export default function HippoLayout() {
                     </div>
 
                     {/* Right Actions */}
-                    <div className="flex items-center gap-3">
-                        <button className="p-2 text-gray-400 hover:text-slate-600 transition-colors">
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        <button className="p-2 text-gray-400 hover:text-slate-600 transition-colors rounded-full hover:bg-gray-50">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
                         </button>
-
-                        <Button
-                            onClick={() => window.location.href = '/patients'}
-                            className="hidden md:flex bg-[#0F172A] hover:bg-[#1E293B] text-white font-medium rounded-lg px-4 h-10 shadow-sm transition-all hover:translate-y-[-1px]"
-                        >
-                            + Yangi bemor
-                        </Button>
 
                         {/* Org Info - right side like reference */}
                         {org?.name && (
