@@ -9,6 +9,7 @@ import HippoLayout from "./layouts/HippoLayout";
 import HippoDashboard from "./pages/HippoDashboard";
 
 // Pages
+import Debug from "./pages/Debug.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
@@ -145,6 +146,8 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
+              // Debug Route
+                <Route path="/debug" element={<Debug />} />
               </Route>
 
               {/* Catch-all */}
