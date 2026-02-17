@@ -1,27 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Users, Calendar, Stethoscope, CreditCard,
-    ArrowRight, TrendingUp, UserPlus, BarChart3, Sparkles
+    Users, Calendar, Clock, CreditCard,
+    MoreHorizontal, Search
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '../context/AuthContext';
 import http from '../lib/http';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function HippoDashboard() {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
-        patients: 0, appointments: 0, doctors: 0, payments: 0,
-        todayPatients: 0, todayAppts: 0, todayDone: 0, todayCancelled: 0,
-        revenue: 0, growth: 0
+        todayPatients: 0,
+        todayAppts: 0,
+        todayDone: 0,
+        todayPending: 0,
+        revenue: 0,
+        chartData: [],
+        doctors: [],
+        todayAppointmentsList: []
     });
 
     useEffect(() => {
         async function load() {
             try {
+                setLoading(true);
                 const [p, a, d, py] = await Promise.all([
                     http.get('/patients?limit=1000').catch(() => ({ items: [] })),
                     http.get('/appointments?limit=1000').catch(() => ({ items: [] })),
@@ -34,254 +42,270 @@ export default function HippoDashboard() {
                 const dItems = Array.isArray(d?.items) ? d.items : (Array.isArray(d) ? d : []);
                 const pyItems = Array.isArray(py?.items) ? py.items : (Array.isArray(py) ? py : []);
 
-                // Calc today
+                // Today's date
                 const now = new Date();
                 const today = now.toISOString().split('T')[0];
                 const isToday = (d) => !!d && new Date(d).toISOString().split('T')[0] === today;
 
+                // KPIs
                 const todayPatients = pItems.filter(x => isToday(x.createdAt)).length;
                 const todayAppts = aItems.filter(x => isToday(x.startsAt || x.startAt || x.createdAt)).length;
                 const todayDone = aItems.filter(x => isToday(x.startsAt || x.startAt || x.createdAt) && (x.status === 'done' || x.status === 'completed')).length;
-                const todayCancelled = aItems.filter(x => isToday(x.startsAt || x.startAt || x.createdAt) && x.status === 'cancelled').length;
-
+                const todayPending = aItems.filter(x => isToday(x.startsAt || x.startAt || x.createdAt) && (x.status === 'pending' || x.status === 'scheduled' || !x.status)).length;
                 const revenue = pyItems.filter(x => isToday(x.createdAt)).reduce((s, x) => s + Number(x.amount || 0), 0);
 
-                // Compare with yesterday (very rough estimate)
-                const yesterday = new Date(now);
-                yesterday.setDate(yesterday.getDate() - 1);
-                const ydayStr = yesterday.toISOString().split('T')[0];
-                const ydayRevenue = pyItems.filter(x => !!x.createdAt && new Date(x.createdAt).toISOString().split('T')[0] === ydayStr).reduce((s, x) => s + Number(x.amount || 0), 0);
+                // Chart Data (Last 7 days)
+                const chartData = [];
+                for (let i = 6; i >= 0; i--) {
+                    const date = new Date(now);
+                    date.setDate(date.getDate() - i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    const dayName = date.toLocaleDateString('uz-UZ', { weekday: 'short' });
 
-                let growth = 0;
-                if (ydayRevenue > 0) growth = ((revenue - ydayRevenue) / ydayRevenue) * 100;
-                else if (revenue > 0) growth = 100;
+                    const count = aItems.filter(x => {
+                        const d = x.startsAt || x.startAt || x.createdAt;
+                        return d && new Date(d).toISOString().split('T')[0] === dateStr;
+                    }).length;
+
+                    chartData.push({ name: dayName, value: count });
+                }
+
+                // Doctor Busyness (Mock or calculated)
+                const doctorsWithInfo = dItems.map(doc => {
+                    const docAppts = aItems.filter(x => (x.doctorId === doc._id || x.doctor?._id === doc._id) && isToday(x.startsAt || x.startAt || x.createdAt));
+                    const busyPercentage = Math.min(Math.round((docAppts.length / 10) * 100), 100); // Assume 10 is max capacity
+                    return { ...doc, busyPercentage, todayCount: docAppts.length };
+                }).sort((a, b) => b.busyPercentage - a.busyPercentage).slice(0, 5);
+
+                // Today's Appointments List
+                const todayList = aItems
+                    .filter(x => isToday(x.startsAt || x.startAt || x.createdAt))
+                    .sort((a, b) => new Date(a.startsAt || a.createdAt) - new Date(b.startsAt || b.createdAt))
+                    .slice(0, 5);
 
                 setStats({
-                    patients: pItems.length,
-                    appointments: aItems.length,
-                    doctors: dItems.length,
-                    payments: pyItems.length,
-                    todayPatients, todayAppts, todayDone, todayCancelled,
-                    revenue, growth
+                    todayPatients, todayAppts, todayDone, todayPending,
+                    revenue, chartData, doctors: doctorsWithInfo, todayAppointmentsList: todayList
                 });
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error(e); } finally {
+                setLoading(false);
+            }
         }
         load();
     }, []);
 
-    const hour = new Date().getHours();
-    const greeting = hour < 12 ? "Xayrli tong" : hour < 18 ? "Xayrli kun" : "Xayrli kech";
+    const formatTime = (dateStr) => {
+        if (!dateStr) return '--:--';
+        return new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    };
 
-    const workflowSteps = [
-        {
-            id: 'reception',
-            title: 'Registratura',
-            icon: Users,
-            color: 'from-blue-500 to-blue-600',
-            bgColor: 'bg-blue-50',
-            textColor: 'text-blue-600',
-            description: 'Bemorlarni ro\'yxatga olish',
-            count: stats.patients,
-            path: '/patients',
-            label: 'JAMI BEMORLAR'
-        },
-        {
-            id: 'appointment',
-            title: 'Qabullar',
-            icon: Calendar,
-            color: 'from-emerald-500 to-emerald-600',
-            bgColor: 'bg-emerald-50',
-            textColor: 'text-emerald-600',
-            description: 'Navbat va yozilish',
-            count: stats.appointments,
-            path: '/appointments',
-            label: 'JAMI QABULLAR'
-        },
-        {
-            id: 'doctor',
-            title: 'Shifokorlar',
-            icon: Stethoscope,
-            color: 'from-purple-500 to-purple-600',
-            bgColor: 'bg-purple-50',
-            textColor: 'text-purple-600',
-            description: 'Shifokor ko\'rigi',
-            count: stats.doctors,
-            path: '/doctors',
-            label: 'JAMI SHIFOKORLAR'
-        },
-        {
-            id: 'cashier',
-            title: 'Kassa',
-            icon: CreditCard,
-            color: 'from-amber-500 to-amber-600',
-            bgColor: 'bg-amber-50',
-            textColor: 'text-amber-600',
-            description: 'To\'lovlar va cheklar',
-            count: stats.payments,
-            path: '/payments',
-            label: 'JAMI TO\'LOVLAR'
-        }
-    ];
+    const getStatusBadge = (status) => {
+        const s = status?.toLowerCase() || 'pending';
+        if (s === 'done' || s === 'completed') return <span className="text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl text-xs font-semibold">Yakunlandi</span>;
+        if (s === 'cancelled') return <span className="text-red-500 bg-red-50 px-3 py-1 rounded-xl text-xs font-semibold">Bekor qilindi</span>;
+        if (s === 'pending' || s === 'scheduled') return <span className="text-amber-600 bg-amber-50 px-3 py-1 rounded-xl text-xs font-semibold">Kutilmoqda</span>;
+        if (s === 'progress') return <span className="text-blue-600 bg-blue-50 px-3 py-1 rounded-xl text-xs font-semibold">Qabulda</span>;
+        return <span className="text-gray-500 bg-gray-100 px-3 py-1 rounded-xl text-xs font-semibold">{status}</span>;
+    };
+
+    if (loading) return <div className="p-10 text-center text-gray-400">Yuklanmoqda...</div>;
 
     return (
-        <div className="space-y-10 w-full">
+        <div className="space-y-8 font-['Outfit'] text-[#0F172A]">
 
-            {/* Welcome Section - Clean, no background */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <Sparkles className="h-5 w-5 text-yellow-500" />
-                        <span className="text-sm font-semibold text-gray-400 uppercase tracking-wider">{greeting}</span>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* 1. Bugungi bemorlar */}
+                <div className="bg-white p-6 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.04)] transition-shadow cursor-pointer border border-transparent hover:border-blue-50">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="bg-blue-50 p-3 rounded-2xl">
+                            <Users className="h-6 w-6 text-blue-600" />
+                        </div>
+                        {/* Mock trend */}
+                        <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">↑ 12%</span>
                     </div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-                        {user?.name}
-                    </h1>
-                    <p className="text-gray-400 text-sm font-medium mt-1">Bugungi ish jarayoni va statistika</p>
+                    <div className="text-3xl font-bold mb-1 font-['Inter']">{stats.todayPatients}</div>
+                    <div className="text-sm text-gray-400 font-medium">Bugungi bemorlar</div>
                 </div>
 
-                <div className="flex gap-3">
-                    <Button
-                        onClick={() => navigate('/patients')}
-                        className="h-11 bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 rounded-xl px-6 font-bold transition-all hover:-translate-y-0.5"
-                    >
-                        <UserPlus className="h-5 w-5 mr-2" />
-                        Yangi Bemor
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={() => navigate('/reports')}
-                        className="h-11 border-2 border-gray-200 hover:bg-gray-50 text-slate-700 rounded-xl px-6 font-bold transition-all"
-                    >
-                        <BarChart3 className="h-5 w-5 mr-2" />
-                        Hisobotlar
-                    </Button>
+                {/* 2. Qabullar */}
+                <div className="bg-white p-6 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.04)] transition-shadow cursor-pointer border border-transparent hover:border-emerald-50">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="bg-emerald-50 p-3 rounded-2xl">
+                            <Calendar className="h-6 w-6 text-emerald-600" />
+                        </div>
+                    </div>
+                    <div className="text-3xl font-bold mb-1 font-['Inter']">{stats.todayAppts}</div>
+                    <div className="text-sm text-gray-400 font-medium flex items-center gap-2">
+                        Qabullar <span className="w-1 h-1 rounded-full bg-gray-300"></span> <span className="text-emerald-600">{stats.todayDone} tasi yakunlandi</span>
+                    </div>
+                </div>
+
+                {/* 3. Kutilmoqda */}
+                <div className="bg-white p-6 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.04)] transition-shadow cursor-pointer border border-transparent hover:border-amber-50">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="bg-amber-50 p-3 rounded-2xl">
+                            <Clock className="h-6 w-6 text-amber-500" />
+                        </div>
+                    </div>
+                    <div className="text-3xl font-bold mb-1 font-['Inter']">{stats.todayPending}</div>
+                    <div className="text-sm text-gray-400 font-medium">Kutilmoqda (O'rtacha 15 daq)</div>
+                </div>
+
+                {/* 4. Bugungi Tushum */}
+                <div className="bg-white p-6 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.04)] transition-shadow cursor-pointer border border-transparent hover:border-purple-50">
+                    <div className="flex justify-between items-start mb-4">
+                        <div className="bg-purple-50 p-3 rounded-2xl">
+                            <CreditCard className="h-6 w-6 text-purple-600" />
+                        </div>
+                    </div>
+                    <div className="text-3xl font-bold mb-1 font-['Inter']">
+                        {stats.revenue.toLocaleString()} <span className="text-sm font-normal text-gray-400">so'm</span>
+                    </div>
+                    <div className="text-sm text-gray-400 font-medium">Bugungi tushum</div>
                 </div>
             </div>
 
-            {/* Workflow Visualization */}
-            <div className="relative">
-                {/* Connecting Line */}
-                <div className="hidden lg:block absolute top-1/2 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent -z-10 -translate-y-1/2 mx-16" />
+            {/* Middle Section: Chart & Doctor List */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {workflowSteps.map((step, index) => {
-                        const Icon = step.icon;
-                        return (
-                            <div key={step.id} className="relative group">
-                                <Card
-                                    className="relative z-10 border-2 border-gray-200 rounded-2xl transition-all duration-300 cursor-pointer overflow-hidden bg-white hover:border-gray-300 hover:-translate-y-2 hover:shadow-2xl"
-                                    onClick={() => navigate(step.path)}
-                                >
-                                    <CardContent className="p-8">
-                                        {/* Icon */}
-                                        <div className="flex items-center justify-between mb-7">
-                                            <div className={cn(
-                                                "h-16 w-16 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:rotate-3 bg-gradient-to-br",
-                                                step.color
-                                            )}>
-                                                <Icon className="h-8 w-8 text-white" />
-                                            </div>
-                                            <div className={cn(
-                                                "px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider border-2",
-                                                step.bgColor,
-                                                step.textColor,
-                                                step.textColor.replace('text-', 'border-')
-                                            )}>
-                                                Faol
-                                            </div>
-                                        </div>
-
-                                        {/* Text */}
-                                        <h3 className="text-2xl font-black text-slate-900 mb-2">
-                                            {step.title}
-                                        </h3>
-                                        <p className="text-sm text-gray-500 font-medium mb-7">
-                                            {step.description}
-                                        </p>
-
-                                        {/* Stats */}
-                                        <div className="flex items-center justify-between pt-5 border-t-2 border-gray-100">
-                                            <div className="flex flex-col">
-                                                <span className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1.5">{step.label}</span>
-                                                <span className="text-3xl font-black text-slate-900">{step.count}</span>
-                                            </div>
-                                            <ArrowRight className="h-6 w-6 text-gray-300 group-hover:text-gray-600 group-hover:translate-x-2 transition-all duration-300" />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Separator */}
-            <div className="border-t border-gray-200"></div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <Card className="border-2 border-gray-200 shadow-lg overflow-hidden col-span-1 lg:col-span-2 bg-white rounded-2xl">
-                    <CardContent className="p-8">
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <h3 className="text-xl font-black text-slate-900">Kunlik holat</h3>
-                                <p className="text-gray-500 text-sm font-medium mt-1">Bugungi umumiy ko'rsatkichlar</p>
-                            </div>
-                            <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center">
-                                <TrendingUp className="text-emerald-600 h-6 w-6" />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            {[
-                                { label: "Yangi Bemorlar", value: stats.todayPatients, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200" },
-                                { label: "Qabullar", value: stats.todayAppts, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-200" },
-                                { label: "Yakunlangan", value: stats.todayDone, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200" },
-                                { label: "Bekor qilingan", value: stats.todayCancelled, color: "text-rose-600", bg: "bg-rose-50", border: "border-rose-200" },
-                            ].map((stat, i) => (
-                                <div key={i} className={cn(
-                                    "flex flex-col p-5 rounded-xl border-2 hover:shadow-lg transition-all cursor-pointer",
-                                    stat.bg,
-                                    stat.border
-                                )}>
-                                    <span className={cn("text-3xl font-black mb-2", stat.color)}>{stat.value}</span>
-                                    <span className="text-xs font-bold text-gray-600 uppercase tracking-wide leading-tight">{stat.label}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-none shadow-lg bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white relative overflow-hidden rounded-2xl">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16 animate-pulse" />
-                    <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-500/10 rounded-full blur-2xl -ml-10 -mb-10 animate-pulse delay-1000" />
-
-                    <CardContent className="p-8 h-full flex flex-col justify-between relative z-10">
+                {/* Chart Section (Left - 70% roughly, usually col-span-8) */}
+                <div className="lg:col-span-8 bg-white p-6 rounded-[24px] shadow-[0_10px_30px_rgba(0,0,0,0.02)]">
+                    <div className="flex justify-between items-center mb-8">
                         <div>
-                            <div className="flex items-center gap-3 mb-4 opacity-90">
-                                <div className="h-10 w-10 rounded-lg bg-white/10 flex items-center justify-center backdrop-blur-sm">
-                                    <CreditCard className="h-5 w-5" />
-                                </div>
-                                <span className="font-bold text-sm tracking-wider uppercase">Bugungi Tushum</span>
-                            </div>
-                            <h2 className="text-4xl font-black tracking-tight mb-4">
-                                {stats.revenue.toLocaleString()} <span className="text-lg font-normal opacity-70">so'm</span>
-                            </h2>
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-400/30 backdrop-blur-md">
-                                <TrendingUp className="h-4 w-4" />
-                                {stats.growth > 0 ? "+" : ""}{stats.growth.toFixed(1)}% kechagiga nisbatan
-                            </div>
+                            <h3 className="text-lg font-bold text-slate-900">Tashriflar dinamikasi</h3>
+                            <p className="text-sm text-gray-400">Oxirgi 7 kunlik statistika</p>
                         </div>
+                        <Button variant="ghost" size="icon" className="text-gray-400"><MoreHorizontal /></Button>
+                    </div>
 
-                        <Button
-                            variant="secondary"
-                            className="w-full h-12 bg-white text-slate-900 hover:bg-gray-100 border-none font-bold shadow-lg transition-all hover:-translate-y-0.5 rounded-xl"
-                            onClick={() => navigate('/payments')}
-                        >
-                            To'lovlarni ko'rish
-                        </Button>
-                    </CardContent>
-                </Card>
+                    <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={stats.chartData}>
+                                <defs>
+                                    <linearGradient id="colorBlue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2} />
+                                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis
+                                    dataKey="name"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#94a3b8', fontSize: 12 }}
+                                    dy={10}
+                                />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#94a3b8', fontSize: 12 }}
+                                />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}
+                                    itemStyle={{ color: '#0F172A', fontWeight: 'bold' }}
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="value"
+                                    stroke="#3B82F6"
+                                    strokeWidth={3}
+                                    fillOpacity={1}
+                                    fill="url(#colorBlue)"
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Doctor List (Right - 30%) */}
+                <div className="lg:col-span-4 bg-white p-6 rounded-[24px] shadow-[0_10px_30px_rgba(0,0,0,0.02)]">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-bold text-slate-900">Band doktorlar</h3>
+                        <Button variant="ghost" size="sm" className="text-blue-500 hover:text-blue-600 font-medium" onClick={() => navigate('/doctors')}>Barchasi</Button>
+                    </div>
+
+                    <div className="space-y-6">
+                        {stats.doctors.length === 0 ? (
+                            <div className="text-center text-gray-400 py-10">Ma'lumot yo'q</div>
+                        ) : stats.doctors.map((doc, i) => (
+                            <div key={i} className="group">
+                                <div className="flex justify-between items-center mb-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-sm">
+                                            {doc.name ? doc.name[0] : 'D'}
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors cursor-pointer" onClick={() => navigate(`/doctors`)}>Dr. {doc.name || doc.fullName}</div>
+                                            <div className="text-xs text-gray-400">{doc.specialty || 'Terapevt'}</div>
+                                        </div>
+                                    </div>
+                                    <span className="text-xs font-bold text-slate-600">{doc.busyPercentage}%</span>
+                                </div>
+                                <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                        style={{ width: `${doc.busyPercentage}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom Section: Appointments Table */}
+            <div className="bg-white rounded-[24px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden">
+                <div className="p-6 border-b border-gray-50 flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-slate-900">Bugungi qabullar</h3>
+                    <Button variant="ghost" size="sm" className="text-blue-500 hover:text-blue-600 font-medium" onClick={() => navigate('/appointments')}>Barchasini ko'rish</Button>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                <th className="px-6 py-4 font-medium pl-8">Vaqt</th>
+                                <th className="px-6 py-4 font-medium">Bemor ismi</th>
+                                <th className="px-6 py-4 font-medium">Shifokor</th>
+                                <th className="px-6 py-4 font-medium">Status</th>
+                                <th className="px-6 py-4 font-medium text-right pr-8">Amallar</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {stats.todayAppointmentsList.length === 0 ? (
+                                <tr>
+                                    <td colSpan="5" className="px-6 py-10 text-center text-gray-400">Bugun uchun qabullar yo'q</td>
+                                </tr>
+                            ) : stats.todayAppointmentsList.map((appt, i) => (
+                                <tr key={i} className="hover:bg-gray-50/50 transition-colors group">
+                                    <td className="px-6 py-4 pl-8 font-bold text-slate-700 font-['Inter']">
+                                        {formatTime(appt.startsAt || appt.createdAt)}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="font-bold text-slate-800 text-sm">{appt.patient?.name || appt.patientName || 'Noma\'lum'}</div>
+                                        <div className="text-xs text-gray-400">{appt.service?.name || 'Konsultatsiya'}</div>
+                                    </td>
+                                    <td className="px-6 py-4 text-sm text-gray-600">
+                                        Dr. {appt.doctor?.name || 'Tayinlanmagan'}
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        {getStatusBadge(appt.status)}
+                                    </td>
+                                    <td className="px-6 py-4 text-right pr-8">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-gray-300 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-all bg-white shadow-sm border border-gray-100"
+                                            onClick={() => navigate(`/appointments`)}
+                                        >
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
         </div>

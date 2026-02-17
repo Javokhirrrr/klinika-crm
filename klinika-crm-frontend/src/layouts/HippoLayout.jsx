@@ -36,12 +36,12 @@ export default function HippoLayout() {
             {/* Main Content Wrapper - sidebar ochilganda o'ngga suriladi */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Top Header */}
-                <header className="h-16 bg-white border-b border-gray-200/80 flex items-center justify-between px-6 lg:px-8 sticky top-0 z-30 shadow-sm">
+                <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-8 sticky top-0 z-30 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
                     <div className="flex items-center gap-5">
                         {/* Mobile Toggle */}
                         <button
                             onClick={() => setMobileOpen(true)}
-                            className="lg:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                            className="lg:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-50 rounded-xl transition-colors"
                         >
                             <Menu className="h-6 w-6" />
                         </button>
@@ -49,17 +49,17 @@ export default function HippoLayout() {
                         {/* Desktop Collapse Toggle */}
                         <button
                             onClick={() => setCollapsed(!collapsed)}
-                            className="hidden lg:flex flex-col gap-1.5 p-2.5 hover:bg-gray-100 rounded-xl border border-gray-200 hover:border-gray-300 transition-all group"
+                            className="hidden lg:flex flex-col gap-1.5 p-2.5 hover:bg-gray-50 rounded-xl border-transparent hover:border-gray-100 transition-all group"
                             title={collapsed ? "Menyuni ochish" : "Menyuni yopish"}
                         >
-                            <span className="w-5 h-0.5 bg-gray-600 rounded-full transition-all group-hover:bg-slate-900"></span>
-                            <span className="w-5 h-0.5 bg-gray-600 rounded-full transition-all group-hover:bg-slate-900"></span>
-                            <span className="w-5 h-0.5 bg-gray-600 rounded-full transition-all group-hover:bg-slate-900"></span>
+                            <span className="w-5 h-0.5 bg-gray-400 rounded-full transition-all group-hover:bg-slate-900"></span>
+                            <span className="w-5 h-0.5 bg-gray-400 rounded-full transition-all group-hover:bg-slate-900"></span>
+                            <span className="w-5 h-0.5 bg-gray-400 rounded-full transition-all group-hover:bg-slate-900"></span>
                         </button>
 
                         {/* Page Title - only when no org */}
                         {!org?.name && (
-                            <h1 className="text-lg font-bold text-slate-900 tracking-tight leading-none">
+                            <h1 className="text-[20px] font-bold text-slate-800 tracking-tight leading-none font-['Outfit']">
                                 {getPageTitle(location.pathname)}
                             </h1>
                         )}
@@ -67,6 +67,17 @@ export default function HippoLayout() {
 
                     {/* Right Actions */}
                     <div className="flex items-center gap-3">
+                        <button className="p-2 text-gray-400 hover:text-slate-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                        </button>
+
+                        <Button
+                            onClick={() => window.location.href = '/patients'}
+                            className="hidden md:flex bg-[#0F172A] hover:bg-[#1E293B] text-white font-medium rounded-lg px-4 h-10 shadow-sm transition-all hover:translate-y-[-1px]"
+                        >
+                            + Yangi bemor
+                        </Button>
+
                         {/* Org Info - right side like reference */}
                         {org?.name && (
                             <>
@@ -78,38 +89,26 @@ export default function HippoLayout() {
                                         )}
                                     </div>
                                 </div>
-                                <div className="h-8 w-px bg-gray-200 hidden md:block"></div>
+                                <div className="h-6 w-px bg-gray-100 hidden md:block"></div>
                             </>
                         )}
 
                         {/* Notifications */}
-                        <Button variant="ghost" size="icon" className="relative text-gray-500 hover:text-slate-900 hover:bg-gray-100 rounded-xl h-11 w-11">
+                        <Button variant="ghost" size="icon" className="relative text-gray-400 hover:text-slate-900 hover:bg-gray-50 rounded-xl h-10 w-10">
                             <Bell className="h-5 w-5" />
-                            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 border-2 border-white"></span>
+                            <span className="absolute top-2.5 right-2.5 h-1.5 w-1.5 rounded-full bg-red-500 ring-2 ring-white"></span>
                         </Button>
-
-                        {/* Settings */}
-                        <Button variant="ghost" size="icon" className="hidden sm:flex text-gray-500 hover:text-slate-900 hover:bg-gray-100 rounded-xl h-11 w-11">
-                            <Settings className="h-5 w-5" />
-                        </Button>
-
-                        <div className="h-8 w-px bg-gray-200 mx-1 hidden sm:block"></div>
 
                         {/* User Profile */}
-                        <div className="flex items-center gap-3 pl-2 pr-3 py-2 cursor-pointer hover:bg-gray-50 rounded-xl transition-all border border-transparent hover:border-gray-200">
-                            <Avatar className="h-10 w-10 border-2 border-white shadow-md ring-2 ring-gray-100">
-                                <AvatarFallback className="bg-gradient-to-br from-slate-700 to-slate-900 text-white font-bold text-sm">
+                        <div className="flex items-center gap-3 pl-1 cursor-pointer hover:bg-gray-50 rounded-xl transition-all p-1">
+                            <Avatar className="h-9 w-9 border border-gray-100 shadow-sm">
+                                <AvatarFallback className="bg-slate-100 text-slate-600 font-bold text-xs">
                                     {user?.name?.[0] || "U"}
                                 </AvatarFallback>
                             </Avatar>
-                            <div className="hidden sm:block text-left">
-                                <div className="text-sm font-bold text-slate-900 leading-none">{user?.name || "Foydalanuvchi"}</div>
-                                <div className="text-xs text-gray-500 mt-1 font-medium">{user?.role === 'admin' ? 'Administrator' : 'Xodim'}</div>
-                            </div>
                         </div>
                     </div>
                 </header>
-
                 {/* Main Content Area */}
                 <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
                     <div className="p-6 lg:p-8 max-w-[1600px] mx-auto w-full">
