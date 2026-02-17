@@ -111,13 +111,13 @@ export default function HippoDashboard() {
     if (loading) return <div className="p-10 text-center text-gray-400">Yuklanmoqda...</div>;
 
     return (
-        <div className="space-y-8 font-['Outfit'] text-[#0F172A]">
+        <div className="space-y-10 font-['Outfit'] text-[#0F172A]">
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {/* 1. Bugungi bemorlar */}
-                <div className="bg-white p-6 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.04)] transition-shadow cursor-pointer border border-transparent hover:border-blue-50">
-                    <div className="flex justify-between items-start mb-4">
+                <div className="bg-white p-8 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.04)] transition-shadow cursor-pointer border border-transparent hover:border-blue-50">
+                    <div className="flex justify-between items-start mb-6">
                         <div className="bg-blue-50 p-3 rounded-2xl">
                             <Users className="h-6 w-6 text-blue-600" />
                         </div>
@@ -129,8 +129,8 @@ export default function HippoDashboard() {
                 </div>
 
                 {/* 2. Qabullar */}
-                <div className="bg-white p-6 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.04)] transition-shadow cursor-pointer border border-transparent hover:border-emerald-50">
-                    <div className="flex justify-between items-start mb-4">
+                <div className="bg-white p-8 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.04)] transition-shadow cursor-pointer border border-transparent hover:border-emerald-50">
+                    <div className="flex justify-between items-start mb-6">
                         <div className="bg-emerald-50 p-3 rounded-2xl">
                             <Calendar className="h-6 w-6 text-emerald-600" />
                         </div>
@@ -142,8 +142,8 @@ export default function HippoDashboard() {
                 </div>
 
                 {/* 3. Kutilmoqda */}
-                <div className="bg-white p-6 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.04)] transition-shadow cursor-pointer border border-transparent hover:border-amber-50">
-                    <div className="flex justify-between items-start mb-4">
+                <div className="bg-white p-8 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.04)] transition-shadow cursor-pointer border border-transparent hover:border-amber-50">
+                    <div className="flex justify-between items-start mb-6">
                         <div className="bg-amber-50 p-3 rounded-2xl">
                             <Clock className="h-6 w-6 text-amber-500" />
                         </div>
@@ -153,8 +153,8 @@ export default function HippoDashboard() {
                 </div>
 
                 {/* 4. Bugungi Tushum */}
-                <div className="bg-white p-6 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.04)] transition-shadow cursor-pointer border border-transparent hover:border-purple-50">
-                    <div className="flex justify-between items-start mb-4">
+                <div className="bg-white p-8 rounded-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.04)] transition-shadow cursor-pointer border border-transparent hover:border-purple-50">
+                    <div className="flex justify-between items-start mb-6">
                         <div className="bg-purple-50 p-3 rounded-2xl">
                             <CreditCard className="h-6 w-6 text-purple-600" />
                         </div>
@@ -167,10 +167,10 @@ export default function HippoDashboard() {
             </div>
 
             {/* Middle Section: Chart & Doctor List */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
                 {/* Chart Section (Left - 70% roughly, usually col-span-8) */}
-                <div className="lg:col-span-8 bg-white p-6 rounded-[24px] shadow-[0_10px_30px_rgba(0,0,0,0.02)]">
+                <div className="lg:col-span-8 bg-white p-8 rounded-[24px] shadow-[0_10px_30px_rgba(0,0,0,0.02)]">
                     <div className="flex justify-between items-center mb-8">
                         <div>
                             <h3 className="text-lg font-bold text-slate-900">Tashriflar dinamikasi</h3>
@@ -219,8 +219,8 @@ export default function HippoDashboard() {
                 </div>
 
                 {/* Doctor List (Right - 30%) */}
-                <div className="lg:col-span-4 bg-white p-6 rounded-[24px] shadow-[0_10px_30px_rgba(0,0,0,0.02)]">
-                    <div className="flex justify-between items-center mb-6">
+                <div className="lg:col-span-4 bg-white p-8 rounded-[24px] shadow-[0_10px_30px_rgba(0,0,0,0.02)]">
+                    <div className="flex justify-between items-center mb-8">
                         <h3 className="text-lg font-bold text-slate-900">Band doktorlar</h3>
                         <Button variant="ghost" size="sm" className="text-blue-500 hover:text-blue-600 font-medium" onClick={() => navigate('/doctors')}>Barchasi</Button>
                     </div>
@@ -256,7 +256,7 @@ export default function HippoDashboard() {
 
             {/* Bottom Section: Appointments Table */}
             <div className="bg-white rounded-[24px] shadow-[0_10px_30px_rgba(0,0,0,0.02)] overflow-hidden">
-                <div className="p-6 border-b border-gray-50 flex justify-between items-center">
+                <div className="p-8 border-b border-gray-50 flex justify-between items-center">
                     <h3 className="text-lg font-bold text-slate-900">Bugungi qabullar</h3>
                     <Button variant="ghost" size="sm" className="text-blue-500 hover:text-blue-600 font-medium" onClick={() => navigate('/appointments')}>Barchasini ko'rish</Button>
                 </div>
@@ -264,34 +264,34 @@ export default function HippoDashboard() {
                     <table className="w-full">
                         <thead>
                             <tr className="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                                <th className="px-6 py-4 font-medium pl-8">Vaqt</th>
-                                <th className="px-6 py-4 font-medium">Bemor ismi</th>
-                                <th className="px-6 py-4 font-medium">Shifokor</th>
-                                <th className="px-6 py-4 font-medium">Status</th>
-                                <th className="px-6 py-4 font-medium text-right pr-8">Amallar</th>
+                                <th className="px-8 py-5 font-medium pl-8">Vaqt</th>
+                                <th className="px-8 py-5 font-medium">Bemor ismi</th>
+                                <th className="px-8 py-5 font-medium">Shifokor</th>
+                                <th className="px-8 py-5 font-medium">Status</th>
+                                <th className="px-8 py-5 font-medium text-right pr-8">Amallar</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {stats.todayAppointmentsList.length === 0 ? (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-10 text-center text-gray-400">Bugun uchun qabullar yo'q</td>
+                                    <td colSpan="5" className="px-8 py-10 text-center text-gray-400">Bugun uchun qabullar yo'q</td>
                                 </tr>
                             ) : stats.todayAppointmentsList.map((appt, i) => (
                                 <tr key={i} className="hover:bg-gray-50/50 transition-colors group">
-                                    <td className="px-6 py-4 pl-8 font-bold text-slate-700 font-['Inter']">
+                                    <td className="px-8 py-5 pl-8 font-bold text-slate-700 font-['Inter']">
                                         {formatTime(appt.startsAt || appt.createdAt)}
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-8 py-5">
                                         <div className="font-bold text-slate-800 text-sm">{appt.patient?.name || appt.patientName || 'Noma\'lum'}</div>
                                         <div className="text-xs text-gray-400">{appt.service?.name || 'Konsultatsiya'}</div>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600">
+                                    <td className="px-8 py-5 text-sm text-gray-600">
                                         Dr. {appt.doctor?.name || 'Tayinlanmagan'}
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-8 py-5">
                                         {getStatusBadge(appt.status)}
                                     </td>
-                                    <td className="px-6 py-4 text-right pr-8">
+                                    <td className="px-8 py-5 text-right pr-8">
                                         <Button
                                             variant="ghost"
                                             size="icon"
