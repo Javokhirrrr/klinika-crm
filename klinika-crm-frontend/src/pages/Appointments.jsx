@@ -1,867 +1,706 @@
 import React, { useState, useEffect } from 'react';
-import { StatusBadge, LoadingSpinner, Toast } from '../components/UIComponents';
+import { useNavigate } from 'react-router-dom';
+import { cn, printFromUrl } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select-shadcn';
+import { Combobox } from '@/components/ui/combobox';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger
+} from '@/components/ui/dialog';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from '@/components/ui/table';
+import {
+  Plus, Calendar, Clock, Check,
+  X, DollarSign, Printer, Activity, ArrowRight,
+  Filter, Banknote, CreditCard, Users, Search, ChevronRight, Save
+} from 'lucide-react';
 import http from '../lib/http';
-import Receipt from '../components/Receipt';
+import { useAuth } from '../context/AuthContext';
+import ReceiptPreviewModal from '@/components/ReceiptPreviewModal';
 
 export default function Appointments() {
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
+  const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
-  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
 
-  // Print State
-  const [printableData, setPrintableData] = useState({ appointment: null, payment: null });
+  // Payment Modal State
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentContext, setPaymentContext] = useState({ type: 'existing', data: null }); // 'new' or 'existing'
+  const [paymentData, setPaymentData] = useState({
+    totalAmount: 0,
+    amount: 0,
+    method: 'cash',
+    received: 0,
+    discount: 0,
+    hasDiscount: false,
+    note: ''
+  });
 
-  const handlePrint = (appointment) => {
-    setPrintableData({
-      appointment: appointment,
-      payment: { amount: appointment.price, method: 'cash' }
-    });
-    setTimeout(() => {
-      window.print();
-    }, 500);
-  };
-
-  const [queueData, setQueueData] = useState([]);
-  const [toast, setToast] = useState(null);
+  const [showAddPatientModal, setShowAddPatientModal] = useState(false);
 
   // Filters
-  const [filterDate, setFilterDate] = useState('today');
-  const [filterDoctor, setFilterDoctor] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('time'); // time, patient, doctor
+  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  const [filterDoctor, setFilterDoctor] = useState('all');
+  const [stats, setStats] = useState({ total: 0, waiting: 0, in_progress: 0, done: 0 });
 
-  // Modals
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState(null);
-
-  // Create form
-  const [patientSearch, setPatientSearch] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
+  // New Appointment Form Data
   const [formData, setFormData] = useState({
-    patientId: '',
-    patientName: '',
-    doctorId: '',
-    serviceId: '',
-    scheduledAt: '',
-    price: '',
-    notes: '',
-    makePayment: false,
-    paymentAmount: '',
-    paymentMethod: 'cash',
+    patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '',
+    price: 50000 // Default consultation fee
   });
 
-  // Statistics
-  const [stats, setStats] = useState({
-    total: 0,
-    scheduled: 0,
-    inProgress: 0,
-    completed: 0,
-    cancelled: 0,
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [fetchingSlots, setFetchingSlots] = useState(false);
+  const [newPatientData, setNewPatientData] = useState({
+    firstName: '', lastName: '', phone: '', birthDate: '', gender: 'male', address: '', cardNo: ''
   });
 
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-  };
-
-  const hideToast = () => {
-    setToast(null);
-  };
+  // Receipt Modal State
+  const [receiptUrl, setReceiptUrl] = useState(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptSettings, setReceiptSettings] = useState(null);
 
   useEffect(() => {
-    loadResources();
-  }, []);
+    loadData();
+    http.get('/settings/receipt_template')
+      .then(res => setReceiptSettings(res?.value))
+      .catch(console.error);
+  }, [filterDate, filterDoctor]);
 
   useEffect(() => {
-    loadAppointments();
-  }, [filterDate, filterDoctor, filterStatus]);
+    if (formData.doctorId && formData.date) fetchSlots();
+    else setAvailableSlots([]);
+  }, [formData.doctorId, formData.date]);
 
-  useEffect(() => {
-    if (patientSearch.length > 1) {
-      searchPatients(patientSearch);
-    } else {
-      setSearchResults([]);
-    }
-  }, [patientSearch]);
-
-  const loadResources = async () => {
+  const loadData = async () => {
     try {
-      const [doctorsRes, servicesRes] = await Promise.all([
-        http.get('/doctors'),
-        http.get('/services'),
+      setLoading(true);
+      const params = { date: filterDate };
+      if (filterDoctor && filterDoctor !== 'all') params.doctorId = filterDoctor;
+
+      const [appts, pats, docs] = await Promise.all([
+        http.get('/appointments', { params }).catch(() => ({ items: [] })),
+        http.get('/patients').catch(() => ({ items: [] })),
+        http.get('/users', { role: 'doctor' }).catch(() => ({ items: [] }))
       ]);
 
-      setDoctors(doctorsRes.items || doctorsRes || []);
-      setServices(servicesRes.items || servicesRes || []);
-    } catch (error) {
-      console.error('Load resources error:', error);
-    }
-  };
+      const items = appts.items || appts || [];
+      setAppointments(items);
+      setPatients(pats.items || pats || []);
+      setDoctors(docs.items || docs || []);
 
-  const searchPatients = async (query) => {
-    try {
-      const res = await http.get('/patients', { q: query, limit: 10 });
-      setSearchResults(res.items || res || []);
-    } catch (error) {
-      console.error('Search patients error:', error);
-    }
-  };
-
-  const loadAppointments = async () => {
-    setLoading(true);
-    try {
-      let params = {};
-
-      const today = new Date();
-      if (filterDate === 'today') {
-        params.from = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-        params.to = new Date(today.setHours(23, 59, 59, 999)).toISOString();
-      } else if (filterDate === 'week') {
-        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-        params.from = weekAgo.toISOString();
-        params.to = new Date().toISOString();
-      } else if (filterDate === 'month') {
-        const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-        params.from = monthAgo.toISOString();
-
-        // Queue ma'lumotlarini ham olish
-        try {
-          const queueRes = await http.get('/queue/current');
-          setQueueData(queueRes.queue || []);
-        } catch (err) {
-          console.error('Queue load error:', err);
-          setQueueData([]);
-        }
-        params.to = new Date().toISOString();
-      }
-
-      if (filterDoctor) params.doctorId = filterDoctor;
-      if (filterStatus) params.status = filterStatus;
-
-      const res = await http.get('/appointments', params);
-      const appointmentsList = res.items || res || [];
-      setAppointments(appointmentsList);
-
-      // Calculate stats
       setStats({
-        total: appointmentsList.length,
-        scheduled: appointmentsList.filter(a => a.status === 'scheduled').length,
-        inProgress: appointmentsList.filter(a => a.status === 'in_progress').length,
-        completed: appointmentsList.filter(a => a.status === 'completed').length,
-        cancelled: appointmentsList.filter(a => a.status === 'cancelled').length,
+        total: items.length,
+        waiting: items.filter(a => a.status === 'waiting' || a.status === 'scheduled').length,
+        in_progress: items.filter(a => a.status === 'in_progress').length,
+        done: items.filter(a => a.status === 'done').length
       });
-    } catch (error) {
-      console.error('Load error:', error);
-      setAppointments([]);
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { console.error('Load error:', error); }
+    finally { setLoading(false); }
   };
 
-  const selectPatient = (patient) => {
-    setFormData({
-      ...formData,
-      patientId: patient._id,
-      patientName: `${patient.firstName} ${patient.lastName}`,
-    });
-    setPatientSearch('');
-    setSearchResults([]);
-  };
-
-  const createAppointment = async () => {
-    if (!formData.patientId || !formData.doctorId || !formData.serviceId || !formData.scheduledAt) {
-      showToast('Iltimos, barcha majburiy maydonlarni to\'ldiring', 'warning');
-      return;
-    }
-
-    if (formData.makePayment && !formData.paymentAmount) {
-      showToast('To\'lov summasini kiriting', 'warning');
-      return;
-    }
-
+  const fetchSlots = async () => {
     try {
-      const apptRes = await http.post('/appointments', {
-        patientId: formData.patientId,
-        doctorId: formData.doctorId,
-        serviceId: formData.serviceId,
-        scheduledAt: new Date(formData.scheduledAt).toISOString(),
-        price: Number(formData.price) || 0,
-        status: 'scheduled',
-        notes: formData.notes,
-      });
+      setFetchingSlots(true);
+      const res = await http.get('/appointments/slots', { doctorId: formData.doctorId, date: formData.date });
+      let slots = res.slots || [];
 
-      // Create payment if selected
-      if (formData.makePayment && formData.paymentAmount > 0) {
-        await http.post('/payments', {
-          patientId: formData.patientId,
-          appointmentId: apptRes.data?.id || apptRes.data?._id,
-          amount: parseFloat(formData.paymentAmount),
-          method: formData.paymentMethod,
-          status: 'completed',
+      const today = new Date().toISOString().split('T')[0];
+      if (formData.date === today) {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        slots = slots.filter(slot => {
+          const [h, m] = slot.split(':').map(Number);
+          return h > currentHour || (h === currentHour && m > currentMinute);
         });
       }
+      setAvailableSlots(slots);
+    } catch (error) { console.error('Fetch slots error:', error); }
+    finally { setFetchingSlots(false); }
+  };
 
-      setShowCreateModal(false);
-      setFormData({
-        patientId: '',
-        patientName: '',
-        doctorId: '',
-        serviceId: '',
-        scheduledAt: '',
-        price: '',
-        notes: '',
-        makePayment: false,
-        paymentAmount: '',
-        paymentMethod: 'cash',
+  // --- Create Appointment (Unpaid / Default) ---
+  const handleSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    try {
+      await http.post('/appointments', {
+        ...formData,
+        scheduledAt: `${formData.date}T${formData.time}:00`,
+        startsAt: `${formData.date}T${formData.time}:00`,
+        price: Number(formData.price || 0)
       });
-      setPatientSearch('');
-
-      await loadAppointments();
-      showToast(
-        formData.makePayment
-          ? 'Qabul va to\'lov muvaffaqiyatli yaratildi!'
-          : 'Qabul muvaffaqiyatli yaratildi!',
-        'success'
-      );
-    } catch (error) {
-      showToast('Xatolik: ' + (error.response?.data?.message || error.message), 'error');
-    }
+      setShowModal(false);
+      setFormData({ patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '', price: 50000 });
+      loadData();
+    } catch (error) { console.error('Create error:', error); alert('Xatolik!'); }
   };
 
-  const updateAppointmentStatus = async (id, newStatus) => {
-    try {
-      await http.patch(`/appointments/${id}`, { status: newStatus });
-      await loadAppointments();
-      setShowDetailModal(false);
-      showToast('Holat muvaffaqiyatli yangilandi!', 'success');
-    } catch (error) {
-      showToast('Xatolik: ' + (error.response?.data?.message || error.message), 'error');
-    }
+  const handleCheckIn = async (id) => {
+    if (!window.confirm("Bemor klinikaga keldimi?")) return;
+    try { await http.patch(`/appointments/${id}/check-in`); loadData(); }
+    catch (error) { alert(error?.response?.data?.message || "Xatolik"); }
   };
 
-  const deleteAppointment = async (id) => {
-    if (!confirm('Qabulni o\'chirmoqchimisiz?')) return;
+  // --- Payment Logic ---
 
-    try {
-      await http.del(`/appointments/${id}`);
+  // Open Payment Modal for EXISTING appointment
+  const handleOpenPayment = (apt) => {
+    const total = apt.price || apt.totalAmount || 0;
+    const paid = apt.paidAmount || 0;
+    const remaining = Math.max(0, total - paid);
 
-      // Immediately remove from UI
-      setAppointments(prev => prev.filter(app => app._id !== id));
-
-      // Close modal
-      setShowDetailModal(false);
-
-      // Reload to get fresh data
-      await loadAppointments();
-      showToast('Qabul muvaffaqiyatli o\'chirildi!', 'success');
-    } catch (error) {
-      console.error('Delete error:', error);
-      showToast('Xatolik: ' + (error.response?.data?.message || error.message || 'Noma\'lum xatolik'), 'error');
-    }
-  };
-
-  const openDetailModal = (appointment) => {
-    setSelectedAppointment(appointment);
-    setShowDetailModal(true);
-  };
-
-  // Filter and sort
-  let filteredAppointments = appointments.filter(app => {
-    if (!searchQuery) return true;
-
-    const query = searchQuery.toLowerCase();
-    const patient = app.patient || app.patientId || {};
-    const doctor = app.doctor || app.doctorId || {};
-    const patientName = `${patient.firstName || ''} ${patient.lastName || ''}`.toLowerCase();
-    const doctorName = `${doctor.firstName || ''} ${doctor.lastName || ''}`.toLowerCase();
-    const phone = patient.phone || '';
-
-    return patientName.includes(query) || doctorName.includes(query) || phone.includes(query);
-  });
-
-  // Sort
-  if (sortBy === 'time') {
-    filteredAppointments.sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
-  } else if (sortBy === 'patient') {
-    filteredAppointments.sort((a, b) => {
-      const nameA = `${a.patient?.firstName} ${a.patient?.lastName}`;
-      const nameB = `${b.patient?.firstName} ${b.patient?.lastName}`;
-      return nameA.localeCompare(nameB);
+    setPaymentContext({ type: 'existing', data: apt });
+    setPaymentData({
+      totalAmount: total,
+      amount: remaining,
+      method: 'cash',
+      received: remaining,
+      discount: 0,
+      hasDiscount: false,
+      note: ''
     });
-  } else if (sortBy === 'doctor') {
-    filteredAppointments.sort((a, b) => {
-      const nameA = `${a.doctor?.firstName} ${a.doctor?.lastName}`;
-      const nameB = `${b.doctor?.firstName} ${b.doctor?.lastName}`;
-      return nameA.localeCompare(nameB);
+    setShowPaymentModal(true);
+  };
+
+  // Open Payment Modal for NEW appointment
+  const handleOpenNewPayment = () => {
+    if (!formData.patientId || !formData.doctorId || !formData.date) {
+      alert("Iltimos, avval Bemor, Shifokor va Sana tanlang!");
+      return;
+    }
+
+    const price = Number(formData.price || 0);
+
+    setPaymentContext({ type: 'new', data: formData });
+    setPaymentData({
+      totalAmount: price,
+      amount: price,
+      method: 'cash',
+      received: price,
+      discount: 0,
+      hasDiscount: false,
+      note: ''
     });
-  }
+    setShowPaymentModal(true);
+  };
+
+  // Calculate totals
+  const calculateTotals = () => {
+    const total = paymentData.totalAmount;
+    const discount = paymentData.hasDiscount ? Number(paymentData.discount || 0) : 0;
+
+    const finalTotal = Math.max(0, total - discount);
+    const toPay = Number(paymentData.amount || 0);
+    const debt = Math.max(0, finalTotal - toPay);
+    const change = Math.max(0, (Number(paymentData.received) || 0) - toPay);
+
+    return { finalTotal, debt, change };
+  };
+
+  // Process Payment (Save or Save & Print)
+  const handleProcessPayment = async (print = false) => {
+    try {
+      const { finalTotal } = calculateTotals();
+      let appointmentId = null;
+      let patientId = null;
+
+      // 1. Create Appointment if NEW
+      if (paymentContext.type === 'new') {
+        const apptRes = await http.post('/appointments', {
+          ...formData,
+          scheduledAt: `${formData.date}T${formData.time}:00`,
+          startsAt: `${formData.date}T${formData.time}:00`,
+          price: finalTotal
+        });
+        const newAppt = apptRes.data || apptRes;
+        appointmentId = newAppt._id;
+        patientId = newAppt.patientId || formData.patientId;
+
+        // Close New Appt Modal
+        setShowModal(false);
+        setFormData({ patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '', price: 50000 });
+      } else {
+        appointmentId = paymentContext.data._id;
+        patientId = paymentContext.data.patientId?._id || paymentContext.data.patientId;
+      }
+
+      // 2. Create Payment
+      let newPayment = null;
+      if (paymentData.amount > 0) {
+        const payRes = await http.post('/payments', {
+          appointmentId,
+          patientId,
+          amount: Number(paymentData.amount),
+          method: paymentData.method,
+          note: paymentData.note || 'Kassaga to\'lov'
+        });
+        newPayment = payRes.data || payRes;
+      }
+
+      // 3. Print
+      if (print) {
+        const printUrl = newPayment
+          ? `${http.API_BASE || ''}/api/receipts/payments/${newPayment._id}/print`
+          : `${http.API_BASE || ''}/api/receipts/appointments/${appointmentId}/print`;
+        printFromUrl(printUrl);
+      }
+
+      // 4. Close Payment Modal
+      setShowPaymentModal(false);
+      loadData();
+
+    } catch (error) {
+      console.error('Payment Processing Error:', error);
+      alert("Xatolik yuz berdi: " + (error?.response?.data?.message || error.message));
+    }
+  };
+
+  const handleAddPatient = async (e) => {
+    e.preventDefault();
+    try {
+      const cardNo = newPatientData.cardNo || String(Math.floor(10000000 + Math.random() * 90000000));
+      const response = await http.post('/patients', { ...newPatientData, cardNo });
+      const newPatient = response.data || response;
+      setPatients([...patients, newPatient]);
+      setFormData({ ...formData, patientId: newPatient._id });
+      setNewPatientData({ firstName: '', lastName: '', phone: '', birthDate: '', gender: 'male', address: '', cardNo: '' });
+      setShowAddPatientModal(false);
+      alert('Bemor muvaffaqiyatli qo\'shildi!');
+    } catch (error) {
+      console.error('Add patient error:', error);
+      alert(error?.response?.data?.message || 'Bemor qo\'shishda xatolik!');
+    }
+  };
+
+  const statusMap = {
+    scheduled: { label: 'Rejalashtirilgan', class: 'bg-blue-50 text-blue-700 border-blue-200', icon: Calendar },
+    waiting: { label: 'Kutmoqda', class: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
+    in_progress: { label: 'Jarayonda', class: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: Activity },
+    done: { label: 'Tugallangan', class: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: Check },
+    cancelled: { label: 'Bekor qilingan', class: 'bg-rose-50 text-rose-700 border-rose-200', icon: X }
+  };
+
+  const statCards = [
+    { label: 'Jami Qabullar', value: stats.total, icon: Calendar, bg: 'bg-blue-50', text: 'text-blue-600' },
+    { label: 'Kutmoqda', value: stats.waiting, icon: Clock, bg: 'bg-amber-50', text: 'text-amber-600' },
+    { label: 'Jarayonda', value: stats.in_progress, icon: Activity, bg: 'bg-indigo-50', text: 'text-indigo-600' },
+    { label: 'Tugallangan', value: stats.done, icon: Check, bg: 'bg-emerald-50', text: 'text-emerald-600' },
+  ];
+
+  const { finalTotal, debt, change } = calculateTotals();
 
   return (
-    <div style={styles.container}>
+    <div className="space-y-8 animate-fade-in pb-10">
       {/* Header */}
-      <div style={styles.header}>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 style={styles.title}>Qabullar</h1>
-          <p style={styles.subtitle}>Bemorlar qabullari va rejalashtirilgan vaqtlar</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">Qabullar</h1>
+          <p className="text-muted-foreground mt-2 text-lg">Bemorlar qabuli va navbatni boshqarish</p>
         </div>
-        <button onClick={() => setShowCreateModal(true)} style={styles.createBtn}>
-          + Yangi Qabul
-        </button>
+        <div className="flex gap-3">
+          {user?.role === 'doctor' && (
+            <Button variant="outline" onClick={() => navigate('/doctor-room')} className="hidden sm:flex border-gray-200 shadow-sm hover:bg-gray-50">
+              <Activity className="h-4 w-4 mr-2" /> Mening Xonam
+            </Button>
+          )}
+          <Button onClick={() => setShowModal(true)} size="lg" className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 rounded-xl">
+            <Plus className="h-5 w-5 mr-2" /> Yangi Qabul
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
-      <div style={styles.statsRow}>
-        <div style={styles.statCard}>
-          <div style={styles.statNumber}>{stats.total}</div>
-          <div style={styles.statLabel}>Jami</div>
-        </div>
-        <div style={{ ...styles.statCard, borderLeft: '3px solid #3b82f6' }}>
-          <div style={styles.statNumber}>{stats.scheduled}</div>
-          <div style={styles.statLabel}>Rejalashtirilgan</div>
-        </div>
-        <div style={{ ...styles.statCard, borderLeft: '3px solid #f59e0b' }}>
-          <div style={styles.statNumber}>{stats.inProgress}</div>
-          <div style={styles.statLabel}>Jarayonda</div>
-        </div>
-        <div style={{ ...styles.statCard, borderLeft: '3px solid #10b981' }}>
-          <div style={styles.statNumber}>{stats.completed}</div>
-          <div style={styles.statLabel}>Tugallangan</div>
-        </div>
-        <div style={{ ...styles.statCard, borderLeft: '3px solid #ef4444' }}>
-          <div style={styles.statNumber}>{stats.cancelled}</div>
-          <div style={styles.statLabel}>Bekor qilingan</div>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((stat, i) => (
+          <Card key={i} className="border-2 border-gray-200 hover:border-gray-300 hover:shadow-lg transition-all duration-300 rounded-xl">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-xl ${stat.bg} ${stat.text}`}>
+                  <stat.icon className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase">{stat.label}</p>
+                  <h3 className="text-2xl font-black text-slate-900 mt-0.5">{stat.value}</h3>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Filters */}
-      <div style={styles.filtersRow}>
-        <input
-          type="text"
-          placeholder="🔍 Qidirish..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={styles.searchInput}
-        />
-
-        <select value={filterDate} onChange={(e) => setFilterDate(e.target.value)} style={styles.filterSelect}>
-          <option value="all">📅 Barcha sanalar</option>
-          <option value="today">Bugun</option>
-          <option value="week">Bu hafta</option>
-          <option value="month">Bu oy</option>
-        </select>
-
-        <select value={filterDoctor} onChange={(e) => setFilterDoctor(e.target.value)} style={styles.filterSelect}>
-          <option value="">👨‍⚕️ Barcha shifokorlar</option>
-          {doctors.map(doc => (
-            <option key={doc._id} value={doc._id}>{doc.firstName} {doc.lastName}</option>
-          ))}
-        </select>
-
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} style={styles.filterSelect}>
-          <option value="">📊 Barcha holatlar</option>
-          <option value="scheduled">Rejalashtirilgan</option>
-          <option value="in_progress">Jarayonda</option>
-          <option value="completed">Tugallangan</option>
-          <option value="cancelled">Bekor qilingan</option>
-        </select>
-
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={styles.filterSelect}>
-          <option value="time">🕐 Vaqt bo'yicha</option>
-          <option value="patient">👤 Bemor bo'yicha</option>
-          <option value="doctor">👨‍⚕️ Shifokor bo'yicha</option>
-        </select>
-      </div>
-
-      {/* Table */}
-      <div style={styles.tableContainer}>
-        {loading ? (
-          <div style={{ padding: '60px', textAlign: 'center' }}>
-            <LoadingSpinner size={40} />
-          </div>
-        ) : (
-          <table style={styles.table}>
-            <thead>
-              <tr style={styles.tableHeader}>
-                <th style={styles.th}>VAQT</th>
-                <th style={styles.th}>BEMOR</th>
-                <th style={styles.th}>SHIFOKOR</th>
-                <th style={styles.th}>XIZMAT</th>
-                <th style={styles.th}>SUMMA</th>
-                <th style={styles.th}>TO'LOV</th>
-                <th style={styles.th}>NAVBAT</th>
-                <th style={styles.th}>HOLAT</th>
-                <th style={styles.th}>AMALLAR</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredAppointments.length === 0 ? (
-                <tr>
-                  <td colSpan="9" style={styles.empty}>
-                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>📅</div>
-                    <div>Qabullar topilmadi</div>
-                  </td>
-                </tr>
-              ) : (
-                filteredAppointments.map(app => {
-                  const patient = app.patient || app.patientId || {};
-                  const doctor = app.doctor || app.doctorId || {};
-                  const service = app.service || app.serviceId || {};
-
-                  // Navbat ma'lumotlarini topish
-                  const queueEntry = queueData.find(q => q.appointmentId === app._id);
-
-                  return (
-                    <tr
-                      key={app._id}
-                      style={styles.tableRow}
-                      onClick={() => openDetailModal(app)}
-                    >
-                      <td style={styles.td}>
-                        <div style={styles.time}>
-                          {app.scheduledAt ? new Date(app.scheduledAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                        </div>
-                        <div style={styles.date}>
-                          {app.scheduledAt ? new Date(app.scheduledAt).toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
-                        </div>
-                      </td>
-                      <td style={styles.td}>
-                        <div style={styles.patientName}>
-                          {patient.firstName || '-'} {patient.lastName || ''}
-                        </div>
-                        <div style={styles.patientPhone}>{patient.phone || '-'}</div>
-                      </td>
-                      <td style={styles.td}>
-                        {doctor.firstName || '-'} {doctor.lastName || ''}
-                      </td>
-                      <td style={styles.td}>
-                        {service.name || '-'}
-                      </td>
-                      <td style={styles.td}>
-                        <strong>{(app.price || service.price || 0).toLocaleString()} so'm</strong>
-                      </td>
-                      <td style={styles.td}>
-                        {app.isPaid ? (
-                          <span style={styles.paidBadge}>✅ To'landi</span>
-                        ) : (
-                          <span style={styles.unpaidBadge}>⏳ Kutilmoqda</span>
-                        )}
-                      </td>
-                      <td style={styles.td}>
-                        {queueEntry ? (
-                          <div>
-                            <div style={styles.queueBadge}>№{queueEntry.queueNumber}</div>
-                            <div style={styles.waitTime}>~{queueEntry.estimatedWaitTime || 0} daq</div>
-                          </div>
-                        ) : (
-                          <span style={{ color: '#999', fontSize: '13px' }}>-</span>
-                        )}
-                      </td>
-                      <td style={styles.td}>
-                        <StatusBadge status={app.status} />
-                      </td>
-                      <td style={styles.td}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteAppointment(app._id);
-                          }}
-                          style={styles.deleteBtn}
-                          title="O'chirish"
-                        >
-                          🗑️
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {/* Create Modal */}
-      {showCreateModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowCreateModal(false)}>
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <h3 style={styles.modalTitle}>⚡ Yangi Qabul Yaratish</h3>
-              <button onClick={() => setShowCreateModal(false)} style={styles.closeBtn}>×</button>
+      {/* Filters Bar */}
+      <Card className="border-none shadow-sm bg-white sticky top-4 z-20">
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+              <Button variant="ghost" size="sm" onClick={() => setFilterDoctor('all')} className={cn("rounded-md text-xs font-medium", filterDoctor === 'all' ? "bg-white shadow-sm text-primary" : "text-gray-500 hover:text-gray-900")}>
+                Barchasi
+              </Button>
+              {doctors.slice(0, 3).map(doc => (
+                <Button key={doc._id} variant="ghost" size="sm" onClick={() => setFilterDoctor(doc._id)} className={cn("rounded-md text-xs font-medium", filterDoctor === doc._id ? "bg-white shadow-sm text-primary" : "text-gray-500 hover:text-gray-900")}>
+                  Dr. {doc.name.split(' ')[0]}
+                </Button>
+              ))}
             </div>
 
-            <div style={styles.modalBody}>
-              {/* Patient Search */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>👤 Bemor *</label>
-                {formData.patientId ? (
-                  <div style={styles.selectedPatient}>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{formData.patientName}</div>
-                      <div style={{ fontSize: '13px', color: '#666' }}>Tanlangan</div>
-                    </div>
-                    <button
-                      onClick={() => setFormData({ ...formData, patientId: '', patientName: '' })}
-                      style={styles.changeBtn}
-                    >
-                      O'zgartirish
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <input
-                      type="text"
-                      placeholder="Bemor ismini yoki telefonini kiriting..."
-                      value={patientSearch}
-                      onChange={(e) => setPatientSearch(e.target.value)}
-                      style={styles.input}
-                      autoFocus
-                    />
-                    {searchResults.length > 0 && (
-                      <div style={styles.searchResults}>
-                        {searchResults.map(patient => (
-                          <div
-                            key={patient._id}
-                            onClick={() => selectPatient(patient)}
-                            style={styles.searchResultItem}
-                          >
-                            <div style={{ fontWeight: 600 }}>
-                              {patient.firstName} {patient.lastName}
-                            </div>
-                            <div style={{ fontSize: '13px', color: '#666' }}>
-                              {patient.phone}
-                            </div>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="relative w-full md:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Select value={filterDoctor} onValueChange={setFilterDoctor}>
+                  <SelectTrigger className="pl-10 h-10 bg-gray-50 border-gray-200 focus:ring-primary/20">
+                    <SelectValue placeholder="Shifokorni tanlang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Barcha Shifokorlar</SelectItem>
+                    {doctors.map(d => <SelectItem key={d._id} value={d._id}>{d.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input type="date" className="pl-9 pr-4 py-2 h-10 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-gray-50 w-full md:w-auto" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Appointments Table */}
+      <Card className="border-none shadow-lg bg-white/80 backdrop-blur-sm overflow-hidden min-h-[400px]">
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="h-64 flex flex-col items-center justify-center text-muted-foreground">
+              <Activity className="h-10 w-10 animate-spin text-primary mb-4" />
+              <p>Qabullar yuklanmoqda...</p>
+            </div>
+          ) : appointments.length === 0 ? (
+            <div className="py-20 flex flex-col items-center justify-center text-center">
+              <Calendar className="h-10 w-10 text-gray-300 mb-6" />
+              <h3 className="text-xl font-bold text-gray-900">Qabullar mavjud emas</h3>
+              <p className="text-muted-foreground mt-2 max-w-sm">Ushbu kunga qabullar rejalashtirilmagan.</p>
+              <Button className="mt-6 shadow-lg shadow-primary/20" onClick={() => setShowModal(true)}>
+                <Plus className="h-4 w-4 mr-2" /> Qabul yaratish
+              </Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader className="bg-gray-50/50">
+                <TableRow>
+                  <TableHead className="font-bold text-gray-900 pl-6">Vaqt</TableHead>
+                  <TableHead className="font-bold text-gray-900">Bemor</TableHead>
+                  <TableHead className="font-bold text-gray-900">Shifokor</TableHead>
+                  <TableHead className="font-bold text-gray-900">Holat</TableHead>
+                  <TableHead className="font-bold text-gray-900 text-right pr-6">Amallar</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {appointments.map((apt) => {
+                  const status = statusMap[apt.status] || statusMap.scheduled;
+                  const StatusIcon = status.icon;
+                  return (
+                    <TableRow key={apt._id} className={cn("hover:bg-blue-50/30 transition-colors border-b last:border-0 border-gray-100", apt.status === 'in_progress' && "bg-blue-50/40")}>
+                      <TableCell className="pl-6">
+                        <div className="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 text-primary font-bold shadow-sm">
+                          <span className="text-lg leading-none">{new Date(apt.startsAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }).split(':')[0]}</span>
+                          <span className="text-[10px] text-gray-500 leading-none mt-0.5">:{new Date(apt.startsAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }).split(':')[1]}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
+                            <AvatarFallback className="bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700 font-bold text-sm">{apt.patientId?.firstName?.[0]}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-bold text-gray-900 text-sm">{apt.patientId?.firstName} {apt.patientId?.lastName}</div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">{apt.patientId?.phone || "Telefon yo'q"}</div>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs">Dr</div>
+                          <span className="font-medium text-gray-700 text-sm">{apt.doctorId?.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={cn("px-2.5 py-1 text-xs font-semibold gap-1.5 shadow-sm", status.class)}>
+                          <StatusIcon className="h-3.5 w-3.5" /> {status.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                        <div className="flex items-center justify-end gap-1">
+                          {apt.status === 'scheduled' && (
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 rounded-full" onClick={() => handleCheckIn(apt._id)} title="Keldi (Check-in)">
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-full" onClick={() => handleOpenPayment(apt)} title="To'lov">
+                            <DollarSign className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
-              {/* Doctor */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>👨‍⚕️ Shifokor *</label>
-                <select
+      {/* Add Appointment Modal */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto p-8 rounded-2xl">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-3xl font-black text-slate-900">Yangi Qabul</DialogTitle>
+            <DialogDescription className="text-base text-gray-500 mt-2">Bemor uchun yangi qabul belgilash formasi</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <Label className="text-base font-bold text-gray-700">Bemor *</Label>
+                <div className="flex gap-2">
+                  <Combobox
+                    options={patients.map(p => ({ value: p._id, label: `${p.firstName} ${p.lastName}` }))}
+                    value={formData.patientId}
+                    onValueChange={(val) => setFormData({ ...formData, patientId: val })}
+                    placeholder="Bemorni tanlang"
+                    searchPlaceholder="Bemor ismini yozing..."
+                    emptyText="Bemor topilmadi"
+                  />
+                  <Button type="button" size="icon" variant="outline" className="h-12 w-12 border-2 border-blue-200 hover:bg-blue-50 text-blue-600 rounded-xl" onClick={() => setShowAddPatientModal(true)}>
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <Label className="text-base font-bold text-gray-700">Shifokor *</Label>
+                <Combobox
+                  options={doctors.map(d => ({ value: d._id, label: d.name }))}
                   value={formData.doctorId}
-                  onChange={(e) => setFormData({ ...formData, doctorId: e.target.value })}
-                  style={styles.input}
-                >
-                  <option value="">Tanlang...</option>
-                  {doctors.map(doctor => (
-                    <option key={doctor._id} value={doctor._id}>
-                      {doctor.firstName} {doctor.lastName}
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={(val) => setFormData({ ...formData, doctorId: val })}
+                  placeholder="Shifokorni tanlang"
+                  searchPlaceholder="Shifokor ismini yozing..."
+                  emptyText="Shifokor topilmadi"
+                />
               </div>
+            </div>
 
-              {/* Service */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>🏥 Xizmat *</label>
-                <select
-                  value={formData.serviceId}
-                  onChange={(e) => {
-                    const selectedService = services.find(s => s._id === e.target.value);
-                    setFormData({
-                      ...formData,
-                      serviceId: e.target.value,
-                      price: selectedService?.price || ''
-                    });
-                  }}
-                  style={styles.input}
-                >
-                  <option value="">Tanlang...</option>
-                  {services.map(service => (
-                    <option key={service._id} value={service._id}>
-                      {service.name} - {service.price?.toLocaleString()} so'm
-                    </option>
-                  ))}
-                </select>
+            <div className="space-y-3">
+              <Label className="text-base font-bold text-gray-700">Sana *</Label>
+              <DatePicker
+                value={formData.date}
+                onChange={(val) => setFormData({ ...formData, date: val, time: '' })}
+                placeholder="Sanani tanlang"
+                disablePastDates={true}
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-base font-bold text-gray-700">Bo'sh vaqtlar</Label>
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 max-h-[150px] overflow-y-auto pr-1 custom-scrollbar p-1">
+                {availableSlots.map(slot => (
+                  <button key={slot} type="button"
+                    className={cn("h-10 rounded-xl text-sm font-bold transition-all duration-200 border-2",
+                      formData.time === slot ? "bg-primary text-white shadow-md border-primary" : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50")}
+                    onClick={() => setFormData({ ...formData, time: slot })}>
+                    {slot}
+                  </button>
+                ))}
               </div>
+            </div>
 
-              {/* Price */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>💰 Narx (so'm)</label>
-                <input
+            {/* Price Input (Automatic Sum) */}
+            <div className="space-y-3">
+              <Label className="text-base font-bold text-gray-700">Qabul Narxi (Avtomatik)</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600" />
+                <Input
                   type="number"
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  style={styles.input}
-                  placeholder="0"
+                  className="pl-9 font-bold text-emerald-600 border-emerald-200 bg-emerald-50/30 h-12 text-lg"
                 />
               </div>
-
-              {/* Date Time */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>📅 Sana va Vaqt *</label>
-                <input
-                  type="datetime-local"
-                  value={formData.scheduledAt}
-                  onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
-                  style={styles.input}
-                  min={new Date().toISOString().slice(0, 16)}
-                />
-              </div>
-
-              {/* Notes */}
-              <div style={styles.formGroup}>
-                <label style={styles.label}>📝 Izoh</label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  style={{ ...styles.input, minHeight: '60px', resize: 'vertical' }}
-                  placeholder="Qo'shimcha ma'lumot..."
-                />
-              </div>
-
-              {/* Payment Section */}
-              <div style={{ ...styles.formGroup, borderTop: '2px solid #e5e7eb', paddingTop: '1rem', marginTop: '1rem' }}>
-                <label style={{ ...styles.label, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={formData.makePayment}
-                    onChange={(e) => {
-                      const selectedService = services.find(s => s._id === formData.serviceId);
-                      setFormData({
-                        ...formData,
-                        makePayment: e.target.checked,
-                        paymentAmount: e.target.checked ? (formData.price || selectedService?.price || '') : ''
-                      });
-                    }}
-                    style={{ marginRight: '8px', width: '18px', height: '18px', cursor: 'pointer' }}
-                  />
-                  💳 Hozir to'lov qabul qilish
-                </label>
-              </div>
-
-              {formData.makePayment && (
-                <>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>💰 To'lov summasi (so'm) *</label>
-                    <input
-                      type="number"
-                      value={formData.paymentAmount}
-                      onChange={(e) => setFormData({ ...formData, paymentAmount: e.target.value })}
-                      style={styles.input}
-                      placeholder="150000"
-                    />
-                  </div>
-
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>💳 To'lov usuli *</label>
-                    <select
-                      value={formData.paymentMethod}
-                      onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                      style={styles.input}
-                    >
-                      <option value="cash">Naqd</option>
-                      <option value="card">Karta</option>
-                      <option value="transfer">O'tkazma</option>
-                      <option value="online">Online</option>
-                    </select>
-                  </div>
-                </>
-              )}
             </div>
 
-            <div style={styles.modalFooter}>
-              <button onClick={() => setShowCreateModal(false)} style={styles.cancelBtn}>
-                Bekor qilish
-              </button>
-              <button
-                onClick={createAppointment}
-                style={{
-                  ...styles.submitBtn,
-                  opacity: (!formData.patientId || !formData.doctorId || !formData.serviceId || !formData.scheduledAt) ? 0.5 : 1,
-                }}
-                disabled={!formData.patientId || !formData.doctorId || !formData.serviceId || !formData.scheduledAt}
-              >
-                ✅ Yaratish
-              </button>
+            <div className="space-y-3">
+              <Label className="text-base font-bold text-gray-700">Izoh</Label>
+              <Textarea rows={2} value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Qo'shimcha ma'lumot..." className="bg-gray-50 border-2 border-gray-200 resize-none text-base" />
+            </div>
+
+            <DialogFooter className="gap-3 pt-4 sm:justify-between items-center bg-gray-50 -mx-8 -mb-8 p-6 mt-2 border-t border-gray-100">
+              <Button type="button" variant="outline" onClick={() => setShowModal(false)} className="h-12 px-6 rounded-xl border-gray-300 text-gray-600 font-semibold hover:bg-gray-100">Bekor qilish</Button>
+              <div className="flex gap-3">
+                {/* Save (Unpaid) */}
+                <Button type="submit" variant="ghost" className="h-12 px-6 rounded-xl text-primary font-semibold hover:bg-blue-50">Saqlash (To'lovsiz)</Button>
+                {/* Payment Button (Green) */}
+                <Button type="button" onClick={handleOpenNewPayment} className="h-12 px-8 rounded-xl bg-[#22C55E] hover:bg-emerald-600 shadow-lg shadow-emerald-600/20 text-white font-bold text-base flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" /> To'lov
+                </Button>
+              </div>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Modal (Updated to Picture 3) */}
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden rounded-xl bg-white">
+          <div className="flex justify-between items-center p-4 border-b">
+            <DialogTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <div className="bg-blue-100 p-1.5 rounded-lg text-blue-600"><DollarSign className="h-5 w-5" /></div>
+              Kassaga to'lov
+            </DialogTitle>
+            <div className="text-sm text-gray-400 font-mono">
+              {new Date().toLocaleString('uz-UZ')}
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Detail Modal */}
-      {showDetailModal && selectedAppointment && (
-        <div style={styles.modalOverlay} onClick={() => setShowDetailModal(false)}>
-          <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <h3 style={styles.modalTitle}>📋 Qabul Tafsilotlari</h3>
-              <button onClick={() => setShowDetailModal(false)} style={styles.closeBtn}>×</button>
-            </div>
-
-            <div style={styles.modalBody}>
-              <div style={styles.detailCard}>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailLabel}>Bemor:</span>
-                  <span style={styles.detailValue}>
-                    {selectedAppointment.patient?.firstName} {selectedAppointment.patient?.lastName}
-                  </span>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Forms Column */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Checkbox id="discount" checked={paymentData.hasDiscount} onCheckedChange={(checked) => setPaymentData({ ...paymentData, hasDiscount: checked })} />
+                  <Label htmlFor="discount" className="font-semibold text-gray-700">Chegirma</Label>
                 </div>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailLabel}>Telefon:</span>
-                  <span style={styles.detailValue}>{selectedAppointment.patient?.phone}</span>
-                </div>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailLabel}>Shifokor:</span>
-                  <span style={styles.detailValue}>
-                    {selectedAppointment.doctor?.firstName} {selectedAppointment.doctor?.lastName}
-                  </span>
-                </div>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailLabel}>Xizmat:</span>
-                  <span style={styles.detailValue}>{selectedAppointment.service?.name}</span>
-                </div>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailLabel}>Vaqt:</span>
-                  <span style={styles.detailValue}>
-                    {new Date(selectedAppointment.scheduledAt).toLocaleString('uz-UZ')}
-                  </span>
-                </div>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailLabel}>Narx:</span>
-                  <span style={styles.detailValue}>
-                    {(selectedAppointment.price || selectedAppointment.service?.price || 0).toLocaleString()} so'm
-                  </span>
-                </div>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailLabel}>To'lov:</span>
-                  {selectedAppointment.isPaid ? (
-                    <span style={styles.paidBadge}>✅ To'landi</span>
-                  ) : (
-                    <span style={styles.unpaidBadge}>⏳ Kutilmoqda</span>
-                  )}
-                </div>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailLabel}>Holat:</span>
-                  <StatusBadge status={selectedAppointment.status} />
-                </div>
-                {selectedAppointment.notes && (
-                  <div style={{ ...styles.detailRow, flexDirection: 'column', alignItems: 'flex-start' }}>
-                    <span style={styles.detailLabel}>Izoh:</span>
-                    <span style={{ ...styles.detailValue, marginTop: '8px' }}>{selectedAppointment.notes}</span>
+                {paymentData.hasDiscount && (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      value={paymentData.discount}
+                      onChange={(e) => setPaymentData({ ...paymentData, discount: Number(e.target.value) })}
+                      className="w-24 h-9"
+                    />
+                    <span className="text-sm font-bold text-gray-500">So'm</span>
                   </div>
                 )}
               </div>
 
-              {/* Status Actions */}
-              {selectedAppointment.status === 'scheduled' && (
-                <div style={styles.actionsRow}>
-                  <button
-                    onClick={() => updateAppointmentStatus(selectedAppointment._id, 'in_progress')}
-                    style={{ ...styles.actionBtn, background: '#f59e0b', color: '#fff' }}
-                  >
-                    ▶️ Boshlash
-                  </button>
-                  <button
-                    onClick={() => updateAppointmentStatus(selectedAppointment._id, 'cancelled')}
-                    style={{ ...styles.actionBtn, background: '#ef4444', color: '#fff' }}
-                  >
-                    ❌ Bekor qilish
-                  </button>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-500 uppercase">To'lov Summasi</Label>
+                <Input
+                  type="number"
+                  value={paymentData.amount}
+                  onChange={(e) => setPaymentData({ ...paymentData, amount: Number(e.target.value) })}
+                  className="h-14 text-2xl font-bold bg-gray-50 border-gray-200 focus:ring-emerald-500/20 text-emerald-700"
+                />
+              </div>
 
-              {selectedAppointment.status === 'in_progress' && (
-                <div style={styles.actionsRow}>
-                  <button
-                    onClick={() => updateAppointmentStatus(selectedAppointment._id, 'completed')}
-                    style={{ ...styles.actionBtn, background: '#10b981', color: '#fff' }}
-                  >
-                    ✅ Tugatish
-                  </button>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-500 uppercase">To'lov Turi</Label>
+                <div className="flex gap-2">
+                  <Button variant={paymentData.method === 'cash' ? 'default' : 'outline'} onClick={() => setPaymentData({ ...paymentData, method: 'cash' })} className={cn("flex-1 h-11", paymentData.method === 'cash' ? "bg-emerald-600 hover:bg-emerald-700" : "")}>Naqd</Button>
+                  <Button variant={paymentData.method === 'card' ? 'default' : 'outline'} onClick={() => setPaymentData({ ...paymentData, method: 'card' })} className={cn("flex-1 h-11", paymentData.method === 'card' ? "bg-blue-600 hover:bg-blue-700" : "")}>Karta</Button>
+                  <Button variant={paymentData.method === 'transfer' ? 'default' : 'outline'} onClick={() => setPaymentData({ ...paymentData, method: 'transfer' })} className={cn("flex-1 h-11", paymentData.method === 'transfer' ? "bg-purple-600 hover:bg-purple-700" : "")}>O'tkazma</Button>
                 </div>
-              )}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-500 uppercase">Ma'lumot</Label>
+                <Textarea
+                  rows={3}
+                  placeholder="..."
+                  value={paymentData.note}
+                  onChange={(e) => setPaymentData({ ...paymentData, note: e.target.value })}
+                  className="bg-gray-50 resize-none"
+                />
+              </div>
             </div>
 
-            <div style={styles.modalFooter}>
-              <button
-                onClick={() => handlePrint(selectedAppointment)}
-                style={{ ...styles.cancelBtn, background: '#6366f1', color: '#fff', marginRight: 'auto' }}
-              >
-                🖨️ Chek chiqarish
-              </button>
-              <button onClick={() => setShowDetailModal(false)} style={styles.cancelBtn}>
-                Yopish
-              </button>
+            {/* Summary Column */}
+            <div className="bg-gray-50 rounded-2xl p-6 space-y-6 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center text-lg font-bold text-gray-700">
+                  <span>Umumiy summa:</span>
+                  <span>{finalTotal.toLocaleString()} UZS</span>
+                </div>
+                <div className="h-px bg-gray-200"></div>
+                <div className="flex justify-between items-center text-sm font-medium text-emerald-600">
+                  <span>To'lov:</span>
+                  <span className="font-bold bg-emerald-100 px-2 py-0.5 rounded text-emerald-700">{Number(paymentData.amount).toLocaleString()} UZS</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-medium text-red-500">
+                  <span>Qarzga:</span>
+                  <span className="font-bold bg-red-100 px-2 py-0.5 rounded text-red-700">{debt.toLocaleString()} UZS</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-medium text-gray-500">
+                  <span>Qaytim:</span>
+                  <span className="font-bold bg-gray-200 px-2 py-0.5 rounded text-gray-700">{change.toLocaleString()} UZS</span>
+                </div>
+              </div>
+
+              {paymentData.method === 'cash' && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-gray-400 uppercase">Qabul qilingan naqd pul</Label>
+                  <Input
+                    type="number"
+                    value={paymentData.received}
+                    onChange={(e) => setPaymentData({ ...paymentData, received: Number(e.target.value) })}
+                    className="h-12 bg-white font-bold"
+                    placeholder="Mijoz bergan summa"
+                  />
+                </div>
+              )}
+
+              <div className="flex flex-col gap-3 mt-4">
+                <Button onClick={() => handleProcessPayment(true)} className="h-12 w-full bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-lg shadow-amber-500/20 rounded-xl">
+                  <Printer className="h-5 w-5 mr-2" /> Saqlash Va Chop Etish
+                </Button>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setShowPaymentModal(false)} className="flex-1 h-12 rounded-xl border-gray-300 font-semibold text-gray-600">Bekor Qilish</Button>
+                  <Button onClick={() => handleProcessPayment(false)} className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-lg shadow-primary/20">
+                    Saqlash
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Toast Notification */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={hideToast}
-        />
-      )}
-      <Receipt appointment={printableData.appointment} payment={printableData.payment} />
+      {/* Add Patient Modal (Unchanged mostly) */}
+      <Dialog open={showAddPatientModal} onOpenChange={setShowAddPatientModal}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto p-8 rounded-2xl">
+          <DialogHeader className="mb-6"><DialogTitle className="text-3xl font-black text-slate-900">Yangi Bemor Qo'shish</DialogTitle></DialogHeader>
+          <form onSubmit={handleAddPatient} className="space-y-5">
+            <div className="space-y-3">
+              <Label className="text-base font-bold text-gray-700">Ism *</Label>
+              <Input required value={newPatientData.firstName} onChange={(e) => setNewPatientData({ ...newPatientData, firstName: e.target.value })} className="h-12 bg-gray-50 border-2 border-gray-200 text-base" />
+            </div>
+            <div className="space-y-3">
+              <Label className="text-base font-bold text-gray-700">Familiya *</Label>
+              <Input required value={newPatientData.lastName} onChange={(e) => setNewPatientData({ ...newPatientData, lastName: e.target.value })} className="h-12 bg-gray-50 border-2 border-gray-200 text-base" />
+            </div>
+            <div className="space-y-3">
+              <Label className="text-base font-bold text-gray-700">Telefon *</Label>
+              <Input required type="tel" value={newPatientData.phone} onChange={(e) => setNewPatientData({ ...newPatientData, phone: e.target.value })} className="h-12 bg-gray-50 border-2 border-gray-200 text-base" />
+            </div>
+            <DialogFooter className="gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setShowAddPatientModal(false)} className="h-12 px-8 rounded-xl border-2 border-gray-200 text-base font-semibold">Bekor qilish</Button>
+              <Button type="submit" className="h-12 px-8 rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 text-base font-semibold">Saqlash</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <ReceiptPreviewModal open={showReceiptModal} onClose={() => setShowReceiptModal(false)} url={receiptUrl} />
     </div>
   );
 }
-
-const styles = {
-  container: { padding: '32px', maxWidth: '1600px', margin: '0 auto', background: '#fafafa', minHeight: '100vh' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
-  title: { fontSize: '28px', fontWeight: 700, margin: 0, color: '#111' },
-  subtitle: { fontSize: '14px', color: '#666', margin: 0, marginTop: '4px' },
-  createBtn: { padding: '12px 24px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' },
-
-  statsRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px', marginBottom: '24px' },
-  statCard: { background: '#fff', padding: '16px', borderRadius: '8px', textAlign: 'center', border: '1px solid #e5e7eb' },
-  statNumber: { fontSize: '32px', fontWeight: 700, color: '#111', marginBottom: '4px' },
-  statLabel: { fontSize: '13px', color: '#666', fontWeight: 500 },
-
-  filtersRow: { display: 'grid', gridTemplateColumns: '2fr repeat(4, 1fr)', gap: '12px', marginBottom: '24px' },
-  searchInput: { padding: '10px 16px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '15px', outline: 'none' },
-  filterSelect: { padding: '10px 16px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '15px', outline: 'none', background: '#fff', cursor: 'pointer' },
-
-  tableContainer: { background: '#fff', borderRadius: '8px', border: '2px solid #e5e7eb', overflow: 'hidden' },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  tableHeader: { background: '#f9fafb', borderBottom: '2px solid #e5e7eb' },
-  th: { padding: '16px', textAlign: 'left', fontSize: '12px', fontWeight: 700, color: '#666', textTransform: 'uppercase', letterSpacing: '0.5px' },
-  tableRow: { borderBottom: '1px solid #f3f4f6', cursor: 'pointer', transition: 'background 0.2s' },
-  td: { padding: '16px', fontSize: '15px', color: '#333' },
-  time: { fontSize: '16px', fontWeight: 700, color: '#111', marginBottom: '4px' },
-  date: { fontSize: '13px', color: '#666' },
-  patientName: { fontSize: '15px', fontWeight: 600, color: '#111', marginBottom: '4px' },
-  patientPhone: { fontSize: '13px', color: '#666' },
-  paidBadge: { padding: '4px 12px', background: '#d1fae5', color: '#065f46', borderRadius: '6px', fontSize: '13px', fontWeight: 600 },
-  unpaidBadge: { padding: '4px 12px', background: '#fef3c7', color: '#92400e', borderRadius: '6px', fontSize: '13px', fontWeight: 600 },
-  queueBadge: { padding: '4px 10px', background: '#dbeafe', color: '#1e40af', borderRadius: '6px', fontSize: '14px', fontWeight: 700, marginBottom: '4px', display: 'inline-block' },
-  waitTime: { fontSize: '12px', color: '#666', fontWeight: 500 },
-  deleteBtn: { background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '4px 8px' },
-  empty: { textAlign: 'center', padding: '60px', color: '#999' },
-
-  // Modal
-  modalOverlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' },
-  modal: { background: 'white', borderRadius: '16px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' },
-  modalHeader: { padding: '24px', borderBottom: '2px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'white', zIndex: 1 },
-  modalTitle: { fontSize: '20px', fontWeight: 700, margin: 0, color: '#111' },
-  closeBtn: { background: 'none', border: 'none', fontSize: '32px', cursor: 'pointer', color: '#999', lineHeight: 1 },
-  modalBody: { padding: '24px' },
-  formGroup: { marginBottom: '20px' },
-  label: { display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: '#333' },
-  input: { width: '100%', padding: '12px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' },
-  selectedPatient: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: '#eff6ff', border: '2px solid #3b82f6', borderRadius: '8px' },
-  changeBtn: { padding: '8px 16px', background: 'white', border: '2px solid #3b82f6', color: '#3b82f6', borderRadius: '6px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' },
-  searchResults: { marginTop: '8px', border: '2px solid #e5e7eb', borderRadius: '8px', maxHeight: '200px', overflow: 'auto', background: 'white' },
-  searchResultItem: { padding: '12px', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', transition: 'background 0.2s' },
-  modalFooter: { padding: '24px', borderTop: '2px solid #f3f4f6', display: 'flex', gap: '12px', justifyContent: 'flex-end', position: 'sticky', bottom: 0, background: 'white' },
-  cancelBtn: { padding: '12px 24px', background: '#f3f4f6', color: '#111', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' },
-  submitBtn: { padding: '12px 24px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' },
-
-  // Detail Modal
-  detailCard: { background: '#f9fafb', padding: '20px', borderRadius: '8px', marginBottom: '20px' },
-  detailRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #e5e7eb' },
-  detailLabel: { fontSize: '14px', fontWeight: 600, color: '#666' },
-  detailValue: { fontSize: '14px', color: '#111', fontWeight: 500 },
-  actionsRow: { display: 'flex', gap: '12px', marginTop: '20px' },
-  actionBtn: { flex: 1, padding: '14px', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: 600, cursor: 'pointer' },
-};
