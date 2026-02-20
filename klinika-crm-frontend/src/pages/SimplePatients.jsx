@@ -73,36 +73,155 @@ export default function SimplePatients() {
 
     const handlePrint = () => {
         if (!selectedPatientForPrint) return;
+        const p = selectedPatientForPrint;
 
-        const patient = selectedPatientForPrint;
-        // Clean card number to ensure only digits (remove 'C' or other letters)
-        const cleanCardNo = patient.cardNo ? String(patient.cardNo).replace(/\D/g, '') : '00000000';
+        // cardNo yoki cardNumber — qaysi biri bo'lsa shuni ol, raqamlarni tozala
+        const raw = p.cardNumber || p.cardNo || '';
+        const cardNo = raw ? String(raw).replace(/\D/g, '') : '00000000';
 
-        const cardHTML = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Bemor Kartasi - ${patient.firstName} ${patient.lastName}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;padding:20px;background:#f5f5f5}.card{width:400px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.1)}.header{background:linear-gradient(135deg,#1e293b,#334155);color:white;padding:30px 20px;text-align:center}.header h1{font-size:24px;margin-bottom:5px}.header p{font-size:14px;opacity:0.9}.patient-id{background:#f8f9fa;padding:20px;text-align:center;border-bottom:2px dashed #dee2e6}.patient-id .label{font-size:12px;color:#6c757d;margin-bottom:8px}.patient-id .code{font-size:36px;font-weight:bold;color:#1e293b;letter-spacing:4px;font-family:'Courier New',monospace}.content{padding:25px}.info-row{display:flex;padding:12px 0;border-bottom:1px solid #f0f0f0}.info-row:last-child{border-bottom:none}.info-label{font-size:13px;color:#6c757d;width:120px;flex-shrink:0}.info-value{font-size:14px;font-weight:600;color:#212529;flex:1}.footer{background:#f8f9fa;padding:20px;text-center;font-size:12px;color:#6c757d;line-height:1.6}@media print{body{background:white;padding:0}.card{box-shadow:none;border-radius:0}}</style></head><body><div class="card"><div class="header"><h1>BEMOR KARTASI</h1><p>Klinika CRM Tizimi</p></div><div class="patient-id"><div class="label">Bemor Karta Raqami</div><img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${cleanCardNo}" style="display:block;margin:10px auto;width:120px;height:120px" alt="QR Code"/><div class="code" style="margin-top:10px">${cleanCardNo}</div></div><div class="content"><div class="info-row"><div class="info-label">Ism Familiya:</div><div class="info-value">${patient.firstName} ${patient.lastName}</div></div><div class="info-row"><div class="info-label">Telefon:</div><div class="info-value">${patient.phone}</div></div><div class="info-row"><div class="info-label">Tug'ilgan sana:</div><div class="info-value">${patient.birthDate ? new Date(patient.birthDate).toLocaleDateString('uz-UZ') : 'Kiritilmagan'}</div></div><div class="info-row"><div class="info-label">Yosh:</div><div class="info-value">${calculateAge(patient.birthDate)} yosh</div></div><div class="info-row"><div class="info-label">Jins:</div><div class="info-value">${patient.gender === 'male' ? 'Erkak' : 'Ayol'}</div></div>${patient.address ? `<div class="info-row"><div class="info-label">Manzil:</div><div class="info-value">${patient.address}</div></div>` : ''}<div class="info-row"><div class="info-label">Ro'yxatdan o'tgan:</div><div class="info-value">${new Date().toLocaleDateString('uz-UZ')}</div></div></div><div class="footer"><strong>Muhim eslatma:</strong><br>Ushbu kartochkani har safar klinikaga kelganingizda ko'rsating.<br>Karta raqamingizni eslab qoling yoki saqlang.</div></div></body></html>`;
+        // Yosh hisoblash — sof funksiya (state'ga bog'liq emas)
+        const calcAge = (bd) => {
+            if (!bd) return null;
+            const today = new Date(); const birth = new Date(bd);
+            let age = today.getFullYear() - birth.getFullYear();
+            if (today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) age--;
+            return age >= 0 ? age : null;
+        };
+        const age = calcAge(p.birthDate);
+        const ageStr = age !== null ? `${age} yosh` : '';
+        const birthStr = p.birthDate ? new Date(p.birthDate).toLocaleDateString('uz-UZ') : '';
+        const genderStr = p.gender === 'male' ? 'Erkak' : p.gender === 'female' ? 'Ayol' : '';
+        const regDate = new Date().toLocaleDateString('uz-UZ');
 
-        // Create iframe for printing
-        const iframe = document.createElement('iframe');
-        iframe.style.position = 'absolute';
-        iframe.style.width = '0';
-        iframe.style.height = '0';
-        iframe.style.border = 'none';
-        document.body.appendChild(iframe);
+        // Jadval qatori
+        const row = (label, value) => value
+            ? `<tr><td class="lbl">${label}</td><td class="val">${value}</td></tr>`
+            : '';
 
-        const iframeDoc = iframe.contentWindow.document;
-        iframeDoc.open();
-        iframeDoc.write(cardHTML);
-        iframeDoc.close();
+        const html = `<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bemor Karta - ${p.firstName} ${p.lastName}</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  @page{size:80mm auto;margin:0}
+  body{
+    font-family:'Courier New',Courier,monospace;
+    width:80mm;
+    min-height:100px;
+    background:#fff;
+    color:#000;
+    font-size:12px;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .wrap{width:72mm;margin:0 auto;padding:6mm 0 4mm}
 
-        // Wait for content to load, then print
-        setTimeout(() => {
-            iframe.contentWindow.focus();
-            iframe.contentWindow.print();
+  /* ── Sarlavha ── */
+  .clinic-name{
+    text-align:center;
+    font-size:15px;
+    font-weight:900;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    margin-bottom:1px;
+  }
+  .clinic-sub{
+    text-align:center;
+    font-size:9px;
+    letter-spacing:0.5px;
+    margin-bottom:5px;
+  }
+  .divider{border:none;border-top:1.5px dashed #000;margin:4px 0}
 
-            // Remove iframe after printing
-            setTimeout(() => {
-                document.body.removeChild(iframe);
-            }, 100);
-        }, 250);
+  /* ── Barcode ── */
+  .bc-wrap{text-align:center;margin:5px 0 2px}
+  .bc-wrap svg{width:68mm;height:14mm}
+  .card-no{
+    text-align:center;
+    font-size:18px;
+    font-weight:900;
+    letter-spacing:4px;
+    margin:2px 0 5px;
+  }
+
+  /* ── Ma'lumotlar jadvali ── */
+  table{width:100%;border-collapse:collapse;margin:4px 0}
+  td{padding:2.5px 1px;vertical-align:top;line-height:1.3}
+  .lbl{width:38%;font-size:10px;color:#444;white-space:nowrap}
+  .val{font-size:11px;font-weight:700;color:#000;word-break:break-word}
+
+  /* ── Pastki izoh ── */
+  .footer-note{
+    font-size:9px;
+    color:#333;
+    text-align:center;
+    margin-top:6px;
+    line-height:1.5;
+    border-top:1px dashed #999;
+    padding-top:5px;
+  }
+
+  @media print{
+    body{width:80mm}
+    .no-print{display:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="clinic-name">BEMOR KARTASI</div>
+  <div class="clinic-sub">Klinika CRM Tizimi</div>
+  <hr class="divider">
+
+  <!-- Barcode -->
+  <div class="bc-wrap">
+    <svg id="bc"></svg>
+  </div>
+  <div class="card-no">${cardNo}</div>
+
+  <hr class="divider">
+
+  <!-- Ma'lumotlar -->
+  <table>
+    ${row('Ism Familiya:', `${p.firstName || ''} ${p.lastName || ''}`.trim())}
+    ${row('Telefon:', p.phone)}
+    ${row('Tug\'ilgan:', birthStr)}
+    ${row('Yosh:', ageStr)}
+    ${row('Jins:', genderStr)}
+    ${row('Manzil:', p.address)}
+    ${row('Ro\'yxat:', regDate)}
+  </table>
+
+  <div class="footer-note">
+    Har safar klinikaga kelganingizda<br>
+    ushbu kartani ko'rsating!
+  </div>
+</div>
+
+<script>
+  JsBarcode("#bc","${cardNo}",{
+    format:"CODE128",
+    width:2,
+    height:55,
+    displayValue:false,
+    margin:0,
+    background:"#fff",
+    lineColor:"#000"
+  });
+  window.onload=function(){setTimeout(function(){window.print();},400)};
+<\/script>
+</body>
+</html>`;
+
+        const win = window.open('', '_blank', 'width=400,height=600,toolbar=0,menubar=0,scrollbars=0');
+        if (!win) { alert("Pop-up bloklangan! Brauzerneda pop-up ruxsat bering."); return; }
+        win.document.open();
+        win.document.write(html);
+        win.document.close();
     };
 
     const safePatients = Array.isArray(patients) ? patients : [];
