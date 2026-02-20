@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import {
     Home, Users, Calendar, Settings, LogOut,
     UserCheck, LayoutGrid, Stethoscope, CreditCard, ListOrdered,
-    TrendingUp, Activity, Banknote
+    TrendingUp, Activity, Banknote, Send
 } from "lucide-react";
 
 // ─── Rollar: kim qaysi sahifani ko'ra oladi ───────────────────────────────────
@@ -23,6 +23,7 @@ const ALL_MENU_ITEMS = [
     { to: "/reports", icon: TrendingUp, label: "Hisobotlar", roles: ADMIN_ROLES },
     { to: "/employees", icon: Users, label: "Xodimlar", roles: ADMIN_ROLES },
     { to: "/salaries", icon: Banknote, label: "Maoshlar", roles: ADMIN_ROLES },
+    { to: "/telegram-bot", icon: Send, label: "Telegram Bot", roles: ADMIN_ROLES },
     { to: "/system", icon: Settings, label: "Sozlamalar", roles: ADMIN_ROLES },
 ];
 
