@@ -1,158 +1,163 @@
-import React from "react";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import React, { Suspense, lazy } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/Toast";
 import HippoLayout from "./layouts/HippoLayout";
-import HippoDashboard from "./pages/HippoDashboard";
 
-// Pages
-import Debug from "./pages/Debug.jsx";
-import Login from "./pages/Login.jsx";
-import Register from "./pages/Register.jsx";
-import ForgotPassword from "./pages/ForgotPassword.jsx";
-import ResetPassword from "./pages/ResetPassword.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
-import ReceptionDashboard from "./pages/ReceptionDashboard.jsx";
-import DirectorDashboard from "./pages/DirectorDashboard.jsx";
-import DoctorDashboard from "./pages/DoctorDashboard.jsx";
-import Patients from "./pages/Patients.jsx";
-import Appointments from "./pages/Appointments.jsx";
-import Services from "./pages/Services.jsx";
-import Employees from "./pages/Employees.jsx";
-import Reports from "./pages/Reports.jsx";
-import System from "./pages/System.jsx";
-import DoctorRoom from "./pages/DoctorRoom.jsx";
-import AdminOverview from "./pages/AdminOverview.jsx";
-import CashierApp from "./areas/cashier/App.jsx";
-import DoctorApp from "./areas/doctor/App.jsx";
-import DirectorApp from "./areas/director/App.jsx";
-import Payments from "./pages/Payments.jsx";
-// NEW
-import Doctors from "./pages/Doctors.jsx";
-import Attendance from "./pages/Attendance.jsx";
-import Commissions from "./pages/Commissions.jsx";
-import Queue from "./pages/Queue.jsx";
-import QueueDisplay from "./pages/QueueDisplay.jsx";
-// TWA (Telegram WebApp) — PUBLIC ROUTE
-import Twa from "./pages/Twa.jsx";
-import Calendar from "./pages/Calendar.jsx";
-import Notifications from "./pages/Notifications.jsx";
-import Salaries from "./pages/Salaries.jsx";
-import SimpleDashboard from "./pages/SimpleDashboard.jsx";
-import SimplePatients from "./pages/SimplePatients.jsx";
-import SimpleAppointments from "./pages/SimpleAppointments.jsx";
-import SimplePayments from "./pages/SimplePayments.jsx";
-import SimpleQueue from "./pages/SimpleQueue.jsx";
-import SimpleAttendance from "./pages/SimpleAttendance.jsx";
-import SimpleReports from "./pages/SimpleReports.jsx";
-import SimpleSettings from "./pages/SimpleSettings.jsx";
-import SimpleSalaries from "./pages/SimpleSalaries.jsx";
-import SimpleDoctors from "./pages/SimpleDoctors.jsx";
-import SimpleServices from "./pages/SimpleServices.jsx";
-import SimpleCalendar from "./pages/SimpleCalendar.jsx";
-import SimpleDoctorRoom from "./pages/SimpleDoctorRoom.jsx";
-import SimpleCommissions from "./pages/SimpleCommissions.jsx";
-import ModernDashboard from "./pages/ModernDashboard/ModernDashboard.jsx";
-// NEW DOCTOR FEATURES
-import DoctorWallet from "./pages/DoctorWallet.jsx";
-import Departments from "./pages/Departments.jsx";
-import DoctorAnalytics from "./pages/DoctorAnalytics.jsx";
-import DoctorStatusBoard from "./pages/DoctorStatusBoard.jsx";
-import PatientProfile from "./pages/PatientProfile.jsx";
-import LiveQueue from "./pages/LiveQueue.jsx";
-import { cn } from "@/lib/utils";
-import { Menu } from "lucide-react";
-
-// Smart Dashboard Router - Now uses SimpleDashboard for everyone
-function SmartDashboard() {
-  // Everyone gets the simple, intuitive dashboard
-  return <SimpleDashboard />;
+// ─── Loading Spinner ──────────────────────────────────────────────────────────
+function PageLoader() {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: '60vh', flexDirection: 'column', gap: 12
+    }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: '50%',
+        border: '3px solid #EFF6FF', borderTopColor: '#3B82F6',
+        animation: 'spin 0.7s linear infinite'
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <span style={{ fontSize: 13, color: '#94A3B8', fontWeight: 600 }}>Yuklanmoqda...</span>
+    </div>
+  );
 }
 
+// ─── Lazy imports — faqat kerak bo'lganda yuklanadi ──────────────────────────
+// Public pages (tez kerak)
+const Login = lazy(() => import("./pages/Login.jsx"));
+const Register = lazy(() => import("./pages/Register.jsx"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword.jsx"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword.jsx"));
+
+// Special public pages
+const Twa = lazy(() => import("./pages/Twa.jsx"));
+const QueueDisplay = lazy(() => import("./pages/QueueDisplay.jsx"));
+
+// Dashboard (birinchi ko'rinadigan — eager-ga yaqin)
+const HippoDashboard = lazy(() => import("./pages/HippoDashboard.jsx"));
+
+// Main pages
+const SimplePatients = lazy(() => import("./pages/SimplePatients.jsx"));
+const SimpleAppointments = lazy(() => import("./pages/SimpleAppointments.jsx"));
+const SimpleDoctors = lazy(() => import("./pages/SimpleDoctors.jsx"));
+const SimpleServices = lazy(() => import("./pages/SimpleServices.jsx"));
+const SimplePayments = lazy(() => import("./pages/SimplePayments.jsx"));
+const SimpleQueue = lazy(() => import("./pages/SimpleQueue.jsx"));
+const SimpleAttendance = lazy(() => import("./pages/SimpleAttendance.jsx"));
+const SimpleReports = lazy(() => import("./pages/SimpleReports.jsx"));
+const SimpleSettings = lazy(() => import("./pages/SimpleSettings.jsx"));
+const SimpleSalaries = lazy(() => import("./pages/SimpleSalaries.jsx"));
+const SimpleCalendar = lazy(() => import("./pages/SimpleCalendar.jsx"));
+const SimpleDoctorRoom = lazy(() => import("./pages/SimpleDoctorRoom.jsx"));
+const SimpleCommissions = lazy(() => import("./pages/SimpleCommissions.jsx"));
+
+// Other pages (less visited)
+const PatientProfile = lazy(() => import("./pages/PatientProfile.jsx"));
+const Notifications = lazy(() => import("./pages/Notifications.jsx"));
+const Employees = lazy(() => import("./pages/Employees.jsx"));
+const DoctorWallet = lazy(() => import("./pages/DoctorWallet.jsx"));
+const Departments = lazy(() => import("./pages/Departments.jsx"));
+const DoctorAnalytics = lazy(() => import("./pages/DoctorAnalytics.jsx"));
+const DoctorStatusBoard = lazy(() => import("./pages/DoctorStatusBoard.jsx"));
+const LiveQueue = lazy(() => import("./pages/LiveQueue.jsx"));
+const AdminOverview = lazy(() => import("./pages/AdminOverview.jsx"));
+const ModernDashboard = lazy(() => import("./pages/ModernDashboard/ModernDashboard.jsx"));
+const Debug = lazy(() => import("./pages/Debug.jsx"));
+
+// Areas (rarely visited)
+const CashierApp = lazy(() => import("./areas/cashier/App.jsx"));
+const DoctorApp = lazy(() => import("./areas/doctor/App.jsx"));
+const DirectorApp = lazy(() => import("./areas/director/App.jsx"));
+
+// Old pages (kept for backward compat)
+const ReceptionDashboard = lazy(() => import("./pages/ReceptionDashboard.jsx"));
+const DirectorDashboard = lazy(() => import("./pages/DirectorDashboard.jsx"));
+const DoctorDashboard = lazy(() => import("./pages/DoctorDashboard.jsx"));
+
+// ─── App ─────────────────────────────────────────────────────────────────────
 export default function App() {
   return (
     <ErrorBoundary>
       <ToastProvider>
         <BrowserRouter>
           <AuthProvider>
-            <Routes>
-              {/* --- Public routes --- */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                {/* ── Public routes ── */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/twa" element={<Twa />} />
+                <Route path="/queue-display" element={<QueueDisplay />} />
 
-              {/* Telegram WebApp — PUBLIC, NO LAYOUT, NO AUTH */}
-              <Route path="/twa" element={<Twa />} />
-
-              {/* Queue Display — PUBLIC, NO LAYOUT, NO AUTH (for waiting room TV) */}
-              <Route path="/queue-display" element={<QueueDisplay />} />
-
-              {/* --- Protected + layout --- */}
-              <Route
-                element={
+                {/* ── Protected + Layout ── */}
+                <Route element={
                   <ProtectedRoute>
                     <HippoLayout />
                   </ProtectedRoute>
-                }
-              >
-                <Route index element={<HippoDashboard />} />
-                <Route path="/dashboard" element={<HippoDashboard />} />
-                <Route path="/modern-dashboard" element={<ModernDashboard />} />
-                <Route path="/dashboard/reception" element={<ReceptionDashboard />} />
-                <Route path="/dashboard/director" element={<DirectorDashboard />} />
-                <Route path="/dashboard/doctor" element={<DoctorDashboard />} />
-                <Route path="/patients" element={<SimplePatients />} />
-                <Route path="/patients/:id" element={<PatientProfile />} />
-                <Route path="/appointments" element={<SimpleAppointments />} />
-                <Route path="/doctor-room" element={<SimpleDoctorRoom />} />
-                <Route path="/doctors" element={<SimpleDoctors />} />
-                <Route path="/services" element={<SimpleServices />} />
-                <Route path="/payments" element={<SimplePayments />} />
-                <Route path="/users" element={<Employees />} />
-                <Route path="/employees" element={<Employees />} />
-                <Route path="/reports" element={<SimpleReports />} />
-                <Route path="/calendar" element={<SimpleCalendar />} />
-                <Route path="/notifications" element={<Notifications />} />
-                <Route path="/system" element={<SimpleSettings />} />
+                }>
+                  {/* Dashboard */}
+                  <Route index element={<HippoDashboard />} />
+                  <Route path="/dashboard" element={<HippoDashboard />} />
+                  <Route path="/modern-dashboard" element={<ModernDashboard />} />
+                  <Route path="/dashboard/reception" element={<ReceptionDashboard />} />
+                  <Route path="/dashboard/director" element={<DirectorDashboard />} />
+                  <Route path="/dashboard/doctor" element={<DoctorDashboard />} />
 
-                {/* NEW FEATURES */}
-                <Route path="/attendance" element={<SimpleAttendance />} />
-                <Route path="/commissions" element={<SimpleCommissions />} />
-                <Route path="/queue" element={<SimpleQueue />} />
-                <Route path="/live-queue" element={<LiveQueue />} />
-                <Route path="/salaries" element={<SimpleSalaries />} />
+                  {/* Core pages */}
+                  <Route path="/patients" element={<SimplePatients />} />
+                  <Route path="/patients/:id" element={<PatientProfile />} />
+                  <Route path="/appointments" element={<SimpleAppointments />} />
+                  <Route path="/doctor-room" element={<SimpleDoctorRoom />} />
+                  <Route path="/doctors" element={<SimpleDoctors />} />
+                  <Route path="/services" element={<SimpleServices />} />
+                  <Route path="/payments" element={<SimplePayments />} />
+                  <Route path="/reports" element={<SimpleReports />} />
+                  <Route path="/calendar" element={<SimpleCalendar />} />
+                  <Route path="/notifications" element={<Notifications />} />
+                  <Route path="/system" element={<SimpleSettings />} />
 
-                {/* DOCTOR FEATURES */}
-                <Route path="/doctors/:id/wallet" element={<DoctorWallet />} />
-                <Route path="/departments" element={<Departments />} />
-                <Route path="/analytics/doctors" element={<DoctorAnalytics />} />
-                <Route path="/doctors/status" element={<DoctorStatusBoard />} />
+                  {/* Users */}
+                  <Route path="/users" element={<Employees />} />
+                  <Route path="/employees" element={<Employees />} />
 
-                {/* areas */}
-                <Route path="/cashier" element={<CashierApp />} />
-                <Route path="/doctor" element={<DoctorApp />} />
-                <Route path="/director" element={<DirectorApp />} />
+                  {/* Extra features */}
+                  <Route path="/attendance" element={<SimpleAttendance />} />
+                  <Route path="/commissions" element={<SimpleCommissions />} />
+                  <Route path="/queue" element={<SimpleQueue />} />
+                  <Route path="/live-queue" element={<LiveQueue />} />
+                  <Route path="/salaries" element={<SimpleSalaries />} />
 
-                {/* ADMIN ONLY */}
-                <Route
-                  path="/admin/overview"
-                  element={
+                  {/* Doctor features */}
+                  <Route path="/doctors/:id/wallet" element={<DoctorWallet />} />
+                  <Route path="/departments" element={<Departments />} />
+                  <Route path="/analytics/doctors" element={<DoctorAnalytics />} />
+                  <Route path="/doctors/status" element={<DoctorStatusBoard />} />
+
+                  {/* Areas */}
+                  <Route path="/cashier" element={<CashierApp />} />
+                  <Route path="/doctor" element={<DoctorApp />} />
+                  <Route path="/director" element={<DirectorApp />} />
+
+                  {/* Admin only */}
+                  <Route path="/admin/overview" element={
                     <ProtectedRoute adminOnly>
                       <AdminOverview />
                     </ProtectedRoute>
-                  }
-                />
-              // Debug Route
-                <Route path="/debug" element={<Debug />} />
-              </Route>
+                  } />
 
-              {/* Catch-all */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+                  {/* Debug */}
+                  <Route path="/debug" element={<Debug />} />
+                </Route>
+
+                {/* Catch-all */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
           </AuthProvider>
         </BrowserRouter>
       </ToastProvider>
