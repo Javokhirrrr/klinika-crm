@@ -451,86 +451,80 @@ export default function SimplePatients() {
 
             {/* Print Preview Modal */}
             <Dialog open={showPrintPreview} onOpenChange={setShowPrintPreview}>
-                <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl font-bold">Bemor Kartasi - Preview</DialogTitle>
+                <DialogContent className="sm:max-w-[360px] max-h-[90vh] overflow-y-auto p-0">
+                    <DialogHeader className="px-5 pt-5 pb-3 border-b">
+                        <DialogTitle className="text-base font-bold">📄 Karta ko'rinishi (80mm chek)</DialogTitle>
                     </DialogHeader>
 
-                    {selectedPatientForPrint && (
-                        <div className="space-y-4">
-                            {/* Card Preview */}
-                            <div className="border-2 border-gray-200 rounded-2xl overflow-hidden bg-white">
-                                {/* Header */}
-                                <div className="bg-gradient-to-br from-slate-800 to-slate-900 text-white p-6 text-center">
-                                    <h1 className="text-2xl font-black mb-1">BEMOR KARTASI</h1>
-                                    <p className="text-sm opacity-90">Klinika CRM Tizimi</p>
+                    {selectedPatientForPrint && (() => {
+                        const p = selectedPatientForPrint;
+                        const cardNo = (p.cardNumber || p.cardNo || '00000000').replace(/\D/g, '') || '00000000';
+                        const age = calculateAge(p.birthDate);
+                        const barcodeUrl = `https://quickchart.io/chart?cht=qr&chs=180x180&chl=${cardNo}&choe=UTF-8`;
+                        const bcUrl = `https://barcodeapi.org/api/code128/${cardNo}?width=2&height=55`;
+                        const rows = [
+                            ['Ism Familiya', `${p.firstName || ''} ${p.lastName || ''}`.trim()],
+                            ['Telefon', p.phone],
+                            p.birthDate ? ['Tug\'ilgan', new Date(p.birthDate).toLocaleDateString('uz-UZ')] : null,
+                            age !== null && age >= 0 ? ['Yosh', `${age} yosh`] : null,
+                            p.gender ? ['Jins', p.gender === 'male' ? 'Erkak' : 'Ayol'] : null,
+                            p.address ? ['Manzil', p.address] : null,
+                            ['Ro\'yxat', new Date().toLocaleDateString('uz-UZ')],
+                        ].filter(Boolean);
+
+                        return (
+                            <div style={{
+                                fontFamily: "'Courier New', monospace",
+                                background: '#fff',
+                                padding: '14px 18px 10px',
+                                fontSize: 12,
+                                color: '#000',
+                                borderBottom: '1px solid #e5e7eb'
+                            }}>
+                                {/* Sarlavha */}
+                                <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                                    <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: 1, textTransform: 'uppercase' }}>BEMOR KARTASI</div>
+                                    <div style={{ fontSize: 9, color: '#555', letterSpacing: 0.5 }}>Klinika CRM Tizimi</div>
                                 </div>
 
-                                {/* Card Number */}
-                                <div className="bg-gray-50 p-5 text-center border-b-2 border-dashed border-gray-200">
-                                    <div className="text-xs text-gray-500 font-bold uppercase mb-2">Bemor Karta Raqami</div>
-                                    <div className="text-4xl font-black text-slate-900 font-mono tracking-wider">
-                                        {selectedPatientForPrint.cardNo ? String(selectedPatientForPrint.cardNo).replace(/\D/g, '') : '00000000'}
-                                    </div>
+                                <div style={{ borderTop: '1.5px dashed #999', margin: '6px 0' }} />
+
+                                {/* Barcode image */}
+                                <div style={{ textAlign: 'center', margin: '6px 0 3px' }}>
+                                    <img
+                                        src={bcUrl}
+                                        alt="barcode"
+                                        style={{ width: '100%', maxWidth: 280, height: 55, objectFit: 'fill' }}
+                                        onError={e => { e.target.style.display = 'none'; }}
+                                    />
+                                </div>
+                                <div style={{ textAlign: 'center', fontWeight: 900, fontSize: 18, letterSpacing: 4, margin: '2px 0 6px', fontFamily: 'monospace' }}>
+                                    {cardNo}
                                 </div>
 
-                                {/* Info */}
-                                <div className="p-6 space-y-3">
-                                    <div className="flex border-b border-gray-100 pb-3">
-                                        <span className="text-sm text-gray-500 font-medium w-32">Ism Familiya:</span>
-                                        <span className="text-sm font-bold text-slate-900">
-                                            {selectedPatientForPrint.firstName} {selectedPatientForPrint.lastName}
-                                        </span>
-                                    </div>
-                                    <div className="flex border-b border-gray-100 pb-3">
-                                        <span className="text-sm text-gray-500 font-medium w-32">Telefon:</span>
-                                        <span className="text-sm font-bold text-slate-900">{selectedPatientForPrint.phone}</span>
-                                    </div>
-                                    <div className="flex border-b border-gray-100 pb-3">
-                                        <span className="text-sm text-gray-500 font-medium w-32">Tug'ilgan sana:</span>
-                                        <span className="text-sm font-bold text-slate-900">
-                                            {selectedPatientForPrint.birthDate
-                                                ? new Date(selectedPatientForPrint.birthDate).toLocaleDateString('uz-UZ')
-                                                : 'Kiritilmagan'}
-                                        </span>
-                                    </div>
-                                    <div className="flex border-b border-gray-100 pb-3">
-                                        <span className="text-sm text-gray-500 font-medium w-32">Yosh:</span>
-                                        <span className="text-sm font-bold text-slate-900">
-                                            {calculateAge(selectedPatientForPrint.birthDate)} yosh
-                                        </span>
-                                    </div>
-                                    <div className="flex border-b border-gray-100 pb-3">
-                                        <span className="text-sm text-gray-500 font-medium w-32">Jins:</span>
-                                        <span className="text-sm font-bold text-slate-900">
-                                            {selectedPatientForPrint.gender === 'male' ? 'Erkak' : 'Ayol'}
-                                        </span>
-                                    </div>
-                                    {selectedPatientForPrint.address && (
-                                        <div className="flex border-b border-gray-100 pb-3">
-                                            <span className="text-sm text-gray-500 font-medium w-32">Manzil:</span>
-                                            <span className="text-sm font-bold text-slate-900">{selectedPatientForPrint.address}</span>
-                                        </div>
-                                    )}
-                                    <div className="flex">
-                                        <span className="text-sm text-gray-500 font-medium w-32">Ro'yxatdan o'tgan:</span>
-                                        <span className="text-sm font-bold text-slate-900">
-                                            {new Date().toLocaleDateString('uz-UZ')}
-                                        </span>
-                                    </div>
-                                </div>
+                                <div style={{ borderTop: '1.5px dashed #999', margin: '6px 0' }} />
 
-                                {/* Footer */}
-                                <div className="bg-gray-50 p-5 text-center text-xs text-gray-600 leading-relaxed">
-                                    <strong className="text-gray-900">Muhim eslatma:</strong><br />
-                                    Ushbu kartochkani har safar klinikaga kelganingizda ko'rsating.<br />
-                                    Karta raqamingizni eslab qoling yoki saqlang.
+                                {/* Ma'lumotlar */}
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <tbody>
+                                        {rows.map(([label, value]) => (
+                                            <tr key={label}>
+                                                <td style={{ fontSize: 10, color: '#555', paddingBottom: 4, width: '38%', verticalAlign: 'top' }}>{label}:</td>
+                                                <td style={{ fontSize: 11, fontWeight: 700, paddingBottom: 4, verticalAlign: 'top' }}>{value}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+
+                                <div style={{ borderTop: '1px dashed #aaa', marginTop: 8, paddingTop: 6, fontSize: 9, color: '#444', textAlign: 'center', lineHeight: 1.5 }}>
+                                    Har safar klinikaga kelganingizda<br />
+                                    ushbu kartani ko'rsating!
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        );
+                    })()}
 
-                    <DialogFooter className="gap-2">
+                    <DialogFooter className="gap-2 px-5 py-4">
                         <Button type="button" variant="outline" onClick={() => setShowPrintPreview(false)}>
                             Yopish
                         </Button>
