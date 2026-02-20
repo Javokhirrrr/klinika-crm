@@ -34,6 +34,7 @@ export default function SimpleAppointments() {
     const [appointments, setAppointments] = useState([]);
     const [patients, setPatients] = useState([]);
     const [doctors, setDoctors] = useState([]);
+    const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
 
@@ -60,8 +61,9 @@ export default function SimpleAppointments() {
     // New Appointment Form Data
     const [formData, setFormData] = useState({
         patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '',
-        price: 50000 // Default consultation fee
+        price: 0
     });
+    const [selectedServices, setSelectedServices] = useState([]); // [{_id, name, price, qty}]
 
     const [availableSlots, setAvailableSlots] = useState([]);
     const [fetchingSlots, setFetchingSlots] = useState(false);
@@ -92,16 +94,18 @@ export default function SimpleAppointments() {
             const params = { date: filterDate };
             if (filterDoctor && filterDoctor !== 'all') params.doctorId = filterDoctor;
 
-            const [appts, pats, docs] = await Promise.all([
+            const [appts, pats, docs, svcs] = await Promise.all([
                 http.get('/appointments', { params }).catch(() => ({ items: [] })),
                 http.get('/patients').catch(() => ({ items: [] })),
-                http.get('/users', { role: 'doctor' }).catch(() => ({ items: [] }))
+                http.get('/users', { role: 'doctor' }).catch(() => ({ items: [] })),
+                http.get('/services').catch(() => ({ items: [] }))
             ]);
 
             const items = appts.items || appts || [];
             setAppointments(items);
             setPatients(pats.items || pats || []);
             setDoctors(docs.items || docs || []);
+            setServices(svcs.items || svcs || []);
 
             setStats({
                 total: items.length,
@@ -134,6 +138,24 @@ export default function SimpleAppointments() {
         finally { setFetchingSlots(false); }
     };
 
+    // Xizmat tanlash / olib tashlash
+    const toggleService = (svc) => {
+        setSelectedServices(prev => {
+            const exists = prev.find(s => s._id === svc._id);
+            let updated;
+            if (exists) {
+                updated = prev.filter(s => s._id !== svc._id);
+            } else {
+                updated = [...prev, { ...svc, qty: 1 }];
+            }
+            const total = updated.reduce((sum, s) => sum + (s.price || 0) * (s.qty || 1), 0);
+            setFormData(fd => ({ ...fd, price: total }));
+            return updated;
+        });
+    };
+
+    const totalServicesPrice = selectedServices.reduce((sum, s) => sum + (s.price || 0) * (s.qty || 1), 0);
+
     // --- Create Appointment (Unpaid / Default) ---
     const handleSubmit = async (e) => {
         if (e && e.preventDefault) e.preventDefault();
@@ -142,10 +164,12 @@ export default function SimpleAppointments() {
                 ...formData,
                 scheduledAt: `${formData.date}T${formData.time}:00`,
                 startsAt: `${formData.date}T${formData.time}:00`,
-                price: Number(formData.price || 0)
+                price: Number(totalServicesPrice || formData.price || 0),
+                services: selectedServices.map(s => s._id)
             });
             setShowModal(false);
-            setFormData({ patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '', price: 50000 });
+            setFormData({ patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '', price: 0 });
+            setSelectedServices([]);
             loadData();
         } catch (error) { console.error('Create error:', error); alert('Xatolik!'); }
     };
@@ -184,7 +208,7 @@ export default function SimpleAppointments() {
             return;
         }
 
-        const price = Number(formData.price || 0);
+        const price = Number(totalServicesPrice || formData.price || 0);
 
         setPaymentContext({ type: 'new', data: formData });
         setPaymentData({
@@ -231,7 +255,8 @@ export default function SimpleAppointments() {
                     ...formData,
                     scheduledAt: `${formData.date}T${formData.time}:00`,
                     startsAt: `${formData.date}T${formData.time}:00`,
-                    price: finalTotal // Use net price (after discount) for appointment cost
+                    price: finalTotal, // Use net price (after discount) for appointment cost
+                    services: selectedServices.map(s => s._id)
                 });
                 const newAppt = apptRes.data || apptRes;
                 appointmentId = newAppt._id;
@@ -239,7 +264,8 @@ export default function SimpleAppointments() {
 
                 // Close New Appt Modal
                 setShowModal(false);
-                setFormData({ patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '', price: 50000 });
+                setFormData({ patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '', price: 0 });
+                setSelectedServices([]);
             } else {
                 appointmentId = paymentContext.data._id;
                 patientId = paymentContext.data.patientId?._id || paymentContext.data.patientId;
@@ -469,99 +495,233 @@ export default function SimpleAppointments() {
                 </CardContent>
             </Card>
 
-            {/* Add Appointment Modal */}
-            <Dialog open={showModal} onOpenChange={setShowModal}>
-                <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto p-8 rounded-2xl">
-                    <DialogHeader className="mb-6">
-                        <DialogTitle className="text-3xl font-black text-slate-900 text-primary">YANGI QABUL (2.0)</DialogTitle>
-                        <DialogDescription className="text-base text-gray-500 mt-2">Bemor uchun yangi qabul belgilash formasi</DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-3">
-                                <Label className="text-base font-bold text-gray-700">Bemor *</Label>
-                                <div className="flex gap-2">
-                                    <Combobox
-                                        options={patients.map(p => ({ value: p._id, label: `${p.firstName} ${p.lastName}` }))}
-                                        value={formData.patientId}
-                                        onValueChange={(val) => setFormData({ ...formData, patientId: val })}
-                                        placeholder="Bemorni tanlang"
-                                        searchPlaceholder="Bemor ismini yozing..."
-                                        emptyText="Bemor topilmadi"
-                                    />
-                                    <Button type="button" size="icon" variant="outline" className="h-12 w-12 border-2 border-blue-200 hover:bg-blue-50 text-blue-600 rounded-xl" onClick={() => setShowAddPatientModal(true)}>
-                                        <Plus className="h-5 w-5" />
+            {/* Add Appointment Modal — rasmga mos yangi dizayn */}
+            <Dialog open={showModal} onOpenChange={(open) => {
+                setShowModal(open);
+                if (!open) { setSelectedServices([]); setFormData({ patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '', price: 0 }); }
+            }}>
+                <DialogContent className="max-w-[900px] w-[95vw] p-0 overflow-hidden rounded-2xl bg-gray-50 gap-0">
+                    {/* Modal Header */}
+                    <div className="bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <DialogTitle className="text-xl font-bold text-gray-900">Yangi Qabul Yaratish</DialogTitle>
+                    </div>
+
+                    {/* Two-column body */}
+                    <div className="flex gap-0 overflow-hidden" style={{ maxHeight: 'calc(90vh - 200px)' }}>
+                        {/* LEFT: Appointment form */}
+                        <div className="flex-1 bg-white p-6 space-y-5 overflow-y-auto border-r border-gray-100">
+                            {/* Bemor */}
+                            <div className="space-y-2">
+                                <div className="flex gap-2 items-end">
+                                    <div className="flex-1">
+                                        <Label className="text-sm font-semibold text-gray-600 mb-1.5 block">Bemor</Label>
+                                        <Combobox
+                                            options={patients.map(p => ({ value: p._id, label: `${p.firstName} ${p.lastName}` }))}
+                                            value={formData.patientId}
+                                            onValueChange={(val) => setFormData({ ...formData, patientId: val })}
+                                            placeholder="Bemor"
+                                            searchPlaceholder="Bemor ismini yozing..."
+                                            emptyText="Bemor topilmadi"
+                                        />
+                                    </div>
+                                    <Button type="button" onClick={() => setShowAddPatientModal(true)}
+                                        className="h-10 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-xl flex items-center gap-1.5 text-sm font-semibold shadow-sm shrink-0">
+                                        <Search className="h-3.5 w-3.5" /> Yangi Bemor
                                     </Button>
                                 </div>
                             </div>
-                            <div className="space-y-3">
-                                <Label className="text-base font-bold text-gray-700">Shifokor *</Label>
+
+                            {/* Shifolor va Shifokor */}
+                            <div className="space-y-2">
+                                <Label className="text-sm font-semibold text-gray-600 mb-1.5 block">Shifolor</Label>
                                 <Combobox
                                     options={doctors.map(d => ({ value: d._id, label: d.name }))}
                                     value={formData.doctorId}
                                     onValueChange={(val) => setFormData({ ...formData, doctorId: val })}
-                                    placeholder="Shifokorni tanlang"
+                                    placeholder="Shifolor"
+                                    searchPlaceholder="Shifolor ismini yozing..."
+                                    emptyText="Shifolor topilmadi"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-sm font-semibold text-gray-600 mb-1.5 block">Shifokor</Label>
+                                <Combobox
+                                    options={doctors.map(d => ({ value: d._id, label: d.name }))}
+                                    value={formData.doctorId}
+                                    onValueChange={(val) => setFormData({ ...formData, doctorId: val })}
+                                    placeholder="Shifokor"
                                     searchPlaceholder="Shifokor ismini yozing..."
                                     emptyText="Shifokor topilmadi"
                                 />
                             </div>
-                        </div>
 
-                        <div className="space-y-3">
-                            <Label className="text-base font-bold text-gray-700">Sana *</Label>
-                            <DatePicker
-                                value={formData.date}
-                                onChange={(val) => setFormData({ ...formData, date: val, time: '' })}
-                                placeholder="Sanani tanlang"
-                                disablePastDates={true}
-                            />
-                        </div>
+                            {/* Xizmatlar */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-semibold text-gray-600">Xizmatlar</Label>
+                                    {selectedServices.length > 0 && (
+                                        <span className="text-xs text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full">
+                                            {selectedServices.length} ta tanlandi
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="border border-gray-200 rounded-xl bg-gray-50 divide-y divide-gray-100 overflow-hidden max-h-[220px] overflow-y-auto">
+                                    {services.length === 0 ? (
+                                        <div className="py-8 text-center text-sm text-gray-400">Xizmatlar mavjud emas</div>
+                                    ) : services.map(svc => {
+                                        const isSelected = selectedServices.some(s => s._id === svc._id);
+                                        return (
+                                            <div key={svc._id}
+                                                onClick={() => toggleService(svc)}
+                                                className={cn(
+                                                    "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
+                                                    isSelected ? "bg-blue-50" : "bg-white hover:bg-gray-50"
+                                                )}
+                                            >
+                                                <div className={cn(
+                                                    "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-all",
+                                                    isSelected ? "bg-blue-500 border-blue-500" : "border-gray-300 bg-white"
+                                                )}>
+                                                    {isSelected && <Check className="h-3 w-3 text-white" />}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sm font-semibold text-gray-800 truncate">{svc.name}</div>
+                                                    <div className="text-xs text-gray-500">{(svc.price || 0).toLocaleString()} so'm</div>
+                                                </div>
+                                                <div className={cn(
+                                                    "w-2 h-2 rounded-full shrink-0",
+                                                    isSelected ? "bg-blue-500" : "bg-gray-200"
+                                                )} />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
 
-                        <div className="space-y-3">
-                            <Label className="text-base font-bold text-gray-700">Bo'sh vaqtlar</Label>
-                            <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 max-h-[150px] overflow-y-auto pr-1 custom-scrollbar p-1">
-                                {availableSlots.map(slot => (
-                                    <button key={slot} type="button"
-                                        className={cn("h-10 rounded-xl text-sm font-bold transition-all duration-200 border-2",
-                                            formData.time === slot ? "bg-primary text-white shadow-md border-primary" : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50")}
-                                        onClick={() => setFormData({ ...formData, time: slot })}>
-                                        {slot}
-                                    </button>
-                                ))}
+                            {/* Umumiy Summa */}
+                            <div className="rounded-xl border border-gray-200 bg-white p-4">
+                                <div className="text-xs font-semibold text-gray-500 mb-1">Umumiy Summa</div>
+                                <div className="text-xs text-gray-400 mb-3">Vaqt tashrif narxi dieti</div>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-base font-bold text-gray-800">
+                                        {totalServicesPrice > 0 ? totalServicesPrice.toLocaleString() : formData.price || 0} so'm
+                                    </div>
+                                    <div className="text-gray-400 font-mono">0</div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Price Input (Automatic Sum) */}
-                        <div className="space-y-3">
-                            <Label className="text-base font-bold text-gray-700">Qabul Narxi (Avtomatik)</Label>
-                            <div className="relative">
-                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600" />
-                                <Input
-                                    type="number"
-                                    value={formData.price}
-                                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                                    className="pl-9 font-bold text-emerald-600 border-emerald-200 bg-emerald-50/30 h-12 text-lg"
+                        {/* RIGHT: Date + Time Slots */}
+                        <div className="w-[300px] shrink-0 bg-white p-6 space-y-5 overflow-y-auto">
+                            {/* Date Picker */}
+                            <div className="space-y-2">
+                                <Label className="text-sm font-semibold text-gray-600 mb-1.5 block">Sana</Label>
+                                <DatePicker
+                                    value={formData.date}
+                                    onChange={(val) => setFormData({ ...formData, date: val, time: '' })}
+                                    placeholder="Sana tanlang"
+                                    disablePastDates={true}
                                 />
                             </div>
-                        </div>
 
-                        <div className="space-y-3">
-                            <Label className="text-base font-bold text-gray-700">Izoh</Label>
-                            <Textarea rows={2} value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Qo'shimcha ma'lumot..." className="bg-gray-50 border-2 border-gray-200 resize-none text-base" />
+                            {/* Time Slots */}
+                            <div className="space-y-2">
+                                <Label className="text-sm font-semibold text-gray-600 mb-1.5 block">Bosh Vaqtlar</Label>
+                                {fetchingSlots ? (
+                                    <div className="text-center py-4 text-sm text-gray-400">Yuklanmoqda...</div>
+                                ) : availableSlots.length === 0 ? (
+                                    <div className="text-center py-4 text-xs text-gray-400">Shifokor va sanani tanlang</div>
+                                ) : (
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {availableSlots.map(slot => (
+                                            <button key={slot} type="button"
+                                                className={cn(
+                                                    "h-9 rounded-lg text-xs font-bold transition-all duration-150 border",
+                                                    formData.time === slot
+                                                        ? "bg-blue-500 text-white border-blue-500 shadow-sm"
+                                                        : "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                                                )}
+                                                onClick={() => setFormData({ ...formData, time: slot })}>
+                                                {slot}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
+                    </div>
 
-                        <DialogFooter className="gap-3 pt-4 sm:justify-between items-center bg-gray-50 -mx-8 -mb-8 p-6 mt-2 border-t border-gray-100">
-                            <Button type="button" variant="outline" onClick={() => setShowModal(false)} className="h-12 px-6 rounded-xl border-gray-300 text-gray-600 font-semibold hover:bg-gray-100">Bekor qilish</Button>
-                            <div className="flex gap-3">
-                                {/* Save (Unpaid) */}
-                                <Button type="submit" variant="ghost" className="h-12 px-6 rounded-xl text-primary font-semibold hover:bg-blue-50">Saqlash (To'lovsiz)</Button>
-                                {/* Payment Button (Green) */}
-                                <Button type="button" onClick={handleOpenNewPayment} className="h-12 px-8 rounded-xl bg-[#22C55E] hover:bg-emerald-600 shadow-lg shadow-emerald-600/20 text-white font-bold text-base flex items-center gap-2">
-                                    <DollarSign className="h-5 w-5" /> To'lov
+                    {/* BOTTOM: To'lov Malumatlari */}
+                    <div className="bg-white border-t border-gray-100 px-6 py-4">
+                        <div className="text-sm font-bold text-gray-700 mb-3">To'lov Malumatlari</div>
+                        <div className="flex items-center gap-4 flex-wrap">
+                            {/* Tolanishi lozim */}
+                            <div className="flex-1 min-w-[180px]">
+                                <div className="text-xs text-green-600 font-semibold">Tolanishi lozim:</div>
+                                <div className="text-2xl font-black text-green-600">
+                                    {(totalServicesPrice > 0 ? totalServicesPrice : Number(formData.price || 0)).toLocaleString()} so'm
+                                </div>
+                            </div>
+
+                            {/* Payment Method */}
+                            <div className="flex gap-2">
+                                {[{ v: 'cash', l: 'Naqd' }, { v: 'card', l: 'Karta' }, { v: 'transfer', l: 'Kutilmoxda' }].map(m => (
+                                    <button key={m.v} type="button"
+                                        onClick={() => setPaymentData(pd => ({ ...pd, method: m.v }))}
+                                        className={cn(
+                                            "h-9 px-3 rounded-lg text-xs font-bold border-2 transition-all",
+                                            paymentData.method === m.v
+                                                ? m.v === 'cash' ? "bg-white border-gray-400 text-gray-700 shadow-sm"
+                                                    : m.v === 'card' ? "bg-white border-gray-400 text-gray-700 shadow-sm"
+                                                        : "bg-orange-100 border-orange-400 text-orange-700 shadow-sm"
+                                                : "bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300"
+                                        )}
+                                    >{m.l}</button>
+                                ))}
+                            </div>
+
+                            {/* Chegirma */}
+                            <div className="flex items-center gap-2">
+                                <Checkbox id="new-discount" checked={paymentData.hasDiscount} onCheckedChange={(c) => setPaymentData(pd => ({ ...pd, hasDiscount: c }))} />
+                                <Label htmlFor="new-discount" className="text-sm font-semibold text-gray-600 cursor-pointer">Chegirma</Label>
+                                {paymentData.hasDiscount && (
+                                    <Input
+                                        type="number"
+                                        placeholder="50K"
+                                        value={paymentData.discount}
+                                        onChange={(e) => setPaymentData(pd => ({ ...pd, discount: Number(e.target.value) }))}
+                                        className="w-20 h-8 text-sm"
+                                    />
+                                )}
+                                {paymentData.hasDiscount && paymentData.discount > 0 && (
+                                    <Input
+                                        type="number"
+                                        placeholder="200K"
+                                        value={paymentData.received}
+                                        onChange={(e) => setPaymentData(pd => ({ ...pd, received: Number(e.target.value) }))}
+                                        className="w-24 h-8 text-sm"
+                                    />
+                                )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-2 ml-auto">
+                                <Button type="button" variant="outline" onClick={() => setShowModal(false)}
+                                    className="h-10 px-5 rounded-xl border-gray-300 text-gray-600 font-semibold hover:bg-gray-50">
+                                    Bekor Qilish
+                                </Button>
+                                <Button type="button" onClick={handleSubmit}
+                                    className="h-10 px-5 rounded-xl border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold shadow-sm">
+                                    Saqlash (To'lovsiz)
+                                </Button>
+                                <Button type="button" onClick={handleOpenNewPayment}
+                                    className="h-10 px-5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-sm flex items-center gap-1.5">
+                                    <Printer className="h-4 w-4" /> To'lov Va Chop Etish
                                 </Button>
                             </div>
-                        </DialogFooter>
-                    </form>
+                        </div>
+                    </div>
                 </DialogContent>
             </Dialog>
 
