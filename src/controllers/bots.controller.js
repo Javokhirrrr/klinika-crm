@@ -121,7 +121,7 @@ export const deleteBot = async (req, res) => {
   const bot = await TelegramBot.findOne({ _id: id, orgId: req.orgId });
   if (!bot) return res.status(404).json({ message: 'Not found' });
 
-  try { await tgDeleteWebhook(bot.token); } catch {}
+  try { await tgDeleteWebhook(bot.token); } catch { }
   await TelegramBot.deleteOne({ _id: bot._id });
   await TelegramLink.deleteMany({ orgId: req.orgId, botId: bot._id });
 
@@ -166,7 +166,7 @@ export const telegramWebhook = async (req, res) => {
   if (!msg) return res.json({ ok: true });
 
   const chatId = String(msg.chat?.id || '');
-  const text   = msg.text || '';
+  const text = msg.text || '';
   const contact = msg.contact;
 
   // 1) /start → kontakt so‘rash
@@ -264,3 +264,31 @@ export async function notifyPatientByBot(orgId, patientId, text) {
   }
   await tgSendSafe(bot.token, 'sendMessage', { chat_id: link.chatId, text });
 }
+
+/* ============================ BROADCAST =========================== */
+export const broadcastMessage = async (req, res) => {
+  const { id } = req.params;
+  const message = String(req.body?.message || '').trim();
+
+  if (!message) return res.status(400).json({ message: 'Xabar matni kiritilmagan' });
+
+  const bot = await TelegramBot.findOne({ _id: id, orgId: req.orgId }).lean();
+  if (!bot) return res.status(404).json({ message: 'Bot topilmadi' });
+
+  const links = await TelegramLink.find({ orgId: req.orgId, botId: bot._id }).lean();
+  if (!links.length) return res.json({ ok: true, sent: 0, failed: 0 });
+
+  let sent = 0, failed = 0;
+  await Promise.all(
+    links.map(async (l) => {
+      const ok = await tgSendSafe(bot.token, 'sendMessage', {
+        chat_id: l.chatId,
+        text: message,
+        parse_mode: 'Markdown',
+      });
+      if (ok) sent++; else failed++;
+    })
+  );
+
+  res.json({ ok: true, sent, failed, total: links.length });
+};

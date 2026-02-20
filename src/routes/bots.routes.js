@@ -10,6 +10,7 @@ import {
   updateBot,
   deleteBot,
   testBot,
+  broadcastMessage,
   telegramWebhook, // webhook uchun import
 } from "../controllers/bots.controller.js";
 
@@ -32,5 +33,8 @@ r.delete("/:id", ALLOWED, deleteBot);
 
 // test (telefon raqami yoki chatId bilan test xabar yuborish)
 r.post("/:id/test", ALLOWED, testBot);
+
+// broadcast: barcha ulangan foydalanuvchilarga xabar yuborish
+r.post("/:id/broadcast", ALLOWED, broadcastMessage);
 
 export default r;
