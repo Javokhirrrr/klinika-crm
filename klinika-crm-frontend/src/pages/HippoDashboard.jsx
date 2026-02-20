@@ -1,229 +1,431 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Users, Calendar, Clock, CreditCard,
-    MoreHorizontal, Search
+    Users, Calendar, Clock, TrendingUp,
+    ArrowUpRight, ArrowDownRight, RefreshCw,
+    UserCheck, Activity, DollarSign, Stethoscope,
+    CheckCircle2, XCircle, Timer, ChevronRight,
+    BarChart3, Eye
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { useAuth } from '../context/AuthContext';
 import http from '../lib/http';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+    AreaChart, Area, XAxis, YAxis, CartesianGrid,
+    Tooltip, ResponsiveContainer, BarChart, Bar
+} from 'recharts';
 
+// ─── Formatters ─────────────────────────────────────────────────────────────
+const fmt = (n) => Number(n || 0).toLocaleString('uz-UZ');
+const fmtTime = (d) => {
+    if (!d) return '--:--';
+    return new Date(d).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+};
+const fmtDate = (d) => {
+    if (!d) return '---';
+    return new Date(d).toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short' });
+};
+
+// ─── Status Badge ────────────────────────────────────────────────────────────
+function StatusPill({ status }) {
+    const map = {
+        done: { label: 'Yakunlandi', bg: '#E8F5E9', color: '#2E7D32', dot: '#4CAF50' },
+        completed: { label: 'Yakunlandi', bg: '#E8F5E9', color: '#2E7D32', dot: '#4CAF50' },
+        progress: { label: 'Qabulda', bg: '#E3F2FD', color: '#1565C0', dot: '#2196F3' },
+        in_progress: { label: 'Qabulda', bg: '#E3F2FD', color: '#1565C0', dot: '#2196F3' },
+        pending: { label: 'Kutilmoqda', bg: '#FFF8E1', color: '#F57F17', dot: '#FFC107' },
+        scheduled: { label: 'Kutilmoqda', bg: '#FFF8E1', color: '#F57F17', dot: '#FFC107' },
+        waiting: { label: 'Kutilmoqda', bg: '#FFF8E1', color: '#F57F17', dot: '#FFC107' },
+        cancelled: { label: 'Bekor qilindi', bg: '#FFEBEE', color: '#C62828', dot: '#F44336' },
+    };
+    const cfg = map[status?.toLowerCase()] || { label: status || '---', bg: '#F5F5F5', color: '#616161', dot: '#9E9E9E' };
+    return (
+        <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: cfg.bg, color: cfg.color,
+            padding: '4px 12px', borderRadius: 20,
+            fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap'
+        }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: cfg.dot, display: 'inline-block' }} />
+            {cfg.label}
+        </span>
+    );
+}
+
+// ─── Avatar initials ─────────────────────────────────────────────────────────
+function AvatarInitials({ name, size = 36, bg = '#E3F2FD', color = '#1565C0' }) {
+    const initials = (name || 'N').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    return (
+        <div style={{
+            width: size, height: size, borderRadius: '50%',
+            background: bg, color, display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontWeight: 800, fontSize: size * 0.35,
+            flexShrink: 0, border: '2px solid rgba(255,255,255,0.8)'
+        }}>
+            {initials}
+        </div>
+    );
+}
+
+// ─── KPI Card ────────────────────────────────────────────────────────────────
+function KpiCard({ icon, label, value, sub, trend, trendPositive, accent }) {
+    const colors = {
+        blue: { bg: '#EFF6FF', icon: '#3B82F6', card: '#ffffff' },
+        green: { bg: '#F0FDF4', icon: '#22C55E', card: '#ffffff' },
+        amber: { bg: '#FFFBEB', icon: '#F59E0B', card: '#ffffff' },
+        purple: { bg: '#F5F3FF', icon: '#A855F7', card: '#ffffff' },
+    };
+    const c = colors[accent] || colors.blue;
+
+    return (
+        <div style={{
+            background: c.card,
+            borderRadius: 20,
+            padding: '24px 20px',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+            border: '1px solid rgba(0,0,0,0.04)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            textAlign: 'center', gap: 8,
+            transition: 'transform 0.2s, box-shadow 0.2s',
+            cursor: 'default',
+        }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.1)'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)'; }}
+        >
+            <div style={{
+                width: 52, height: 52, borderRadius: '50%',
+                background: c.bg, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', marginBottom: 4
+            }}>
+                {React.cloneElement(icon, { size: 24, color: c.icon })}
+            </div>
+            <div style={{ fontSize: 13, color: '#94A3B8', fontWeight: 600, letterSpacing: 0.2 }}>{label}</div>
+            <div style={{ fontSize: 36, fontWeight: 800, color: '#0F172A', lineHeight: 1.1, fontFamily: 'Outfit, sans-serif' }}>
+                {value}
+            </div>
+            {sub && (
+                <div style={{
+                    fontSize: 12, fontWeight: 700, padding: '3px 12px',
+                    borderRadius: 20, background: c.bg, color: c.icon
+                }}>{sub}</div>
+            )}
+            {trend != null && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    fontSize: 12, fontWeight: 700,
+                    color: trendPositive ? '#16A34A' : '#DC2626',
+                    background: trendPositive ? '#F0FDF4' : '#FFF1F2',
+                    padding: '3px 10px', borderRadius: 20
+                }}>
+                    {trendPositive ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
+                    {trend}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── Progress Bar (Doctor Busyness) ─────────────────────────────────────────
+function DoctorBar({ name, specialty, percent, count }) {
+    const pct = Math.min(percent, 100);
+    const colorMap = pct >= 80 ? '#EF4444' : pct >= 50 ? '#3B82F6' : '#22C55E';
+    const bgMap = pct >= 80 ? '#FEF2F2' : pct >= 50 ? '#EFF6FF' : '#F0FDF4';
+
+    return (
+        <div style={{ padding: '14px 16px', background: '#FAFBFC', borderRadius: 14, border: '1px solid #F1F5F9' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#1E293B' }}>Dr. {name}</div>
+                    {specialty && <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>{specialty}</div>}
+                </div>
+                <div style={{
+                    background: bgMap, color: colorMap,
+                    fontSize: 12, fontWeight: 800, padding: '3px 10px', borderRadius: 20
+                }}>{count} ta / {pct}%</div>
+            </div>
+            <div style={{ height: 7, background: '#E2E8F0', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{
+                    height: '100%', width: `${pct}%`, background: colorMap,
+                    borderRadius: 4, transition: 'width 1s ease'
+                }} />
+            </div>
+        </div>
+    );
+}
+
+// ─── Custom Tooltip ───────────────────────────────────────────────────────────
+function CustomTooltip({ active, payload, label }) {
+    if (!active || !payload?.length) return null;
+    return (
+        <div style={{
+            background: '#fff', borderRadius: 12, padding: '10px 16px',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.12)', border: '1px solid #F1F5F9'
+        }}>
+            <div style={{ fontSize: 12, color: '#64748B', marginBottom: 4, fontWeight: 600 }}>{label}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#0F172A' }}>
+                {payload[0].value} <span style={{ fontSize: 12, fontWeight: 500, color: '#94A3B8' }}>qabul</span>
+            </div>
+        </div>
+    );
+}
+
+// ─── Avatar colors ────────────────────────────────────────────────────────────
+const AVATAR_COLORS = [
+    { bg: '#DBEAFE', color: '#1D4ED8' },
+    { bg: '#FCE7F3', color: '#9D174D' },
+    { bg: '#D1FAE5', color: '#065F46' },
+    { bg: '#FEF3C7', color: '#92400E' },
+    { bg: '#EDE9FE', color: '#5B21B6' },
+];
+
+// ─── Main Dashboard Component ────────────────────────────────────────────────
 export default function HippoDashboard() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [stats, setStats] = useState({
-        todayPatients: 0,
-        todayAppts: 0,
-        todayDone: 0,
-        todayPending: 0,
-        revenue: 0,
-        chartData: [],
-        doctors: [],
-        todayAppointmentsList: []
+        todayPatients: 0, todayAppts: 0, todayDone: 0,
+        todayPending: 0, revenue: 0,
+        chartData: [], doctors: [], todayList: [],
+        patientsTrend: '+0%', revenueTrend: '+0%',
     });
 
-    useEffect(() => {
-        async function load() {
-            try {
-                setLoading(true);
-                const [p, a, d, py] = await Promise.all([
-                    http.get('/patients?limit=1000').catch(() => ({ items: [] })),
-                    http.get('/appointments?limit=1000').catch(() => ({ items: [] })),
-                    http.get('/doctors').catch(() => ({ items: [] })),
-                    http.get('/payments?limit=1000').catch(() => ({ items: [] }))
-                ]);
+    const load = useCallback(async (isRefresh = false) => {
+        try {
+            isRefresh ? setRefreshing(true) : setLoading(true);
 
-                const pItems = Array.isArray(p?.items) ? p.items : (Array.isArray(p) ? p : []);
-                const aItems = Array.isArray(a?.items) ? a.items : (Array.isArray(a) ? a : []);
-                const dItems = Array.isArray(d?.items) ? d.items : (Array.isArray(d) ? d : []);
-                const pyItems = Array.isArray(py?.items) ? py.items : (Array.isArray(py) ? py : []);
+            const [p, a, d, py] = await Promise.all([
+                http.get('/patients?limit=1000').catch(() => ({})),
+                http.get('/appointments?limit=1000').catch(() => ({})),
+                http.get('/doctors').catch(() => ({})),
+                http.get('/payments?limit=1000').catch(() => ({})),
+            ]);
 
-                // Today's date
-                const now = new Date();
-                const today = now.toISOString().split('T')[0];
-                const isToday = (d) => !!d && new Date(d).toISOString().split('T')[0] === today;
+            const pItems = Array.isArray(p?.items) ? p.items : (Array.isArray(p) ? p : []);
+            const aItems = Array.isArray(a?.items) ? a.items : (Array.isArray(a) ? a : []);
+            const dItems = Array.isArray(d?.items) ? d.items : (Array.isArray(d) ? d : []);
+            const pyItems = Array.isArray(py?.items) ? py.items : (Array.isArray(py) ? py : []);
 
-                // KPIs
-                const todayPatients = pItems.filter(x => isToday(x.createdAt)).length;
-                const todayAppts = aItems.filter(x => isToday(x.startsAt || x.startAt || x.createdAt)).length;
-                const todayDone = aItems.filter(x => isToday(x.startsAt || x.startAt || x.createdAt) && (x.status === 'done' || x.status === 'completed')).length;
-                const todayPending = aItems.filter(x => isToday(x.startsAt || x.startAt || x.createdAt) && (x.status === 'pending' || x.status === 'scheduled' || !x.status)).length;
-                const revenue = pyItems.filter(x => isToday(x.createdAt)).reduce((s, x) => s + Number(x.amount || 0), 0);
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            const isToday = (val) => !!val && new Date(val).toISOString().split('T')[0] === today;
+            const dateOf = (x) => x.startsAt || x.startAt || x.appointmentDate || x.createdAt;
 
-                // Chart Data (Last 7 days)
-                const chartData = [];
-                for (let i = 6; i >= 0; i--) {
-                    const date = new Date(now);
-                    date.setDate(date.getDate() - i);
-                    const dateStr = date.toISOString().split('T')[0];
-                    const dayName = date.toLocaleDateString('uz-UZ', { weekday: 'short' });
+            const todayAppts = aItems.filter(x => isToday(dateOf(x)));
+            const todayDone = todayAppts.filter(x => ['done', 'completed'].includes(x.status?.toLowerCase())).length;
+            const todayPending = todayAppts.filter(x => ['pending', 'scheduled', 'waiting'].includes((x.status || 'pending').toLowerCase())).length;
+            const todayPatients = pItems.filter(x => isToday(x.createdAt)).length;
+            const revenue = pyItems.filter(x => isToday(x.createdAt)).reduce((s, x) => s + Number(x.amount || 0), 0);
 
-                    const count = aItems.filter(x => {
-                        const d = x.startsAt || x.startAt || x.createdAt;
-                        return d && new Date(d).toISOString().split('T')[0] === dateStr;
-                    }).length;
+            // Yesterday trend for patients
+            const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
+            const yStr = yesterday.toISOString().split('T')[0];
+            const yPatients = pItems.filter(x => new Date(x.createdAt).toISOString().split('T')[0] === yStr).length;
+            const pTrend = yPatients > 0 ? Math.round(((todayPatients - yPatients) / yPatients) * 100) : 0;
 
-                    chartData.push({ name: dayName, value: count });
-                }
-
-                // Doctor Busyness (Mock or calculated)
-                const doctorsWithInfo = dItems.map(doc => {
-                    const docAppts = aItems.filter(x => (x.doctorId === doc._id || x.doctor?._id === doc._id) && isToday(x.startsAt || x.startAt || x.createdAt));
-                    const busyPercentage = Math.min(Math.round((docAppts.length / 10) * 100), 100); // Assume 10 is max capacity
-                    return { ...doc, busyPercentage, todayCount: docAppts.length };
-                }).sort((a, b) => b.busyPercentage - a.busyPercentage).slice(0, 5);
-
-                // Today's Appointments List
-                const todayList = aItems
-                    .filter(x => isToday(x.startsAt || x.startAt || x.createdAt))
-                    .sort((a, b) => new Date(a.startsAt || a.createdAt) - new Date(b.startsAt || b.createdAt))
-                    .slice(0, 5);
-
-                setStats({
-                    todayPatients, todayAppts, todayDone, todayPending,
-                    revenue, chartData, doctors: doctorsWithInfo, todayAppointmentsList: todayList
-                });
-            } catch (e) { console.error(e); } finally {
-                setLoading(false);
+            // 30-day chart
+            const chartData = [];
+            for (let i = 29; i >= 0; i--) {
+                const d2 = new Date(now); d2.setDate(d2.getDate() - i);
+                const ds = d2.toISOString().split('T')[0];
+                const dayN = d2.toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short' });
+                const cnt = aItems.filter(x => {
+                    const v = dateOf(x);
+                    return v && new Date(v).toISOString().split('T')[0] === ds;
+                }).length;
+                chartData.push({ name: dayN, value: cnt, shortName: d2.toLocaleDateString('uz-UZ', { day: '2-digit', month: 'short' }) });
             }
+
+            // Doctor busyness
+            const doctors = dItems.map(doc => {
+                const docAppts = aItems.filter(x =>
+                    (x.doctorId === doc._id || x.doctor?._id === doc._id) && isToday(dateOf(x))
+                );
+                return {
+                    ...doc,
+                    todayCount: docAppts.length,
+                    busyPct: Math.min(Math.round((docAppts.length / 8) * 100), 100),
+                };
+            }).sort((a, b) => b.busyPct - a.busyPct).slice(0, 5);
+
+            // Today's list sorted by time
+            const todayList = todayAppts
+                .sort((a, b) => new Date(dateOf(a)) - new Date(dateOf(b)))
+                .slice(0, 8);
+
+            setStats({
+                todayPatients, todayAppts: todayAppts.length, todayDone,
+                todayPending, revenue, chartData, doctors, todayList,
+                patientsTrend: `${pTrend >= 0 ? '+' : ''}${pTrend}%`,
+                revenueTrend: '+0%',
+            });
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
         }
-        load();
     }, []);
 
-    const formatTime = (dateStr) => {
-        if (!dateStr) return '--:--';
-        return new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    };
+    useEffect(() => { load(); }, [load]);
 
-    const getStatusBadge = (status) => {
-        const s = status?.toLowerCase() || 'pending';
-        // Mockup colors: Qabulda -> Green, Kutilmoqda -> Yellow, Bekor -> Red
-        if (s === 'done' || s === 'completed') return <span className="text-blue-700 bg-blue-100 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">Yakunlandi</span>;
-        if (s === 'cancelled') return <span className="text-red-600 bg-red-100 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">Bekor qilindi</span>;
-        if (s === 'pending' || s === 'scheduled') return <span className="text-amber-700 bg-amber-100 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">Kutilmoqda</span>;
-        if (s === 'progress') return <span className="text-emerald-700 bg-emerald-100 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">Qabulda</span>;
-        return <span className="text-slate-600 bg-slate-100 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">{status}</span>;
-    };
+    if (loading) {
+        return (
+            <div style={{
+                minHeight: '80vh', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', flexDirection: 'column', gap: 16
+            }}>
+                <div style={{
+                    width: 48, height: 48, borderRadius: '50%',
+                    border: '4px solid #EFF6FF', borderTopColor: '#3B82F6',
+                    animation: 'spin 0.8s linear infinite'
+                }} />
+                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                <div style={{ fontSize: 15, color: '#94A3B8', fontWeight: 600 }}>Ma'lumotlar yuklanmoqda...</div>
+            </div>
+        );
+    }
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-medium">Yuklanmoqda...</div>;
+    // Last 7 days for the area chart display
+    const displayChart = stats.chartData.slice(-7);
 
     return (
-        <div className="space-y-8 font-['Outfit'] text-[#0F172A] pb-10">
-            {/* Custom Dashboard Header from Image 2 */}
-            <div className="bg-white p-5 rounded-[20px] shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-slate-800 tracking-tight">KLINIKA PRO</h1>
-                <div className="flex items-center gap-4">
-                    <Button
-                        onClick={() => navigate('/patients')}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl px-6 h-11 shadow-lg shadow-blue-200"
+        <div style={{ fontFamily: "'Outfit', 'Inter', sans-serif", color: '#0F172A', paddingBottom: 40 }}>
+
+            {/* ── Page Header ──────────────────────────────────────────────────── */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+                <div>
+                    <h1 style={{ fontSize: 26, fontWeight: 800, color: '#0F172A', margin: 0, letterSpacing: -0.5 }}>
+                        Boshqaruv paneli
+                    </h1>
+                    <p style={{ margin: '4px 0 0', fontSize: 14, color: '#64748B', fontWeight: 500 }}>
+                        {new Date().toLocaleDateString('uz-UZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                        onClick={() => load(true)}
+                        disabled={refreshing}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            padding: '10px 18px', borderRadius: 12, border: '1.5px solid #E2E8F0',
+                            background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 14,
+                            color: '#64748B', transition: 'all 0.2s',
+                        }}
                     >
-                        + Yangi Bemor
-                    </Button>
-                    <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center shadow-sm">
-                        <Avatar className="h-full w-full">
-                            <AvatarFallback className="bg-transparent text-blue-900 font-bold">
-                                {user?.name?.[0] || 'A'}
-                            </AvatarFallback>
-                        </Avatar>
-                    </div>
+                        <RefreshCw size={15} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }} />
+                        Yangilash
+                    </button>
+                    <button
+                        onClick={() => navigate('/appointments')}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            padding: '10px 20px', borderRadius: 12, border: 'none',
+                            background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                            color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 14,
+                            boxShadow: '0 4px 14px rgba(59,130,246,0.4)',
+                        }}
+                    >
+                        <Calendar size={16} />
+                        Yangi qabul
+                    </button>
                 </div>
             </div>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* 1. Bugungi bemorlar */}
-                <div className="bg-white p-6 py-8 rounded-[24px] shadow-[0_10px_30px_rgba(30,64,175,0.03)] border border-transparent hover:border-blue-50 transition-all flex flex-col items-center text-center group hover:bg-white/90 backdrop-blur-sm hover:shadow-[0_20px_40px_rgba(30,64,175,0.06)]">
-                    <div className="bg-blue-50 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform duration-300 shadow-sm border border-blue-100">
-                        <Users className="h-7 w-7 text-blue-600" />
-                    </div>
-                    <div className="text-slate-400 font-medium mb-1 text-sm tracking-wide">Bugungi bemorlar</div>
-                    <div className="text-4xl font-bold text-slate-800 mb-2 font-['Outfit'] tracking-tight">{stats.todayPatients}</div>
-                    <span className="bg-emerald-50 text-emerald-600 text-[11px] font-bold px-3 py-1.5 rounded-full border border-emerald-100">+12%</span>
-                </div>
-
-                {/* 2. Qabullar */}
-                <div className="bg-white p-6 py-8 rounded-[24px] shadow-[0_10px_30px_rgba(16,185,129,0.03)] border border-transparent hover:border-emerald-50 transition-all flex flex-col items-center text-center group hover:bg-white/90 backdrop-blur-sm hover:shadow-[0_20px_40px_rgba(16,185,129,0.06)]">
-                    <div className="bg-emerald-50 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform duration-300 shadow-sm border border-emerald-100">
-                        <Calendar className="h-7 w-7 text-emerald-600" />
-                    </div>
-                    <div className="text-slate-400 font-medium mb-1 text-sm tracking-wide">Qabullar</div>
-                    <div className="text-4xl font-bold text-slate-800 mb-2 font-['Outfit'] tracking-tight">{stats.todayAppts}</div>
-                    <div className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">{stats.todayDone} tasi yakunlandi</div>
-                </div>
-
-                {/* 3. Kutilmoqda */}
-                <div className="bg-white p-6 py-8 rounded-[24px] shadow-[0_10px_30px_rgba(245,158,11,0.03)] border border-transparent hover:border-amber-50 transition-all flex flex-col items-center text-center group hover:bg-white/90 backdrop-blur-sm hover:shadow-[0_20px_40px_rgba(245,158,11,0.06)]">
-                    <div className="bg-amber-50 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform duration-300 shadow-sm border border-amber-100">
-                        <Clock className="h-7 w-7 text-amber-500" />
-                    </div>
-                    <div className="text-slate-400 font-medium mb-1 text-sm tracking-wide">Kutilmoqda</div>
-                    <div className="text-4xl font-bold text-slate-800 mb-2 font-['Outfit'] tracking-tight">{stats.todayPending}</div>
-                    <div className="text-[11px] text-slate-400 font-medium bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">O'rtacha kutish: 12 daq</div>
-                </div>
-
-                {/* 4. Bugungi Tushum */}
-                <div className="bg-white p-6 py-8 rounded-[24px] shadow-[0_10px_30px_rgba(124,58,237,0.03)] border border-transparent hover:border-purple-50 transition-all flex flex-col items-center text-center group hover:bg-white/90 backdrop-blur-sm hover:shadow-[0_20px_40px_rgba(124,58,237,0.06)]">
-                    <div className="bg-purple-50 p-4 rounded-full mb-4 group-hover:scale-110 transition-transform duration-300 shadow-sm border border-purple-100">
-                        <CreditCard className="h-7 w-7 text-purple-600" />
-                    </div>
-                    <div className="text-slate-400 font-medium mb-1 text-sm tracking-wide">Bugungi tushum</div>
-                    <div className="text-3xl font-bold text-slate-800 mb-2 font-['Outfit'] tracking-tight whitespace-nowrap">
-                        {stats.revenue.toLocaleString()} <span className="text-lg text-slate-400 font-normal">so'm</span>
-                    </div>
-                    <span className="text-[11px] text-slate-400 font-medium bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">Kunlik statistika</span>
-                </div>
+            {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
+            <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 20, marginBottom: 28
+            }}>
+                <KpiCard
+                    icon={<Users />}
+                    label="Bugungi bemorlar"
+                    value={stats.todayPatients}
+                    trend={stats.patientsTrend}
+                    trendPositive={!stats.patientsTrend.startsWith('-')}
+                    accent="blue"
+                />
+                <KpiCard
+                    icon={<Calendar />}
+                    label="Qabullar"
+                    value={stats.todayAppts}
+                    sub={`${stats.todayDone} tasi yakunlandi`}
+                    accent="green"
+                />
+                <KpiCard
+                    icon={<Clock />}
+                    label="Kutilmoxda"
+                    value={stats.todayPending}
+                    sub="O'rtacha kutish: 12 daq"
+                    accent="amber"
+                />
+                <KpiCard
+                    icon={<TrendingUp />}
+                    label="Bugungi tushum"
+                    value={`${fmt(stats.revenue)}`}
+                    sub="so'm"
+                    accent="purple"
+                />
             </div>
 
-            {/* Main Content Grid: Left (Chart+Table), Right (Docs+Status) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* ── Main Grid ─────────────────────────────────────────────────────── */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
 
-                {/* Left Column Container */}
-                <div className="lg:col-span-2 bg-white rounded-[24px] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.02)] border border-slate-100/50 flex flex-col gap-10">
+                {/* LEFT COLUMN */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-                    {/* 1. Chart Section */}
-                    <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-lg font-bold text-slate-800 tracking-tight">Tashriflar dinamikasi</h3>
+                    {/* Chart Card */}
+                    <div style={{
+                        background: '#fff', borderRadius: 20, padding: '28px 28px 20px',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                            <div>
+                                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                                    Tashriflar dinamikasi
+                                </h3>
+                                <p style={{ fontSize: 12, color: '#94A3B8', margin: '4px 0 0', fontWeight: 500 }}>
+                                    So'nggi 7 kun
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => navigate('/reports')}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 6,
+                                    fontSize: 13, fontWeight: 600, color: '#3B82F6',
+                                    background: '#EFF6FF', border: 'none', borderRadius: 10,
+                                    padding: '7px 14px', cursor: 'pointer'
+                                }}
+                            >
+                                <BarChart3 size={14} /> Hisobot
+                            </button>
                         </div>
-                        <div className="h-[280px] w-full">
+                        <div style={{ height: 240 }}>
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={stats.chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                <AreaChart data={displayChart} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                                     <defs>
-                                        <linearGradient id="colorBlue" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.25} />
+                                        <linearGradient id="grad1" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.18} />
                                             <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                                     <XAxis
                                         dataKey="name"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 500 }}
-                                        dy={10}
+                                        axisLine={false} tickLine={false}
+                                        tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 600 }}
+                                        dy={8}
                                     />
                                     <YAxis
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 500 }}
+                                        axisLine={false} tickLine={false}
+                                        tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 600 }}
+                                        allowDecimals={false}
                                     />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: '#fff', borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.08)' }}
-                                        itemStyle={{ color: '#1e293b', fontWeight: 'bold' }}
-                                        cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }}
-                                    />
+                                    <Tooltip content={<CustomTooltip />} />
                                     <Area
-                                        type="monotone"
-                                        dataKey="value"
-                                        stroke="#3B82F6"
-                                        strokeWidth={4}
-                                        fillOpacity={1}
-                                        fill="url(#colorBlue)"
+                                        type="monotone" dataKey="value"
+                                        stroke="#3B82F6" strokeWidth={3}
+                                        fill="url(#grad1)"
                                         activeDot={{ r: 6, strokeWidth: 3, stroke: '#fff', fill: '#3B82F6' }}
                                     />
                                 </AreaChart>
@@ -231,108 +433,217 @@ export default function HippoDashboard() {
                         </div>
                     </div>
 
-                    {/* 2. Table Section */}
-                    <div>
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-lg font-bold text-slate-800 tracking-tight">Bugungi qabul ro'yxati</h3>
+                    {/* Today Appointments Table */}
+                    <div style={{
+                        background: '#fff', borderRadius: 20, padding: '24px 28px',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <div>
+                                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                                    Bugungi qabul ro'yxati
+                                </h3>
+                                <p style={{ fontSize: 12, color: '#94A3B8', margin: '4px 0 0', fontWeight: 500 }}>
+                                    Jami {stats.todayAppts} ta qabul
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => navigate('/appointments')}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: 6,
+                                    fontSize: 13, fontWeight: 600, color: '#3B82F6',
+                                    background: '#EFF6FF', border: 'none', borderRadius: 10,
+                                    padding: '7px 14px', cursor: 'pointer'
+                                }}
+                            >
+                                <Eye size={14} /> Barchasi
+                            </button>
                         </div>
-                        <div className="overflow-hidden rounded-xl border border-slate-100">
-                            <table className="w-full">
-                                <thead className="bg-slate-50 border-b border-slate-100">
-                                    <tr className="text-left">
-                                        <th className="py-4 pl-4 text-slate-500 font-semibold text-xs uppercase tracking-wider">Vaqt</th>
-                                        <th className="py-4 text-slate-500 font-semibold text-xs uppercase tracking-wider">Bemor</th>
-                                        <th className="py-4 text-slate-500 font-semibold text-xs uppercase tracking-wider">Shifokor</th>
-                                        <th className="py-4 text-slate-500 font-semibold text-xs uppercase tracking-wider">Status</th>
+
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 4px' }}>
+                                <thead>
+                                    <tr>
+                                        {['Vaqt', 'Bemor', 'Shifokor', 'Xizmat', 'Status'].map(h => (
+                                            <th key={h} style={{
+                                                textAlign: 'left', padding: '8px 12px',
+                                                fontSize: 11, fontWeight: 700, color: '#94A3B8',
+                                                textTransform: 'uppercase', letterSpacing: 0.8,
+                                                borderBottom: '2px solid #F8FAFC'
+                                            }}>{h}</th>
+                                        ))}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {stats.todayAppointmentsList.length === 0 ? (
-                                        <tr><td colSpan="4" className="py-8 text-center text-slate-400">Bugun qabullar yo'q</td></tr>
-                                    ) : stats.todayAppointmentsList.map((appt, i) => (
-                                        <tr key={i} className="group hover:bg-blue-50/30 transition-colors">
-                                            <td className="py-4 pl-4 font-bold text-slate-700 font-['Inter'] text-sm">
-                                                {formatTime(appt.startsAt || appt.createdAt)}
-                                            </td>
-                                            <td className="py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar className="h-8 w-8 bg-white border border-slate-200">
-                                                        <AvatarFallback className="bg-slate-50 text-slate-600 text-xs font-bold">
-                                                            {(appt.patient?.name || appt.patientName || 'N')[0]}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <span className="font-bold text-slate-800 text-sm">
-                                                        {appt.patient?.name || appt.patientName || 'Noma\'lum'}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="py-4 text-sm font-medium text-slate-500">
-                                                Dr. {appt.doctor?.name || '---'}
-                                            </td>
-                                            <td className="py-4">
-                                                {getStatusBadge(appt.status)}
+                                <tbody>
+                                    {stats.todayList.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} style={{ textAlign: 'center', padding: '32px 0', color: '#CBD5E1', fontSize: 14, fontWeight: 600 }}>
+                                                Bugun hozircha qabullar yo'q
                                             </td>
                                         </tr>
-                                    ))}
+                                    ) : stats.todayList.map((appt, i) => {
+                                        const ac = AVATAR_COLORS[i % AVATAR_COLORS.length];
+                                        const patientName = appt.patient?.name || appt.patientName || 'Noma\'lum';
+                                        const doctorName = appt.doctor?.name || appt.doctorName || '---';
+                                        const service = appt.service?.name || appt.serviceName || '---';
+                                        return (
+                                            <tr key={appt._id || i}
+                                                style={{ cursor: 'pointer' }}
+                                                onClick={() => navigate('/appointments')}
+                                                onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                            >
+                                                <td style={{ padding: '12px 12px', fontSize: 13, fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>
+                                                    {fmtTime(appt.startsAt || appt.startAt || appt.appointmentDate || appt.createdAt)}
+                                                </td>
+                                                <td style={{ padding: '12px 12px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                        <AvatarInitials name={patientName} size={34} bg={ac.bg} color={ac.color} />
+                                                        <span style={{ fontWeight: 700, fontSize: 14, color: '#1E293B' }}>{patientName}</span>
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '12px 12px', fontSize: 13, color: '#64748B', fontWeight: 600 }}>
+                                                    {doctorName !== '---' ? `Dr. ${doctorName}` : '---'}
+                                                </td>
+                                                <td style={{ padding: '12px 12px', fontSize: 13, color: '#64748B', fontWeight: 500, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {service}
+                                                </td>
+                                                <td style={{ padding: '12px 12px' }}>
+                                                    <StatusPill status={appt.status} />
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
                     </div>
-
                 </div>
 
-                {/* Right Column Container */}
-                <div className="bg-white rounded-[24px] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.02)] border border-slate-100/50 flex flex-col gap-10 h-fit">
+                {/* RIGHT COLUMN */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-                    {/* 1. Doctor List */}
-                    <div>
-                        <div className="mb-6 flex justify-between items-center">
-                            <h3 className="text-lg font-bold text-slate-800 tracking-tight">Band doktorlar</h3>
+                    {/* Band doktorlar */}
+                    <div style={{
+                        background: '#fff', borderRadius: 20, padding: '24px 20px',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+                            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0 }}>Band doktorlar</h3>
+                            <button
+                                onClick={() => navigate('/doctors')}
+                                style={{
+                                    fontSize: 12, color: '#3B82F6', background: 'none',
+                                    border: 'none', cursor: 'pointer', fontWeight: 700,
+                                    display: 'flex', alignItems: 'center', gap: 4
+                                }}
+                            >
+                                Barchasi <ChevronRight size={13} />
+                            </button>
                         </div>
-                        <div className="space-y-5">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {stats.doctors.length === 0 ? (
-                                <div className="text-center text-slate-400 py-6">Ma'lumot yo'q</div>
+                                <div style={{ textAlign: 'center', padding: '24px 0', color: '#CBD5E1', fontSize: 13, fontWeight: 600 }}>
+                                    Bugun band doktorlar yo'q
+                                </div>
                             ) : stats.doctors.map((doc, i) => (
-                                <div key={i} className="group p-4 rounded-2xl bg-white border border-slate-100 hover:border-blue-100 hover:shadow-sm transition-all shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-                                    <div className="flex justify-between items-center mb-3">
-                                        <div className="font-bold text-slate-800 text-sm">Dr. {doc.name || doc.fullName}</div>
-                                        <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{doc.busyPercentage}%</span>
+                                <DoctorBar
+                                    key={doc._id || i}
+                                    name={doc.name || doc.fullName || 'Shifokor'}
+                                    specialty={doc.specialty || doc.department?.name}
+                                    percent={doc.busyPct}
+                                    count={doc.todayCount}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Status Summary */}
+                    <div style={{
+                        background: '#fff', borderRadius: 20, padding: '24px 20px',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)'
+                    }}>
+                        <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: '0 0 16px' }}>
+                            Holat xulosasi
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {[
+                                { label: 'Yakunlandi', count: stats.todayDone, status: 'done', icon: <CheckCircle2 size={16} color="#22C55E" /> },
+                                { label: 'Kutilmoqda', count: stats.todayPending, status: 'pending', icon: <Timer size={16} color="#F59E0B" /> },
+                                { label: 'Qabulda', count: stats.todayAppts - stats.todayDone - stats.todayPending, status: 'progress', icon: <Activity size={16} color="#3B82F6" /> },
+                                { label: 'Bekor qilindi', count: stats.todayList.filter(x => x.status?.toLowerCase() === 'cancelled').length, status: 'cancelled', icon: <XCircle size={16} color="#EF4444" /> },
+                            ].map((item, i) => (
+                                <div key={i} style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    padding: '10px 14px', borderRadius: 12, background: '#FAFBFC',
+                                    border: '1px solid #F1F5F9'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        {item.icon}
+                                        <span style={{ fontSize: 13, fontWeight: 600, color: '#475569' }}>{item.label}</span>
                                     </div>
-                                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-blue-600 rounded-full shadow-[0_2px_4px_rgba(37,99,235,0.2)]"
-                                            style={{ width: `${doc.busyPercentage}%` }}
-                                        ></div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <span style={{ fontSize: 16, fontWeight: 800, color: '#1E293B' }}>{Math.max(0, item.count)}</span>
+                                        <StatusPill status={item.status} />
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* 2. Status Section */}
-                    <div>
-                        <div className="flex justify-between items-center mb-4 pt-4 border-t border-slate-50">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Status</h3>
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Status</h3>
-                        </div>
-                        <div className="space-y-4">
-                            {stats.todayAppointmentsList.slice(0, 4).map((appt, i) => (
-                                <div key={i} className="flex justify-between items-center group">
-                                    <span className="font-bold text-slate-700 text-sm group-hover:text-blue-600 transition-colors">
-                                        {appt.patient?.name?.split(' ')[0] || 'Noma\'lum'}
-                                    </span>
-                                    <div>{getStatusBadge(appt.status)}</div>
-                                </div>
+                    {/* Quick Actions */}
+                    <div style={{
+                        background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                        borderRadius: 20, padding: '22px 20px',
+                        boxShadow: '0 8px 24px rgba(59,130,246,0.35)'
+                    }}>
+                        <h3 style={{ fontSize: 15, fontWeight: 800, color: '#fff', margin: '0 0 16px' }}>
+                            Tezkor harakatlar
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {[
+                                { label: '+ Yangi bemor qo\'shish', icon: <Users size={15} />, path: '/patients' },
+                                { label: '+ Yangi qabul yaratish', icon: <Calendar size={15} />, path: '/appointments' },
+                                { label: '💊 Navbat boshqaruvi', icon: <Stethoscope size={15} />, path: '/queue' },
+                                { label: '📊 Hisobotlar', icon: <BarChart3 size={15} />, path: '/reports' },
+                            ].map((item, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => navigate(item.path)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 10,
+                                        width: '100%', padding: '11px 14px',
+                                        background: 'rgba(255,255,255,0.15)',
+                                        border: '1px solid rgba(255,255,255,0.25)',
+                                        borderRadius: 12, cursor: 'pointer',
+                                        color: '#fff', fontSize: 13, fontWeight: 700,
+                                        transition: 'background 0.2s',
+                                        backdropFilter: 'blur(4px)',
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+                                >
+                                    {item.icon} {item.label}
+                                </button>
                             ))}
-                            {stats.todayAppointmentsList.length === 0 && (
-                                <div className="text-slate-400 text-sm text-center">Bugun holatlar yo'q</div>
-                            )}
                         </div>
                     </div>
 
                 </div>
             </div>
 
+            <style>{`
+                @keyframes spin { to { transform: rotate(360deg); } }
+                @media (max-width: 1100px) {
+                    .dash-main-grid { grid-template-columns: 1fr !important; }
+                }
+                @media (max-width: 768px) {
+                    .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+                }
+                @media (max-width: 480px) {
+                    .kpi-grid { grid-template-columns: 1fr !important; }
+                }
+            `}</style>
         </div>
     );
 }
