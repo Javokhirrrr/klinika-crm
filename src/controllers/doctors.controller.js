@@ -17,6 +17,7 @@ export async function listDoctors(req, res) {
     active = "",            // "true" | "false"
     from = "",             // createdAt >=
     to = "",             // createdAt <=
+    userId = "",           // YANGI: userId bo'yicha filter (doctor o'z profilini topishi uchun)
     sort = "createdAt:desc",
   } = req.query;
 
@@ -34,6 +35,8 @@ export async function listDoctors(req, res) {
   if (spec && spec.trim()) filters.spec = spec.trim();
   if (active === "true") filters.isActive = true;
   if (active === "false") filters.isActive = false;
+  // userId filtri: doctor o'z profilini topishi uchun
+  if (userId && okId(userId)) filters.userId = OID(userId);
 
   if (from || to) {
     filters.createdAt = {};
