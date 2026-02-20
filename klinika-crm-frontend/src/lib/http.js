@@ -8,7 +8,7 @@ let onAuthChange = () => { };
 // ─── Simple in-memory cache ───────────────────────────────────────────────────
 const cache = new Map();
 const CACHE_TTL = 30_000; // 30 soniya (shu muddat ichida qayta so'rov bo'lmaydi)
-const CACHE_SKIP = ['/auth', '/payments', '/appointments/slots']; // bu URL'lar cache bo'lmaydi
+const CACHE_SKIP = ['/auth', '/payments', '/appointments']; // bu URL'lar cache bo'lmaydi (appointments real-time)
 
 function shouldCache(path) {
   return !CACHE_SKIP.some(skip => path.includes(skip));
