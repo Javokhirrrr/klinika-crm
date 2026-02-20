@@ -54,6 +54,8 @@ const SimpleCalendar = lazy(() => import("./pages/SimpleCalendar.jsx"));
 const SimpleDoctorRoom = lazy(() => import("./pages/SimpleDoctorRoom.jsx"));
 const SimpleCommissions = lazy(() => import("./pages/SimpleCommissions.jsx"));
 const TelegramBot = lazy(() => import("./pages/TelegramBot.jsx"));
+const AnalyticsDashboard = lazy(() => import("./pages/AnalyticsDashboard.jsx"));
+const OutstandingDebts = lazy(() => import("./pages/OutstandingDebts.jsx"));
 
 // Other pages (less visited)
 const PatientProfile = lazy(() => import("./pages/PatientProfile.jsx"));
@@ -130,6 +132,8 @@ export default function App() {
                   <Route path="/attendance" element={<SimpleAttendance />} />
                   <Route path="/commissions" element={<SimpleCommissions />} />
                   <Route path="/telegram-bot" element={<TelegramBot />} />
+                  <Route path="/analytics" element={<AnalyticsDashboard />} />
+                  <Route path="/outstanding-debts" element={<OutstandingDebts />} />
                   <Route path="/queue" element={<SimpleQueue />} />
                   <Route path="/live-queue" element={<LiveQueue />} />
                   <Route path="/salaries" element={<SimpleSalaries />} />

@@ -121,11 +121,13 @@ export default function TelegramBot() {
 
     const handleBroadcast = async () => {
         if (!broadMsg.trim()) return;
+        const firstBot = bots.find(b => b.isActive) || bots[0];
+        if (!firstBot) { alert("Faol bot topilmadi!"); return; }
         setSending(true);
         try {
-            await http.post("/bots/broadcast", { message: broadMsg });
+            const res = await http.post(`/bots/${firstBot._id}/broadcast`, { message: broadMsg });
             setBroadMsg(""); setShowBroadcast(false);
-            alert("Xabar muvaffaqiyatli yuborildi!");
+            alert(`✅ Yuborildi: ${res.sent} ta / Muvaffaqiyatsiz: ${res.failed} ta`);
         } catch (e) {
             alert("Xabar yuborishda xatolik: " + (e?.message || ""));
         } finally { setSending(false); }
