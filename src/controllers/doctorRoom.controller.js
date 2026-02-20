@@ -9,43 +9,57 @@ const okId = (v) => mongoose.isValidObjectId(v);
 const OID = (v) => new mongoose.Types.ObjectId(v);
 
 /**
- * GET /api/doctor-room/today
- * Returns appointments for the logged-in doctor for today
+ * GET /api/doctor-room/today?doctorId=xxx
+ * Returns today's appointments for a doctor.
+ * - doctor roli: o'z profilidagi appointmentlar
+ * - admin/owner/director: ?doctorId=xxx query parametr orqali
  */
 export async function getDoctorTodayQueue(req, res) {
     try {
         const orgId = req.orgId;
-        const userId = req.user._id;
+        const userId = req.user.id || req.user._id;
+        const role = (req.user?.role || "").toLowerCase();
+        const isDoctor = role === "doctor";
 
-        // Find the Doctor profile linked to this User
-        const doctorProfile = await Doctor.findOne({ orgId, userId, isDeleted: { $ne: true } }).lean();
+        let doctorProfileId = null;
 
-        if (!doctorProfile) {
-            return res.status(404).json({ message: "Shifokor profili topilmadi" });
+        if (isDoctor) {
+            // Shifokor o'z profilini topadi
+            const doctorProfile = await Doctor.findOne({ orgId, userId, isDeleted: { $ne: true } }).lean();
+            if (!doctorProfile) {
+                return res.status(404).json({ message: "Shifokor profili topilmadi" });
+            }
+            doctorProfileId = doctorProfile._id;
+        } else {
+            // Admin/owner: query'dan doctorId parametrini oladi
+            const { doctorId } = req.query;
+            if (!doctorId || !okId(doctorId)) {
+                return res.status(400).json({ message: "doctorId parametri talab qilinadi" });
+            }
+            doctorProfileId = OID(doctorId);
         }
 
         const today = new Date().toISOString().split('T')[0];
 
         const appointments = await Appointment.find({
             orgId,
-            doctorId: doctorProfile._id,
+            doctorId: doctorProfileId,
             date: today,
-            status: { $in: ["waiting", "in_progress", "done"] }
+            status: { $in: ["scheduled", "waiting", "in_progress", "done"] }
         })
             .populate("patientId", "firstName lastName phone dob gender bloodType allergies chronicDiseases medicalHistory")
             .populate("serviceIds", "name price")
-            .sort({ startAt: 1 })
+            .sort({ startsAt: 1 })
             .lean();
 
         return res.json({
-            doctor: doctorProfile,
             appointments: appointments.map(apt => ({
                 ...apt,
                 patient: apt.patientId // frontend expects .patient
             }))
         });
     } catch (error) {
-        console.error("Board today queue error:", error);
+        console.error("Doctor today queue error:", error);
         return res.status(500).json({ message: "Internal server error" });
     }
 }
