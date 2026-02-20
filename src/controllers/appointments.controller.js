@@ -43,6 +43,7 @@ export async function listAppointments(req, res) {
     patientId = "",
     from = "",
     to = "",
+    date = "",        // YANGI: bugun uchun filterlash (YYYY-MM-DD)
     sort = "startAt:desc",
   } = req.query;
 
@@ -73,7 +74,11 @@ export async function listAppointments(req, res) {
 
   if (okId(patientId)) q.patientId = OID(patientId);
 
-  if (from || to) {
+  // Sana filterlash: `date` yoki `from`/`to` orqali
+  if (date) {
+    // Agar `date` berilsa — o'sha kunning barcha appointmentlarini olish
+    q.date = date; // DB da `date` field saqlanadi (YYYY-MM-DD string)
+  } else if (from || to) {
     q.startAt = {};
     if (from) q.startAt.$gte = new Date(from);
     if (to) {
@@ -103,17 +108,19 @@ export async function listAppointments(req, res) {
     Appointment.countDocuments(q),
   ]);
 
-  // Transform to match frontend expectations
+  // Frontend bilan mos status mapping:
+  // DB: "waiting", "in_progress", "done" → Frontend: xuddi shunday
+  // (Oldingi "waiting"→"scheduled" mapping ni olib tashladik — chalkashlik keltirib chiqarardi)
   const transformedItems = items.map(item => ({
     ...item,
     _id: item._id,
     patient: item.patientId,
     doctor: item.doctorId,
     service: Array.isArray(item.serviceIds) && item.serviceIds.length > 0 ? item.serviceIds[0] : null,
+    startsAt: item.startAt,
     scheduledAt: item.startAt,
-    status: item.status === 'waiting' ? 'scheduled' :
-      item.status === 'done' ? 'completed' :
-        item.status,
+    // Status as-is: "waiting", "in_progress", "done", "scheduled", "cancelled"
+    status: item.status,
   }));
 
   res.json({ items: transformedItems, total, page, limit });
@@ -143,11 +150,13 @@ export async function createAppointment(req, res) {
     orgId: req.orgId,
     patientId: OID(b.patientId),
     doctorId: okId(b.doctorId) ? OID(b.doctorId) : undefined,
-    serviceIds: serviceId ? [OID(serviceId)] : [],
+    serviceIds: Array.isArray(b.serviceIds) ? b.serviceIds.filter(okId).map(OID)
+      : serviceId ? [OID(serviceId)] : [],
     date: dateStr,
     startAt: startDate,
-    note: typeof b.notes === "string" ? b.notes : (typeof b.note === "string" ? b.note : ""),
-    status: b.status || "waiting",
+    notes: b.notes || b.note || "",
+    price: b.price || 0,
+    status: b.status || "scheduled",  // default: "scheduled" (bemor hali kelmagan)
     isPaid: false,
   });
 
@@ -265,19 +274,22 @@ export async function updateAppointment(req, res) {
   }
   if (b.date) payload.date = b.date;
 
-  if (typeof b.notes === "string") payload.note = b.notes;
-  if (typeof b.note === "string") payload.note = b.note;
+  if (typeof b.notes === "string") payload.notes = b.notes;
+  else if (typeof b.note === "string") payload.notes = b.note;
 
-  // Map frontend status to backend
+  // Status mapping (frontend → backend, hamma variant)
   if (b.status) {
     const statusMap = {
-      'scheduled': 'waiting',
+      'scheduled': 'scheduled',
+      'waiting': 'waiting',
       'in_progress': 'in_progress',
+      'done': 'done',
       'completed': 'done',
       'cancelled': 'cancelled',
     };
     const backendStatus = statusMap[b.status] || b.status;
-    if (["waiting", "in_progress", "done", "cancelled"].includes(backendStatus)) {
+    const allowed = ["scheduled", "waiting", "in_progress", "done", "cancelled"];
+    if (allowed.includes(backendStatus)) {
       payload.status = backendStatus;
     }
   }
@@ -315,14 +327,16 @@ export async function setAppointmentStatus(req, res) {
 
   // Map frontend status to backend
   const statusMap = {
-    'scheduled': 'waiting',
+    'scheduled': 'scheduled',
+    'waiting': 'waiting',
     'in_progress': 'in_progress',
+    'done': 'done',
     'completed': 'done',
     'cancelled': 'cancelled',
   };
 
   const backendStatus = statusMap[status] || status;
-  const allowed = ["waiting", "in_progress", "done", "cancelled"];
+  const allowed = ["scheduled", "waiting", "in_progress", "done", "cancelled"];
 
   if (!allowed.includes(backendStatus)) {
     return res.status(400).json({ message: "Invalid status" });
