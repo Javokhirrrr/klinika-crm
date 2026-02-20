@@ -29,20 +29,53 @@ export default function SimpleDoctorRoom() {
     const [activeTab, setActiveTab] = useState('visit');
     const [saving, setSaving] = useState(false);
     const [doctors, setDoctors] = useState([]);
-    const [selectedDoctorId, setSelectedDoctorId] = useState(user?.role === 'doctor' ? user._id : '');
+    // selectedDoctorId = Doctor profil _id (appointments.doctorId bilan mos)
+    const [selectedDoctorId, setSelectedDoctorId] = useState('');
+    const [myDoctorProfileId, setMyDoctorProfileId] = useState(''); // doctor roli uchun
 
     useEffect(() => { loadData(); }, []);
 
     const loadData = async () => {
         try {
             setLoading(true);
-            const promises = [http.get('/services').catch(() => ({ items: [] }))];
-            if (user?.role !== 'doctor') promises.push(http.get('/users', { role: 'doctor' }).catch(() => ({ items: [] })));
-            const [servs, docs] = await Promise.all(promises);
-            setServices(servs.items || servs || []);
-            if (docs) setDoctors(docs.items || docs || []);
-            const docId = user?.role === 'doctor' ? user._id : selectedDoctorId;
-            if (docId) fetchAppointments(docId);
+
+            // 1. Xizmatlar va shifokorlar ro'yxatini parallel olish
+            const [servRes, docRes] = await Promise.all([
+                http.get('/services').catch(() => ({ items: [] })),
+                http.get('/doctors', { params: { limit: 100 } }).catch(() => ({ items: [] })),
+            ]);
+
+            setServices(servRes.items || servRes || []);
+            const docList = docRes.items || docRes || [];
+            setDoctors(docList);
+
+            // 2. Agar foydalanuvchi DOCTOR roli bo'lsa, o'z profilini doctorlar ro'yxatidan topamiz
+            const role = (user?.role || '').toLowerCase();
+            if (role === 'doctor') {
+                // userId bo'yicha doctor profilini topamiz
+                const myProfile = docList.find(d => d.userId && String(d.userId) === String(user._id || user.id));
+                if (myProfile) {
+                    setMyDoctorProfileId(myProfile._id);
+                    setSelectedDoctorId(myProfile._id);
+                    fetchAppointments(myProfile._id);
+                } else {
+                    // Fallback: /doctors?userId=... bilan qidiramiz
+                    const myRes = await http.get('/doctors', { params: { userId: user._id || user.id, limit: 1 } })
+                        .catch(() => ({ items: [] }));
+                    const myProf = (myRes.items || [])[0];
+                    if (myProf) {
+                        setMyDoctorProfileId(myProf._id);
+                        setSelectedDoctorId(myProf._id);
+                        fetchAppointments(myProf._id);
+                    }
+                }
+            } else {
+                // Admin/owner: birinchi shifokorni avtomatik tanlash
+                if (docList.length > 0 && !selectedDoctorId) {
+                    setSelectedDoctorId(docList[0]._id);
+                    // fetchAppointments useEffect orqali chaqiriladi
+                }
+            }
         } catch (error) { console.error('Load error:', error); }
         finally { setLoading(false); }
     };
@@ -168,7 +201,10 @@ export default function SimpleDoctorRoom() {
                     {user?.role !== 'doctor' && (
                         <div className="w-64">
                             <Combobox
-                                options={doctors.map(d => ({ value: d._id, label: d.name }))}
+                                options={doctors.map(d => ({
+                                    value: d._id,
+                                    label: [d.firstName, d.lastName].filter(Boolean).join(' ') || d.name || 'Nomasʼlum'
+                                }))}
                                 value={selectedDoctorId}
                                 onValueChange={setSelectedDoctorId}
                                 placeholder="Shifokorni tanlang"
