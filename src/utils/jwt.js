@@ -8,7 +8,7 @@ function need(name) {
 }
 
 export function signAccess(payload, opts = {}) {
-  return jwt.sign(payload, need('JWT_ACCESS_SECRET'), { expiresIn: '1h', ...opts });
+  return jwt.sign(payload, need('JWT_ACCESS_SECRET'), { expiresIn: '8h', ...opts });
 }
 
 export function signRefresh(payload, opts = {}) {
