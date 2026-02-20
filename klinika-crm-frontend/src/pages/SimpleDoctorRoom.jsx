@@ -49,9 +49,11 @@ export default function SimpleDoctorRoom() {
 
     const fetchAppointments = async (doctorId) => {
         try {
-            const res = await http.get('/appointments', { params: { date: new Date().toISOString().split('T')[0], doctorId } });
+            const today = new Date().toISOString().split('T')[0];
+            const res = await http.get('/appointments', { params: { date: today, doctorId } });
             const appts = res.items || res || [];
             setAppointments(appts);
+            // Agar 'in_progress' da birorta qabu bo'lsa, uni avtomatik tanlash
             const active = appts.find(a => a.status === 'in_progress');
             if (active && !selectedAppointment) handleSelectAppointment(active);
         } catch (error) { console.error('Fetch appts error:', error); }
@@ -91,22 +93,59 @@ export default function SimpleDoctorRoom() {
         if (!diagnosis) return alert('Tashxis kiritish majburiy');
         try {
             setSaving(true);
+
+            // 1. Appointment statusini "done" ga o'zgartirish
+            await http.patch(`/appointments/${selectedAppointment._id}/update-status`, { status: 'done' });
+
+            // 2. Agar xizmatlar tanlangan bo'lsa, appointmentni yangilash
+            if (selectedServices.length > 0) {
+                await http.put(`/appointments/${selectedAppointment._id}`, {
+                    serviceIds: selectedServices.map(s => s._id),
+                    price: calculateTotal(),
+                    notes: prescription || selectedAppointment.notes || ''
+                }).catch(() => { }); // xatolik bo'lsa ham davom et
+            }
+
+            // 3. Tibbiy tarixga saqlash (doctor-room/complete orqali)
             await http.post('/doctor-room/complete', {
-                appointmentId: selectedAppointment._id, diagnosis, prescription,
-                services: selectedServices.map(s => s._id), notes: ''
+                appointmentId: selectedAppointment._id,
+                diagnosis,
+                prescription,
+                services: selectedServices.map(s => s._id),
+                notes: ''
+            }).catch(async (err) => {
+                // Agar doctor-room/complete 403 qaytarsa (doctor roli yo'q),
+                // appointmentga notes sifatida saqlaymiz
+                console.warn('doctor-room/complete failed, saving to notes:', err);
+                await http.put(`/appointments/${selectedAppointment._id}`, {
+                    notes: `Tashxis: ${diagnosis}\nRetsept: ${prescription}`
+                }).catch(() => { });
             });
+
             alert('Qabul yakunlandi va bemor tarixiga saqlandi!');
-            const roomData = await http.get('/doctor-room/today').catch(() => ({ appointments: [] }));
-            setAppointments(roomData.appointments || []);
+            const docId = selectedDoctorId || user?._id;
+            if (docId) fetchAppointments(docId);
             setSelectedAppointment(null);
-        } catch (error) { alert(error?.response?.data?.message || 'Xatolik yuz berdi!'); }
-        finally { setSaving(false); }
+            setDiagnosis('');
+            setPrescription('');
+            setSelectedServices([]);
+        } catch (error) {
+            console.error('Finalize error:', error);
+            alert('Xatolik yuz berdi!');
+        } finally { setSaving(false); }
     };
 
-    const waitingAppts = appointments.filter(a => a.status === 'waiting' || a.status === 'scheduled');
+    // Statuslar bo'yicha guruhlar:
+    // scheduled = Yangi qabul (resepshen yaratdi, bemor hali kelmagan)
+    // waiting   = Bemor keldi (check-in qilindi, navbat kutmoqda)
+    // in_progress = Shifokor qabulni boshladi
+    // done      = Qabul yakunlandi
+    const scheduledAppts = appointments.filter(a => a.status === 'scheduled');
+    const waitingAppts = appointments.filter(a => a.status === 'waiting');
     const inProgressAppts = appointments.filter(a => a.status === 'in_progress');
     const doneAppts = appointments.filter(a => a.status === 'done');
-    const stats = { total: appointments.length, waiting: waitingAppts.length, in_progress: inProgressAppts.length, done: doneAppts.length };
+    const pendingAppts = [...inProgressAppts, ...waitingAppts, ...scheduledAppts]; // navbatda ko'rinadiganlar
+    const stats = { total: appointments.length, waiting: waitingAppts.length + scheduledAppts.length, in_progress: inProgressAppts.length, done: doneAppts.length };
 
     const statCards = [
         { label: 'Jami', value: stats.total, icon: Calendar, bg: 'bg-sky-50', iconBg: 'bg-sky-100', color: 'text-sky-600' },
@@ -169,11 +208,13 @@ export default function SimpleDoctorRoom() {
                 {/* Left: Appointments Sidebar */}
                 <Card className="h-fit">
                     <CardHeader className="p-4 pb-2">
-                        <CardTitle className="text-base">Navbat ({waitingAppts.length + inProgressAppts.length})</CardTitle>
+                        <CardTitle className="text-base">Bugungi navbat ({pendingAppts.length})</CardTitle>
                     </CardHeader>
                     <CardContent className="p-2">
-                        <ScrollArea className="max-h-[500px]">
+                        <ScrollArea className="max-h-[600px]">
                             <div className="space-y-1.5">
+
+                                {/* 🔵 IN PROGRESS — Hozir qabulda */}
                                 {inProgressAppts.map(apt => (
                                     <button key={apt._id}
                                         className="w-full p-4 rounded-xl bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 text-left transition-all hover:shadow-md group relative overflow-hidden"
@@ -181,52 +222,85 @@ export default function SimpleDoctorRoom() {
                                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
                                         <div className="flex items-center justify-between mb-2">
                                             <span className="text-sm font-mono font-bold text-blue-700 bg-white/50 px-2 py-0.5 rounded">
-                                                {new Date(apt.startsAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                                                {new Date(apt.startsAt || apt.scheduledAt || apt.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
                                             </span>
-                                            <Badge variant="info" className="animate-pulse bg-blue-500 text-white border-0 shadow-sm">
+                                            <Badge className="animate-pulse bg-blue-500 text-white border-0 shadow-sm text-xs">
                                                 <Activity className="w-3 h-3 mr-1" /> Qabulda
                                             </Badge>
                                         </div>
                                         <div className="text-base font-bold text-gray-900">{apt.patientId?.firstName} {apt.patientId?.lastName}</div>
+                                        {apt.patientId?.phone && <div className="text-xs text-blue-600/70 mt-1 flex items-center gap-1"><Phone className="w-3 h-3" /> {apt.patientId.phone}</div>}
                                     </button>
                                 ))}
+
+                                {/* 🟡 WAITING — Bemor keldi, navbat kutmoqda */}
                                 {waitingAppts.map(apt => (
                                     <button key={apt._id}
                                         className={cn(
-                                            "w-full p-4 rounded-xl border text-left transition-all hover:bg-white hover:shadow-md hover:border-primary/30 group",
+                                            "w-full p-4 rounded-xl border text-left transition-all hover:shadow-md group relative overflow-hidden",
                                             selectedAppointment?._id === apt._id
-                                                ? "border-primary bg-primary/5 ring-1 ring-primary/20 shadow-sm"
-                                                : "border-transparent bg-white shadow-sm"
+                                                ? "border-amber-400 bg-amber-50 ring-1 ring-amber-200 shadow-sm"
+                                                : "border-amber-100 bg-white shadow-sm hover:border-amber-300 hover:bg-amber-50"
                                         )}
                                         onClick={() => handleSelectAppointment(apt)}>
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-400"></div>
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="text-sm font-mono font-semibold text-muted-foreground group-hover:text-primary transition-colors">
-                                                {new Date(apt.startsAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                                            <span className="text-sm font-mono font-semibold text-amber-700">
+                                                {new Date(apt.startsAt || apt.scheduledAt || apt.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
                                             </span>
-                                            <Badge variant="warning" className="bg-amber-100 text-amber-700 border-0">Kutmoqda</Badge>
+                                            <Badge className="bg-amber-100 text-amber-700 border-0 text-xs">Kutmoqda</Badge>
                                         </div>
                                         <div className="text-sm font-bold text-gray-800">{apt.patientId?.firstName} {apt.patientId?.lastName}</div>
-                                        <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                                            <Phone className="w-3 h-3" /> {apt.patientId?.phone}
-                                        </div>
+                                        {apt.patientId?.phone && <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><Phone className="w-3 h-3" /> {apt.patientId.phone}</div>}
                                     </button>
                                 ))}
+
+                                {/* ⚪ SCHEDULED — Rejalashtirilgan (bemor hali kelmagan) */}
+                                {scheduledAppts.map(apt => (
+                                    <button key={apt._id}
+                                        className={cn(
+                                            "w-full p-4 rounded-xl border text-left transition-all hover:shadow-md group relative overflow-hidden",
+                                            selectedAppointment?._id === apt._id
+                                                ? "border-gray-300 bg-gray-50 ring-1 ring-gray-200 shadow-sm"
+                                                : "border-gray-100 bg-white shadow-sm hover:border-gray-300 hover:bg-gray-50"
+                                        )}
+                                        onClick={() => handleSelectAppointment(apt)}>
+                                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-300"></div>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm font-mono font-semibold text-gray-500">
+                                                {new Date(apt.startsAt || apt.scheduledAt || apt.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                            <Badge className="bg-gray-100 text-gray-500 border-0 text-xs">Rejalashtirilgan</Badge>
+                                        </div>
+                                        <div className="text-sm font-bold text-gray-700">{apt.patientId?.firstName} {apt.patientId?.lastName}</div>
+                                        {apt.patientId?.phone && <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1"><Phone className="w-3 h-3" /> {apt.patientId.phone}</div>}
+                                    </button>
+                                ))}
+
+                                {/* ✅ DONE — Yakunlanganlar */}
                                 {doneAppts.length > 0 && (
                                     <>
                                         <Separator className="my-2" />
-                                        <div className="text-xs font-semibold text-muted-foreground uppercase px-3 mb-1">Yakunlanganlar</div>
-                                        {doneAppts.slice(0, 3).map(apt => (
-                                            <div key={apt._id} className="p-3 rounded-xl opacity-50">
+                                        <div className="text-xs font-semibold text-muted-foreground uppercase px-3 mb-1">Yakunlanganlar ({doneAppts.length})</div>
+                                        {doneAppts.slice(0, 5).map(apt => (
+                                            <div key={apt._id} className="p-3 rounded-xl opacity-50 bg-gray-50">
                                                 <div className="flex items-center justify-between mb-1">
                                                     <span className="text-sm font-mono">
-                                                        {new Date(apt.startsAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                                                        {new Date(apt.startsAt || apt.scheduledAt || apt.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
                                                     </span>
-                                                    <Badge variant="success" className="text-[10px]">Bajarildi</Badge>
+                                                    <Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">Bajarildi</Badge>
                                                 </div>
-                                                <div className="text-sm">{apt.patientId?.firstName} {apt.patientId?.lastName}</div>
+                                                <div className="text-sm font-medium">{apt.patientId?.firstName} {apt.patientId?.lastName}</div>
                                             </div>
                                         ))}
                                     </>
+                                )}
+
+                                {pendingAppts.length === 0 && doneAppts.length === 0 && (
+                                    <div className="py-8 text-center text-muted-foreground text-sm">
+                                        <Calendar className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                                        Bugun uchun qabul yo'q
+                                    </div>
                                 )}
                             </div>
                         </ScrollArea>

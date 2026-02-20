@@ -1,5 +1,5 @@
-import React, { memo, useCallback } from "react";
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import React, { memo, useCallback, useMemo } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { cn } from "@/lib/utils";
 import {
@@ -8,20 +8,22 @@ import {
     TrendingUp, Activity, Banknote
 } from "lucide-react";
 
-// ─── Menu items (modul darajasida — har render'da qayta yaratilmaydi) ─────────
-const MENU_ITEMS = [
+// ─── Rollar: kim qaysi sahifani ko'ra oladi ───────────────────────────────────
+// roles: undefined = HAMMA ko'radi, ["doctor"] = faqat doktor ko'radi
+const ADMIN_ROLES = ["admin", "owner", "director", "accountowner", "account_owner"];
+const ALL_MENU_ITEMS = [
     { to: "/", icon: Home, label: "Bosh sahifa" },
-    { to: "/patients", icon: Users, label: "Bemorlar" },
-    { to: "/appointments", icon: Calendar, label: "Qabullar" },
-    { to: "/doctors", icon: UserCheck, label: "Shifokorlar" },
-    { to: "/doctor-room", icon: Stethoscope, label: "Shifokor xonasi" },
-    { to: "/payments", icon: CreditCard, label: "To'lovlar" },
-    { to: "/queue", icon: ListOrdered, label: "Navbat" },
-    { to: "/services", icon: LayoutGrid, label: "Xizmatlar" },
-    { to: "/reports", icon: TrendingUp, label: "Hisobotlar" },
-    { to: "/employees", icon: Users, label: "Xodimlar" },
-    { to: "/salaries", icon: Banknote, label: "Maoshlar" },
-    { to: "/system", icon: Settings, label: "Sozlamalar" },
+    { to: "/patients", icon: Users, label: "Bemorlar", roles: [...ADMIN_ROLES, "receptionist", "cashier"] },
+    { to: "/appointments", icon: Calendar, label: "Qabullar", roles: [...ADMIN_ROLES, "receptionist", "cashier"] },
+    { to: "/doctor-room", icon: Stethoscope, label: "Shifokor xonasi", roles: [...ADMIN_ROLES, "doctor"] },
+    { to: "/doctors", icon: UserCheck, label: "Shifokorlar", roles: ADMIN_ROLES },
+    { to: "/payments", icon: CreditCard, label: "To'lovlar", roles: [...ADMIN_ROLES, "cashier"] },
+    { to: "/queue", icon: ListOrdered, label: "Navbat", roles: [...ADMIN_ROLES, "receptionist"] },
+    { to: "/services", icon: LayoutGrid, label: "Xizmatlar", roles: ADMIN_ROLES },
+    { to: "/reports", icon: TrendingUp, label: "Hisobotlar", roles: ADMIN_ROLES },
+    { to: "/employees", icon: Users, label: "Xodimlar", roles: ADMIN_ROLES },
+    { to: "/salaries", icon: Banknote, label: "Maoshlar", roles: ADMIN_ROLES },
+    { to: "/system", icon: Settings, label: "Sozlamalar", roles: ADMIN_ROLES },
 ];
 
 // ─── Single nav item — memo bilan wrap qilingan ───────────────────────────────
@@ -68,7 +70,7 @@ const NavItem = memo(function NavItem({ item, collapsed, onClose }) {
 
 // ─── Main Sidebar — memo bilan re-render kamaytirish ─────────────────────────
 const HippoSidebar = memo(function HippoSidebar({ mobileOpen, setMobileOpen, collapsed }) {
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const navigate = useNavigate();
 
     const handleLogout = useCallback(() => {
@@ -77,6 +79,15 @@ const HippoSidebar = memo(function HippoSidebar({ mobileOpen, setMobileOpen, col
     }, [logout, navigate]);
 
     const handleClose = useCallback(() => setMobileOpen(false), [setMobileOpen]);
+
+    // Foydalanuvchi roliga qarab menyuni filterlash
+    const role = (user?.role || "").toLowerCase();
+    const MENU_ITEMS = useMemo(() =>
+        ALL_MENU_ITEMS.filter(item => {
+            if (!item.roles) return true; // hamma ko'radi
+            return item.roles.includes(role);
+        }),
+        [role]);
 
     return (
         <>
