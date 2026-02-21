@@ -11,6 +11,7 @@ import {
 // ─── Rollar: kim qaysi sahifani ko'ra oladi ───────────────────────────────────
 // roles: undefined = HAMMA ko'radi, ["doctor"] = faqat doktor ko'radi
 const ADMIN_ROLES = ["admin", "owner", "director", "accountowner", "account_owner"];
+const PLATFORM_ADMIN_ROLES = ["admin"]; // Faqat admin roli Admin Panelni ko'radi
 const ALL_MENU_ITEMS = [
     { to: "/", icon: Home, label: "Bosh sahifa" },
     { to: "/patients", icon: Users, label: "Bemorlar", roles: [...ADMIN_ROLES, "receptionist", "cashier"] },
@@ -27,7 +28,7 @@ const ALL_MENU_ITEMS = [
     { to: "/salaries", icon: Banknote, label: "Maoshlar", roles: ADMIN_ROLES },
     { to: "/telegram-bot", icon: Send, label: "Telegram Bot", roles: ADMIN_ROLES },
     { to: "/system", icon: Settings, label: "Sozlamalar", roles: ADMIN_ROLES },
-    { to: "/admin/overview", icon: ShieldCheck, label: "Admin Panel", roles: ADMIN_ROLES },
+    { to: "/admin/overview", icon: ShieldCheck, label: "Admin Panel", roles: PLATFORM_ADMIN_ROLES },
 ];
 
 // ─── Single nav item — memo bilan wrap qilingan ───────────────────────────────

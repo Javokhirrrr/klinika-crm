@@ -140,7 +140,7 @@ export function AuthProvider({ children }) {
   const email = (user?.email || user?.mail || "").toLowerCase();
   const phone = (user?.phone || user?.tel || "").trim();
   const isAllowlisted = (email && emailsAllow.includes(email)) || (phone && phonesAllow.includes(phone));
-  const isAdmin = role === "admin" || role === "owner" || role === "platform" || isAllowlisted;
+  const isAdmin = role === "admin" || role === "platform_admin" || isAllowlisted;
 
   /* ===============================
      Context qiymati
