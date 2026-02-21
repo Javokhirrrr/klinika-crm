@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import {
     Home, Users, Calendar, Settings, LogOut,
     UserCheck, LayoutGrid, Stethoscope, CreditCard, ListOrdered,
-    TrendingUp, Activity, Banknote, Send, BarChart2, AlertCircle
+    TrendingUp, Activity, Banknote, Send, BarChart2, AlertCircle, ShieldCheck
 } from "lucide-react";
 
 // ─── Rollar: kim qaysi sahifani ko'ra oladi ───────────────────────────────────
@@ -27,6 +27,7 @@ const ALL_MENU_ITEMS = [
     { to: "/salaries", icon: Banknote, label: "Maoshlar", roles: ADMIN_ROLES },
     { to: "/telegram-bot", icon: Send, label: "Telegram Bot", roles: ADMIN_ROLES },
     { to: "/system", icon: Settings, label: "Sozlamalar", roles: ADMIN_ROLES },
+    { to: "/admin/overview", icon: ShieldCheck, label: "Admin Panel", roles: ADMIN_ROLES },
 ];
 
 // ─── Single nav item — memo bilan wrap qilingan ───────────────────────────────
