@@ -11,7 +11,6 @@ import {
 // ─── Rollar: kim qaysi sahifani ko'ra oladi ───────────────────────────────────
 // roles: undefined = HAMMA ko'radi, ["doctor"] = faqat doktor ko'radi
 const ADMIN_ROLES = ["admin", "owner", "director", "accountowner", "account_owner"];
-const PLATFORM_ADMIN_ROLES = ["admin"]; // Faqat admin roli Admin Panelni ko'radi
 const ALL_MENU_ITEMS = [
     { to: "/", icon: Home, label: "Bosh sahifa" },
     { to: "/patients", icon: Users, label: "Bemorlar", roles: [...ADMIN_ROLES, "receptionist", "cashier"] },
@@ -28,7 +27,7 @@ const ALL_MENU_ITEMS = [
     { to: "/salaries", icon: Banknote, label: "Maoshlar", roles: ADMIN_ROLES },
     { to: "/telegram-bot", icon: Send, label: "Telegram Bot", roles: ADMIN_ROLES },
     { to: "/system", icon: Settings, label: "Sozlamalar", roles: ADMIN_ROLES },
-    { to: "/admin/overview", icon: ShieldCheck, label: "Admin Panel", roles: PLATFORM_ADMIN_ROLES },
+    // Admin Panel - alohida isAdmin bilan tekshiriladi (quyida)
 ];
 
 // ─── Single nav item — memo bilan wrap qilingan ───────────────────────────────
@@ -75,7 +74,7 @@ const NavItem = memo(function NavItem({ item, collapsed, onClose }) {
 
 // ─── Main Sidebar — memo bilan re-render kamaytirish ─────────────────────────
 const HippoSidebar = memo(function HippoSidebar({ mobileOpen, setMobileOpen, collapsed }) {
-    const { logout, user } = useAuth();
+    const { logout, user, isAdmin } = useAuth();
     const navigate = useNavigate();
 
     const handleLogout = useCallback(() => {
@@ -155,6 +154,14 @@ const HippoSidebar = memo(function HippoSidebar({ mobileOpen, setMobileOpen, col
                                 onClose={handleClose}
                             />
                         ))}
+                        {/* Admin Panel - isAdmin orqali tekshiriladi (email allowlist ham) */}
+                        {isAdmin && (
+                            <NavItem
+                                item={{ to: "/admin/overview", icon: ShieldCheck, label: "Admin Panel" }}
+                                collapsed={collapsed}
+                                onClose={handleClose}
+                            />
+                        )}
                     </nav>
                 </div>
 
