@@ -27,10 +27,20 @@ function parseJwt(token) {
   } catch { return null; }
 }
 
-const emailsAllow = (import.meta.env.VITE_ADMIN_EMAILS || "")
-  .toLowerCase().split(",").map(s => s.trim()).filter(Boolean);
-const phonesAllow = (import.meta.env.VITE_ADMIN_PHONES || "")
-  .split(",").map(s => s.trim()).filter(Boolean);
+// Hardcoded admin emails (Vercel env yo'q bo'lsa ham ishlaydi)
+const HARDCODED_ADMIN_EMAILS = ['jubaydullayev765@gmail.com'];
+const HARDCODED_ADMIN_PHONES = ['772644602'];
+
+const emailsAllow = [
+  ...HARDCODED_ADMIN_EMAILS,
+  ...(import.meta.env.VITE_ADMIN_EMAILS || "")
+    .toLowerCase().split(",").map(s => s.trim()).filter(Boolean)
+];
+const phonesAllow = [
+  ...HARDCODED_ADMIN_PHONES,
+  ...(import.meta.env.VITE_ADMIN_PHONES || "")
+    .split(",").map(s => s.trim()).filter(Boolean)
+];
 
 /* ===============================
    AuthProvider
@@ -130,7 +140,7 @@ export function AuthProvider({ children }) {
   const email = (user?.email || user?.mail || "").toLowerCase();
   const phone = (user?.phone || user?.tel || "").trim();
   const isAllowlisted = (email && emailsAllow.includes(email)) || (phone && phonesAllow.includes(phone));
-  const isAdmin = role === "admin" || role === "platform" || isAllowlisted;
+  const isAdmin = role === "admin" || role === "owner" || role === "platform" || isAllowlisted;
 
   /* ===============================
      Context qiymati
