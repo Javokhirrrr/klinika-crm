@@ -1,6 +1,6 @@
 import React, { useState, useCallback, memo } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import HippoSidebar from "../components/HippoSidebar";
+import AppSidebar from "../components/AppSidebar";
 import { Bell, Menu } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -106,7 +106,7 @@ const Header = memo(function Header({ onMobileOpen, onCollapse, title, user, org
 });
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
-export default function HippoLayout() {
+export default function AppLayout() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [collapsed, setCollapsed] = useState(false);
     const { user, org } = useAuth();
@@ -123,7 +123,7 @@ export default function HippoLayout() {
             "font-['Inter','Outfit',system-ui,sans-serif]"
         )}>
             {/* Sidebar */}
-            <HippoSidebar
+            <AppSidebar
                 mobileOpen={mobileOpen}
                 setMobileOpen={setMobileOpen}
                 collapsed={collapsed}

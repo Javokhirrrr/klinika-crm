@@ -473,7 +473,7 @@
 @media (max-width: 768px) {
 
   /* Main content padding */
-  .hippo-main-content {
+  .app-main-content {
     padding: 12px !important;
   }
 
@@ -598,11 +598,11 @@
   }
 }
 
-/* --- HippoLayout main padding --- */
+/* --- AppLayout main padding --- */
 @media (max-width: 768px) {
 
   main,
-  [data-hippo-main] {
+  [data-app-main] {
     padding: 12px !important;
   }
 }
@@ -656,7 +656,7 @@
 /* --- Utility: safe area for iOS notch --- */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
 
-  .hippo-main-content,
+  .app-main-content,
   main {
     padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }

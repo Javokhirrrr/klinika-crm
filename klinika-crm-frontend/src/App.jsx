@@ -5,7 +5,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/Toast";
-import HippoLayout from "./layouts/HippoLayout";
+import AppLayout from "./layouts/HippoLayout";
 import BarcodeScannerProvider from "./components/BarcodeScannerProvider";
 
 // ─── Loading Spinner ──────────────────────────────────────────────────────────
@@ -38,7 +38,7 @@ const Twa = lazy(() => import("./pages/Twa.jsx"));
 const QueueDisplay = lazy(() => import("./pages/QueueDisplay.jsx"));
 
 // Dashboard (birinchi ko'rinadigan — eager-ga yaqin)
-const HippoDashboard = lazy(() => import("./pages/HippoDashboard.jsx"));
+const Dashboard = lazy(() => import("./pages/HippoDashboard.jsx"));
 
 // Main pages
 const SimplePatients = lazy(() => import("./pages/SimplePatients.jsx"));
@@ -101,14 +101,14 @@ export default function App() {
                 {/* ── Protected + Layout ── */}
                 <Route element={
                   <ProtectedRoute>
-                    <HippoLayout />
+                    <AppLayout />
                   </ProtectedRoute>
                 }>
                   {/* 🔍 Global barcode scanner — hamma sahifada ishlaydi */}
                   <Route path="*" element={<BarcodeScannerProvider />} />
                   {/* Dashboard */}
-                  <Route index element={<HippoDashboard />} />
-                  <Route path="/dashboard" element={<HippoDashboard />} />
+                  <Route index element={<Dashboard />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/modern-dashboard" element={<ModernDashboard />} />
                   <Route path="/dashboard/reception" element={<ReceptionDashboard />} />
                   <Route path="/dashboard/director" element={<DirectorDashboard />} />

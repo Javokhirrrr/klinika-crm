@@ -73,7 +73,7 @@ const NavItem = memo(function NavItem({ item, collapsed, onClose }) {
 });
 
 // ─── Main Sidebar — memo bilan re-render kamaytirish ─────────────────────────
-const HippoSidebar = memo(function HippoSidebar({ mobileOpen, setMobileOpen, collapsed }) {
+const AppSidebar = memo(function AppSidebar({ mobileOpen, setMobileOpen, collapsed }) {
     const { logout, user, isAdmin } = useAuth();
     const navigate = useNavigate();
 
@@ -187,4 +187,4 @@ const HippoSidebar = memo(function HippoSidebar({ mobileOpen, setMobileOpen, col
     );
 });
 
-export default HippoSidebar;
+export default AppSidebar;

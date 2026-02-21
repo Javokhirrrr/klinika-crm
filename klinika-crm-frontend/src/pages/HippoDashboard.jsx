@@ -178,7 +178,7 @@ const AVATAR_COLORS = [
 ];
 
 // ─── Main Dashboard Component ────────────────────────────────────────────────
-export default function HippoDashboard() {
+export default function Dashboard() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
