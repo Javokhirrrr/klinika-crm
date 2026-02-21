@@ -137,7 +137,7 @@ export default function SimplePayments() {
         <div className="space-y-6 animate-fade-in pb-10">
             {/* Header */}
             <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3">
                         <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
                             <Wallet className="h-5 w-5 text-white" />
@@ -147,15 +147,15 @@ export default function SimplePayments() {
                                 To'lovlar
                                 <span className="text-sm font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">{filteredPayments.length}</span>
                             </h1>
-                            <p className="text-xs text-gray-400 mt-0.5">Moliyaviy tushumlar va to'lovlar tarixi</p>
+                            <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">Moliyaviy tushumlar va to'lovlar tarixi</p>
                         </div>
                     </div>
                     <div className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={loadPayments} className="rounded-xl border-gray-200 h-9">
-                            <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Yangilash
+                            <RefreshCw className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Yangilash</span>
                         </Button>
                         <Button size="sm" onClick={openCreate} className="rounded-xl bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-600/25 h-9">
-                            <Plus className="h-4 w-4 mr-1.5" /> Yangi To'lov
+                            <Plus className="h-4 w-4 sm:mr-1.5" /> <span className="hidden sm:inline">Yangi </span>To'lov
                         </Button>
                     </div>
                 </div>
@@ -240,77 +240,79 @@ export default function SimplePayments() {
                         )}
                     </div>
                 ) : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="bg-gray-50/80 border-b border-gray-200">
-                                <TableHead className="font-bold text-gray-500 text-xs uppercase tracking-wider pl-5 w-10">#</TableHead>
-                                <TableHead className="font-bold text-gray-500 text-xs uppercase tracking-wider">Sana</TableHead>
-                                <TableHead className="font-bold text-gray-500 text-xs uppercase tracking-wider">Bemor</TableHead>
-                                <TableHead className="font-bold text-gray-500 text-xs uppercase tracking-wider">Summa</TableHead>
-                                <TableHead className="font-bold text-gray-500 text-xs uppercase tracking-wider">To'lov usuli</TableHead>
-                                <TableHead className="font-bold text-gray-500 text-xs uppercase tracking-wider">Izoh</TableHead>
-                                <TableHead className="font-bold text-gray-500 text-xs uppercase tracking-wider text-right pr-5">Amallar</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredPayments.map((payment, idx) => (
-                                <TableRow key={payment._id} className="hover:bg-emerald-50/30 transition-colors border-b last:border-0 border-gray-100">
-                                    <TableCell className="pl-5 text-xs font-bold text-gray-400">{idx + 1}</TableCell>
-                                    <TableCell>
-                                        <div className="text-sm font-semibold text-gray-900">{fmtDate(payment.createdAt)}</div>
-                                        <div className="text-[11px] text-gray-400">{fmtTime(payment.createdAt)}</div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="text-sm font-semibold text-gray-900">
-                                            {payment.patientId?.firstName} {payment.patientId?.lastName}
-                                        </div>
-                                        <div className="text-[11px] text-gray-400">{payment.patientId?.phone || '—'}</div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg text-sm border border-emerald-100">
-                                            {payment.amount?.toLocaleString()} so'm
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className={cn(
-                                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold",
-                                            payment.method === 'cash' ? "bg-green-50 text-green-700 border border-green-200"
-                                                : payment.method === 'card' ? "bg-purple-50 text-purple-700 border border-purple-200"
-                                                    : "bg-blue-50 text-blue-700 border border-blue-200"
-                                        )}>
-                                            {payment.method === 'cash' ? <><Banknote className="h-3 w-3" /> Naqd</> :
-                                                payment.method === 'card' ? <><CreditCard className="h-3 w-3" /> Karta</> :
-                                                    <><DollarSign className="h-3 w-3" /> O'tkazma</>}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="text-xs text-gray-500">{payment.note || '—'}</span>
-                                    </TableCell>
-                                    <TableCell className="text-right pr-5">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg" onClick={() => handlePrint(payment)}>
-                                                <Printer className="h-3.5 w-3.5" />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="bg-gray-50/80 border-b border-gray-200">
+                                    <TableHead className="font-bold text-gray-500 text-xs uppercase tracking-wider pl-5 w-10">#</TableHead>
+                                    <TableHead className="font-bold text-gray-500 text-xs uppercase tracking-wider">Sana</TableHead>
+                                    <TableHead className="font-bold text-gray-500 text-xs uppercase tracking-wider">Bemor</TableHead>
+                                    <TableHead className="font-bold text-gray-500 text-xs uppercase tracking-wider">Summa</TableHead>
+                                    <TableHead className="font-bold text-gray-500 text-xs uppercase tracking-wider">To'lov usuli</TableHead>
+                                    <TableHead className="font-bold text-gray-500 text-xs uppercase tracking-wider hidden md:table-cell">Izoh</TableHead>
+                                    <TableHead className="font-bold text-gray-500 text-xs uppercase tracking-wider text-right pr-5">Amallar</TableHead>
                                 </TableRow>
-                            ))}
+                            </TableHeader>
+                            <TableBody>
+                                {filteredPayments.map((payment, idx) => (
+                                    <TableRow key={payment._id} className="hover:bg-emerald-50/30 transition-colors border-b last:border-0 border-gray-100">
+                                        <TableCell className="pl-5 text-xs font-bold text-gray-400">{idx + 1}</TableCell>
+                                        <TableCell>
+                                            <div className="text-sm font-semibold text-gray-900">{fmtDate(payment.createdAt)}</div>
+                                            <div className="text-[11px] text-gray-400">{fmtTime(payment.createdAt)}</div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="text-sm font-semibold text-gray-900">
+                                                {payment.patientId?.firstName} {payment.patientId?.lastName}
+                                            </div>
+                                            <div className="text-[11px] text-gray-400">{payment.patientId?.phone || '—'}</div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg text-sm border border-emerald-100">
+                                                {payment.amount?.toLocaleString()} so'm
+                                            </span>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className={cn(
+                                                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold",
+                                                payment.method === 'cash' ? "bg-green-50 text-green-700 border border-green-200"
+                                                    : payment.method === 'card' ? "bg-purple-50 text-purple-700 border border-purple-200"
+                                                        : "bg-blue-50 text-blue-700 border border-blue-200"
+                                            )}>
+                                                {payment.method === 'cash' ? <><Banknote className="h-3 w-3" /> Naqd</> :
+                                                    payment.method === 'card' ? <><CreditCard className="h-3 w-3" /> Karta</> :
+                                                        <><DollarSign className="h-3 w-3" /> O'tkazma</>}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="hidden md:table-cell">
+                                            <span className="text-xs text-gray-500">{payment.note || '—'}</span>
+                                        </TableCell>
+                                        <TableCell className="text-right pr-5">
+                                            <div className="flex items-center justify-end gap-1">
+                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg" onClick={() => handlePrint(payment)}>
+                                                    <Printer className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
 
-                            {/* Totals row */}
-                            <TableRow className="bg-gray-50/80 border-t-2 border-gray-200 font-bold">
-                                <TableCell className="pl-5"></TableCell>
-                                <TableCell colSpan={2} className="text-sm font-bold text-gray-700">
-                                    Jami: {filteredPayments.length} ta to'lov
-                                </TableCell>
-                                <TableCell>
-                                    <span className="font-black text-emerald-700 bg-emerald-100 px-3 py-1.5 rounded-lg text-sm border border-emerald-200">
-                                        {filteredPayments.reduce((s, p) => s + (p.amount || 0), 0).toLocaleString()} so'm
-                                    </span>
-                                </TableCell>
-                                <TableCell colSpan={3}></TableCell>
-                            </TableRow>
-                        </TableBody>
-                    </Table>
+                                {/* Totals row */}
+                                <TableRow className="bg-gray-50/80 border-t-2 border-gray-200 font-bold">
+                                    <TableCell className="pl-5"></TableCell>
+                                    <TableCell colSpan={2} className="text-sm font-bold text-gray-700">
+                                        Jami: {filteredPayments.length} ta to'lov
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="font-black text-emerald-700 bg-emerald-100 px-3 py-1.5 rounded-lg text-sm border border-emerald-200">
+                                            {filteredPayments.reduce((s, p) => s + (p.amount || 0), 0).toLocaleString()} so'm
+                                        </span>
+                                    </TableCell>
+                                    <TableCell colSpan={3}></TableCell>
+                                </TableRow>
+                            </TableBody>
+                        </Table>
+                    </div>
                 )}
             </div>
 

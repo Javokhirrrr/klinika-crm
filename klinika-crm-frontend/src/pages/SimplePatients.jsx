@@ -242,17 +242,17 @@ export default function SimplePatients() {
     return (
         <div className="space-y-6 w-full">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tight">Bemorlar</h1>
-                    <p className="text-gray-500 mt-1 text-sm font-medium">Jami: {patients.length} ta bemor</p>
+                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Bemorlar</h1>
+                    <p className="text-gray-500 mt-1 text-xs sm:text-sm font-medium">Jami: {patients.length} ta bemor</p>
                 </div>
                 <Button
                     onClick={() => setShowModal(true)}
-                    className="h-11 bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 rounded-xl px-5 font-semibold transition-all hover:-translate-y-0.5"
+                    className="h-10 sm:h-11 bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 rounded-xl px-4 sm:px-5 font-semibold transition-all hover:-translate-y-0.5"
                 >
-                    <UserPlus className="h-5 w-5 mr-2" />
-                    Yangi Bemor
+                    <UserPlus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                    <span className="hidden sm:inline">Yangi </span>Bemor
                 </Button>
             </div>
 
@@ -277,7 +277,7 @@ export default function SimplePatients() {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                     {filteredPatients.map((patient) => (
                         <Card
                             key={patient._id}

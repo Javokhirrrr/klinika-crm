@@ -137,7 +137,7 @@ export default function SimpleDoctors() {
             {/* Header — compact */}
             {/* Header */}
             <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3">
                         <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
                             <Stethoscope className="h-5 w-5 text-white" />
@@ -147,15 +147,15 @@ export default function SimpleDoctors() {
                                 Shifokorlar
                                 <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">{filteredDoctors.length}</span>
                             </h1>
-                            <p className="text-xs text-gray-400 mt-0.5">Klinikamizning malakali mutaxassislari</p>
+                            <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">Klinikamizning malakali mutaxassislari</p>
                         </div>
                     </div>
                     <div className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={loadDoctors} className="rounded-xl border-gray-200 h-9">
-                            <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Yangilash
+                            <RefreshCw className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Yangilash</span>
                         </Button>
                         <Button size="sm" onClick={openCreate} className="rounded-xl bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/25 h-9">
-                            <Plus className="h-4 w-4 mr-1.5" /> Yangi Shifokor
+                            <Plus className="h-4 w-4 sm:mr-1.5" /> <span className="hidden sm:inline">Yangi </span>Shifokor
                         </Button>
                     </div>
                 </div>

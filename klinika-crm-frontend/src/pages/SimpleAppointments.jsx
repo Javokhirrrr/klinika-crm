@@ -337,12 +337,12 @@ export default function SimpleAppointments() {
     const { finalTotal, debt, change } = calculateTotals();
 
     return (
-        <div className="space-y-8 animate-fade-in pb-10">
+        <div className="space-y-6 animate-fade-in pb-10">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">Qabullar</h1>
-                    <p className="text-muted-foreground mt-2 text-lg">Bemorlar qabuli va navbatni boshqarish</p>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900">Qabullar</h1>
+                    <p className="text-muted-foreground mt-1 text-sm sm:text-lg">Bemorlar qabuli va navbatni boshqarish</p>
                 </div>
                 <div className="flex gap-3">
                     {user?.role === 'doctor' && (
@@ -351,7 +351,7 @@ export default function SimpleAppointments() {
                         </Button>
                     )}
                     <Button onClick={() => setShowModal(true)} size="lg" className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 rounded-xl">
-                        <Plus className="h-5 w-5 mr-2" /> Yangi Qabul
+                        <Plus className="h-5 w-5 mr-2" /> <span className="hidden sm:inline">Yangi </span>Qabul
                     </Button>
                 </div>
             </div>
@@ -430,67 +430,69 @@ export default function SimpleAppointments() {
                             </Button>
                         </div>
                     ) : (
-                        <Table>
-                            <TableHeader className="bg-gray-50/50">
-                                <TableRow>
-                                    <TableHead className="font-bold text-gray-900 pl-6">Vaqt</TableHead>
-                                    <TableHead className="font-bold text-gray-900">Bemor</TableHead>
-                                    <TableHead className="font-bold text-gray-900">Shifokor</TableHead>
-                                    <TableHead className="font-bold text-gray-900">Holat</TableHead>
-                                    <TableHead className="font-bold text-gray-900 text-right pr-6">Amallar</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {appointments.map((apt) => {
-                                    const status = statusMap[apt.status] || statusMap.scheduled;
-                                    const StatusIcon = status.icon;
-                                    return (
-                                        <TableRow key={apt._id} className={cn("hover:bg-blue-50/30 transition-colors border-b last:border-0 border-gray-100", apt.status === 'in_progress' && "bg-blue-50/40")}>
-                                            <TableCell className="pl-6">
-                                                <div className="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 text-primary font-bold shadow-sm">
-                                                    <span className="text-lg leading-none">{new Date(apt.startsAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }).split(':')[0]}</span>
-                                                    <span className="text-[10px] text-gray-500 leading-none mt-0.5">:{new Date(apt.startsAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }).split(':')[1]}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
-                                                        <AvatarFallback className="bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700 font-bold text-sm">{apt.patientId?.firstName?.[0]}</AvatarFallback>
-                                                    </Avatar>
-                                                    <div>
-                                                        <div className="font-bold text-gray-900 text-sm">{apt.patientId?.firstName} {apt.patientId?.lastName}</div>
-                                                        <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">{apt.patientId?.phone || "Telefon yo'q"}</div>
+                        <div className="overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-gray-50/50">
+                                    <TableRow>
+                                        <TableHead className="font-bold text-gray-900 pl-6">Vaqt</TableHead>
+                                        <TableHead className="font-bold text-gray-900">Bemor</TableHead>
+                                        <TableHead className="font-bold text-gray-900 hidden md:table-cell">Shifokor</TableHead>
+                                        <TableHead className="font-bold text-gray-900">Holat</TableHead>
+                                        <TableHead className="font-bold text-gray-900 text-right pr-6">Amallar</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {appointments.map((apt) => {
+                                        const status = statusMap[apt.status] || statusMap.scheduled;
+                                        const StatusIcon = status.icon;
+                                        return (
+                                            <TableRow key={apt._id} className={cn("hover:bg-blue-50/30 transition-colors border-b last:border-0 border-gray-100", apt.status === 'in_progress' && "bg-blue-50/40")}>
+                                                <TableCell className="pl-6">
+                                                    <div className="flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 text-primary font-bold shadow-sm">
+                                                        <span className="text-lg leading-none">{new Date(apt.startsAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }).split(':')[0]}</span>
+                                                        <span className="text-[10px] text-gray-500 leading-none mt-0.5">:{new Date(apt.startsAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }).split(':')[1]}</span>
                                                     </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs">Dr</div>
-                                                    <span className="font-medium text-gray-700 text-sm">{apt.doctorId?.name}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className={cn("px-2.5 py-1 text-xs font-semibold gap-1.5 shadow-sm", status.class)}>
-                                                    <StatusIcon className="h-3.5 w-3.5" /> {status.label}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-right pr-6">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    {apt.status === 'scheduled' && (
-                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 rounded-full" onClick={() => handleCheckIn(apt._id)} title="Keldi (Check-in)">
-                                                            <Check className="h-4 w-4" />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
+                                                            <AvatarFallback className="bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700 font-bold text-sm">{apt.patientId?.firstName?.[0]}</AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <div className="font-bold text-gray-900 text-sm">{apt.patientId?.firstName} {apt.patientId?.lastName}</div>
+                                                            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">{apt.patientId?.phone || "Telefon yo'q"}</div>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="hidden md:table-cell">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs">Dr</div>
+                                                        <span className="font-medium text-gray-700 text-sm">{apt.doctorId?.name}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className={cn("px-2.5 py-1 text-xs font-semibold gap-1.5 shadow-sm", status.class)}>
+                                                        <StatusIcon className="h-3.5 w-3.5" /> {status.label}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right pr-6">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        {apt.status === 'scheduled' && (
+                                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 rounded-full" onClick={() => handleCheckIn(apt._id)} title="Keldi (Check-in)">
+                                                                <Check className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-full" onClick={() => handleOpenPayment(apt)} title="To'lov">
+                                                            <DollarSign className="h-4 w-4" />
                                                         </Button>
-                                                    )}
-                                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-full" onClick={() => handleOpenPayment(apt)} title="To'lov">
-                                                        <DollarSign className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
                     )}
                 </CardContent>
             </Card>
@@ -502,12 +504,12 @@ export default function SimpleAppointments() {
             }}>
                 <DialogContent className="max-w-[900px] w-[95vw] p-0 overflow-hidden rounded-2xl bg-gray-50 gap-0">
                     {/* Modal Header */}
-                    <div className="bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-                        <DialogTitle className="text-xl font-bold text-gray-900">Yangi Qabul Yaratish</DialogTitle>
+                    <div className="bg-white px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                        <DialogTitle className="text-lg sm:text-xl font-bold text-gray-900">Yangi Qabul Yaratish</DialogTitle>
                     </div>
 
-                    {/* Two-column body */}
-                    <div className="flex gap-0 overflow-hidden" style={{ maxHeight: 'calc(90vh - 200px)' }}>
+                    {/* Two-column body → single col on mobile */}
+                    <div className="appt-modal-cols flex gap-0 overflow-hidden" style={{ maxHeight: 'calc(90vh - 200px)' }}>
                         {/* LEFT: Appointment form */}
                         <div className="flex-1 bg-white p-6 space-y-5 overflow-y-auto border-r border-gray-100">
                             {/* Bemor */}

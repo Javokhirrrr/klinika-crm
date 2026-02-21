@@ -41,25 +41,25 @@ export default function SimpleQueue() {
     const activeQueue = queue.filter(q => q.status === 'waiting' || q.status === 'called');
 
     return (
-        <div className="space-y-8 animate-fade-in pb-10 max-w-7xl mx-auto">
+        <div className="space-y-6 animate-fade-in pb-10 max-w-7xl mx-auto">
             {/* Header Area */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 flex items-center gap-3">
+                    <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-gray-900 flex items-center gap-3">
                         Navbat
                         <Badge variant="outline" className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-bold border-blue-200">
                             Canli PRO
                         </Badge>
                     </h1>
-                    <p className="text-muted-foreground mt-2 text-lg">Bemorlar navbatini boshqarish tizimi</p>
+                    <p className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-lg">Bemorlar navbatini boshqarish tizimi</p>
                 </div>
-                <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 rounded-xl transition-all hover:-translate-y-0.5" onClick={() => window.open('/queue-display', '_blank')}>
+                <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 rounded-xl transition-all hover:-translate-y-0.5 w-full sm:w-auto" onClick={() => window.open('/queue-display', '_blank')}>
                     <Monitor className="h-5 w-5 mr-2" /> Displey Ekrani
                 </Button>
             </div>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-3 gap-3 sm:gap-6">
                 <Card className="border-none shadow-sm bg-gradient-to-br from-amber-50 to-orange-50 relative overflow-hidden">
                     <CardContent className="p-6 flex items-center justify-between relative z-10">
                         <div>

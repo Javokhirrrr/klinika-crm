@@ -6,6 +6,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/Toast";
 import HippoLayout from "./layouts/HippoLayout";
+import BarcodeScannerProvider from "./components/BarcodeScannerProvider";
 
 // ─── Loading Spinner ──────────────────────────────────────────────────────────
 function PageLoader() {
@@ -103,6 +104,8 @@ export default function App() {
                     <HippoLayout />
                   </ProtectedRoute>
                 }>
+                  {/* 🔍 Global barcode scanner — hamma sahifada ishlaydi */}
+                  <Route path="*" element={<BarcodeScannerProvider />} />
                   {/* Dashboard */}
                   <Route index element={<HippoDashboard />} />
                   <Route path="/dashboard" element={<HippoDashboard />} />

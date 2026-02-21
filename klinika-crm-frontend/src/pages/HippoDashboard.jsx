@@ -290,53 +290,50 @@ export default function HippoDashboard() {
     const displayChart = stats.chartData.slice(-7);
 
     return (
-        <div style={{ fontFamily: "'Outfit', 'Inter', sans-serif", color: '#0F172A', paddingBottom: 40 }}>
+        <div style={{ fontFamily: "'Outfit', 'Inter', sans-serif", color: '#0F172A', paddingBottom: 40 }} className="dash-root">
 
             {/* ── Page Header ──────────────────────────────────────────────────── */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+            <div className="dash-header">
                 <div>
-                    <h1 style={{ fontSize: 26, fontWeight: 800, color: '#0F172A', margin: 0, letterSpacing: -0.5 }}>
+                    <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', margin: 0, letterSpacing: -0.5 }}>
                         Boshqaruv paneli
                     </h1>
-                    <p style={{ margin: '4px 0 0', fontSize: 14, color: '#64748B', fontWeight: 500 }}>
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748B', fontWeight: 500 }} className="dash-date">
                         {new Date().toLocaleDateString('uz-UZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button
                         onClick={() => load(true)}
                         disabled={refreshing}
                         style={{
-                            display: 'flex', alignItems: 'center', gap: 8,
-                            padding: '10px 18px', borderRadius: 12, border: '1.5px solid #E2E8F0',
-                            background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 14,
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '9px 14px', borderRadius: 12, border: '1.5px solid #E2E8F0',
+                            background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 13,
                             color: '#64748B', transition: 'all 0.2s',
                         }}
                     >
                         <RefreshCw size={15} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }} />
-                        Yangilash
+                        <span className="dash-btn-text">Yangilash</span>
                     </button>
                     <button
                         onClick={() => navigate('/appointments')}
                         style={{
-                            display: 'flex', alignItems: 'center', gap: 8,
-                            padding: '10px 20px', borderRadius: 12, border: 'none',
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            padding: '9px 16px', borderRadius: 12, border: 'none',
                             background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
-                            color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 14,
+                            color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13,
                             boxShadow: '0 4px 14px rgba(59,130,246,0.4)',
                         }}
                     >
-                        <Calendar size={16} />
-                        Yangi qabul
+                        <Calendar size={15} />
+                        <span className="dash-btn-text">Yangi qabul</span>
                     </button>
                 </div>
             </div>
 
             {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
-            <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: 20, marginBottom: 28
-            }}>
+            <div className="kpi-grid" style={{ marginBottom: 28 }}>
                 <KpiCard
                     icon={<Users />}
                     label="Bugungi bemorlar"
@@ -369,7 +366,7 @@ export default function HippoDashboard() {
             </div>
 
             {/* ── Main Grid ─────────────────────────────────────────────────────── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
+            <div className="dash-main-grid">
 
                 {/* LEFT COLUMN */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -634,14 +631,34 @@ export default function HippoDashboard() {
 
             <style>{`
                 @keyframes spin { to { transform: rotate(360deg); } }
+                .kpi-grid {
+                    display: grid;
+                    grid-template-columns: repeat(4, 1fr);
+                    gap: 16px;
+                }
+                .dash-main-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 320px;
+                    gap: 24px;
+                }
+                .dash-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 24px;
+                    flex-wrap: wrap;
+                    gap: 12px;
+                }
                 @media (max-width: 1100px) {
                     .dash-main-grid { grid-template-columns: 1fr !important; }
                 }
-                @media (max-width: 768px) {
+                @media (max-width: 900px) {
                     .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
                 }
                 @media (max-width: 480px) {
-                    .kpi-grid { grid-template-columns: 1fr !important; }
+                    .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+                    .dash-date { display: none; }
+                    .dash-btn-text { display: none; }
                 }
             `}</style>
         </div>

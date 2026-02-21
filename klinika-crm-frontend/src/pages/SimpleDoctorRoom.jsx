@@ -188,18 +188,18 @@ export default function SimpleDoctorRoom() {
     ];
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6 animate-fade-in">
+        <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6 animate-fade-in">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">Shifokor Xonasi</h1>
-                    <p className="text-muted-foreground mt-2 text-lg">
+                    <h1 className="text-xl sm:text-3xl font-extrabold tracking-tight text-gray-900">Shifokor Xonasi</h1>
+                    <p className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-lg">
                         {user?.role === 'doctor' ? `Xush kelibsiz, Dr. ${user?.name}` : "Bemorlar qabuli va ko'rik jarayoni"}
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                     {user?.role !== 'doctor' && (
-                        <div className="w-72">
+                        <div className="w-full sm:w-72">
                             <Combobox
                                 options={[
                                     { value: '', label: '👥 Barcha shifokorlar' },

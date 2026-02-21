@@ -101,7 +101,7 @@ export default function SimpleServices() {
         <div className="space-y-6 animate-fade-in pb-10">
             {/* Header */}
             <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3">
                         <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
                             <LayoutGrid className="h-5 w-5 text-white" />
@@ -111,15 +111,15 @@ export default function SimpleServices() {
                                 Xizmatlar
                                 <span className="text-sm font-bold text-violet-600 bg-violet-50 px-2.5 py-0.5 rounded-full">{filteredServices.length}</span>
                             </h1>
-                            <p className="text-xs text-gray-400 mt-0.5">Klinikada mavjud tibbiy xizmatlar</p>
+                            <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">Klinikada mavjud tibbiy xizmatlar</p>
                         </div>
                     </div>
                     <div className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={loadServices} className="rounded-xl border-gray-200 h-9">
-                            <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Yangilash
+                            <RefreshCw className="h-3.5 w-3.5 sm:mr-1.5" /> <span className="hidden sm:inline">Yangilash</span>
                         </Button>
                         <Button size="sm" onClick={openCreate} className="rounded-xl bg-violet-600 hover:bg-violet-700 shadow-md shadow-violet-600/25 h-9">
-                            <Plus className="h-4 w-4 mr-1.5" /> Yangi Xizmat
+                            <Plus className="h-4 w-4 sm:mr-1.5" /> <span className="hidden sm:inline">Yangi </span>Xizmat
                         </Button>
                     </div>
                 </div>
