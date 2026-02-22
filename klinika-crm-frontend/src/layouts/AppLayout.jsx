@@ -1,6 +1,7 @@
 import React, { useState, useCallback, memo } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import AppSidebar from "../components/AppSidebar";
+import GlobalSearch from "../components/GlobalSearch";
 import { Bell, Menu } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -75,7 +76,10 @@ const Header = memo(function Header({ onMobileOpen, onCollapse, title, user, org
             </div>
 
             {/* Right */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+                {/* 🔍 Global Search */}
+                <GlobalSearch />
+
                 {/* Org name */}
                 {org?.name && (
                     <div className="hidden md:flex items-center gap-2 mr-1">
