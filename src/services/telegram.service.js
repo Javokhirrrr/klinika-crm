@@ -1,4 +1,4 @@
-﻿import TelegramBot from 'node-telegram-bot-api';
+import TelegramBot from 'node-telegram-bot-api';
 import { Bot } from '../models/Bot.js';
 import { Patient } from '../models/Patient.js';
 import { env } from '../config/env.js';
