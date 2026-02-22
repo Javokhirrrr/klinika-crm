@@ -48,7 +48,9 @@ const SimpleAppointments = lazy(() => import("./pages/SimpleAppointments.jsx"));
 const SimpleDoctors = lazy(() => import("./pages/SimpleDoctors.jsx"));
 const SimpleServices = lazy(() => import("./pages/SimpleServices.jsx"));
 const SimplePayments = lazy(() => import("./pages/SimplePayments.jsx"));
+const Queue = lazy(() => import("./pages/Queue.jsx"));
 const SimpleQueue = lazy(() => import("./pages/SimpleQueue.jsx"));
+
 const SimpleAttendance = lazy(() => import("./pages/SimpleAttendance.jsx"));
 const SimpleReports = lazy(() => import("./pages/SimpleReports.jsx"));
 const SimpleSettings = lazy(() => import("./pages/SimpleSettings.jsx"));
@@ -60,6 +62,8 @@ const TelegramBot = lazy(() => import("./pages/TelegramBot.jsx"));
 const AnalyticsDashboard = lazy(() => import("./pages/AnalyticsDashboard.jsx"));
 const OutstandingDebts = lazy(() => import("./pages/OutstandingDebts.jsx"));
 const VideoAppointments = lazy(() => import("./pages/VideoAppointments.jsx"));
+const KioskPage = lazy(() => import("./pages/KioskPage.jsx"));
+
 
 // Other pages (less visited)
 const PatientProfile = lazy(() => import("./pages/PatientProfile.jsx"));
@@ -102,6 +106,9 @@ export default function App() {
                 <Route path="/queue-display" element={<QueueDisplay />} />
                 {/* PUBLIC: QR navbat holati — auth siz */}
                 <Route path="/queue-status" element={<QueueStatusPage />} />
+                {/* PUBLIC: Kiosk — bemor navbat oladi (auth siz) */}
+                <Route path="/kiosk" element={<KioskPage />} />
+
 
                 {/* ── Protected + Layout ── */}
                 <Route element={
@@ -146,8 +153,9 @@ export default function App() {
                   <Route path="/telegram-bot" element={<TelegramBot />} />
                   <Route path="/analytics" element={<AnalyticsDashboard />} />
                   <Route path="/outstanding-debts" element={<OutstandingDebts />} />
-                  <Route path="/queue" element={<SimpleQueue />} />
+                  <Route path="/queue" element={<Queue />} />
                   <Route path="/live-queue" element={<LiveQueue />} />
+
                   <Route path="/salaries" element={<SimpleSalaries />} />
 
                   {/* Doctor features */}
