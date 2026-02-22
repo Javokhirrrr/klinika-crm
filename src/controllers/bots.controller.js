@@ -28,7 +28,7 @@ function genSecret(len = 24) {
 
 const portalKeyboard = (role) => ({
   inline_keyboard: [[{
-    text: role === "admin" ? "🔧 Admin portal" : "📲 Shaxsiy portal",
+    text: role === "admin" ? "рџ”§ Admin portal" : "рџ“І Shaxsiy portal",
     web_app: { url: `${env.webappUrl}?role=${role}` }
   }]],
 });
@@ -135,13 +135,13 @@ export const testBot = async (req, res) => {
     const phone = toE164(phoneRaw);
     if (!phone) return res.status(400).json({ message: "Telefon noto'g'ri" });
     const link = await TelegramLink.findOne({ orgId: req.orgId, botId: bot._id, phone }).lean();
-    if (!link) return res.status(404).json({ message: 'User linked emas. Botda /start → telefonni ulashsin.' });
+    if (!link) return res.status(404).json({ message: 'User linked emas. Botda /start в†’ telefonni ulashsin.' });
     chatId = link.chatId;
   }
 
   const r = await tgSendSafe(bot.token, 'sendMessage', {
     chat_id: chatId,
-    text: req.body?.message || 'Bot ishlayapti ✅',
+    text: req.body?.message || 'Bot ishlayapti вњ…',
   });
   if (!r) return res.status(500).json({ message: 'Xabar yuborilmadi (user bloklagan bo\'lishi mumkin)' });
   res.json({ ok: true });
@@ -156,7 +156,7 @@ export const telegramWebhook = async (req, res) => {
 
   const upd = req.body;
 
-  // ─── Callback query (inline tugmalar) ─────────────────────────
+  // в”Ђв”Ђв”Ђ Callback query (inline tugmalar) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
   if (upd?.callback_query) {
     const query = upd.callback_query;
     const chatId = String(query.message?.chat?.id || '');
@@ -186,14 +186,14 @@ export const telegramWebhook = async (req, res) => {
   const text = (msg.text || '').trim();
   const contact = msg.contact;
 
-  // 1) /start → kontakt so'rash
+  // 1) /start в†’ kontakt so'rash
   if (/^\/start/i.test(text)) {
     await tgSendSafe(bot.token, 'sendMessage', {
       chat_id: chatId,
-      text: '🏥 <b>Klinika botiga xush kelibsiz!</b>\n\nTelefon raqamingizni ulang:',
+      text: 'рџЏҐ <b>Klinika botiga xush kelibsiz!</b>\n\nTelefon raqamingizni ulang:',
       parse_mode: 'HTML',
       reply_markup: {
-        keyboard: [[{ text: '📱 Telefonni ulashish', request_contact: true }]],
+        keyboard: [[{ text: 'рџ“± Telefonni ulashish', request_contact: true }]],
         resize_keyboard: true,
         one_time_keyboard: true,
       },
@@ -207,7 +207,7 @@ export const telegramWebhook = async (req, res) => {
     return res.json({ ok: true });
   }
 
-  // 3) Kontakt kelsa — bog'lash + menu
+  // 3) Kontakt kelsa вЂ” bog'lash + menu
   if (contact?.phone_number) {
     const phone = toE164(contact.phone_number);
     if (phone) {
@@ -226,8 +226,8 @@ export const telegramWebhook = async (req, res) => {
       await tgSendSafe(bot.token, 'sendMessage', {
         chat_id: chatId,
         text: patient
-          ? `✅ <b>Tasdiqlandi!</b>\n\nSalom, <b>${patient.firstName} ${patient.lastName || ''}</b>!`
-          : '✅ Telefon ulandi.',
+          ? `вњ… <b>Tasdiqlandi!</b>\n\nSalom, <b>${patient.firstName} ${patient.lastName || ''}</b>!`
+          : 'вњ… Telefon ulandi.',
         parse_mode: 'HTML',
         reply_markup: { remove_keyboard: true },
       });
@@ -243,14 +243,14 @@ export const telegramWebhook = async (req, res) => {
       } else {
         await tgSendSafe(bot.token, 'sendMessage', {
           chat_id: chatId,
-          text: "❌ Bu raqam bazada topilmadi. Klinikaga murojaat qiling.",
+          text: "вќЊ Bu raqam bazada topilmadi. Klinikaga murojaat qiling.",
         });
       }
       return res.json({ ok: true });
     }
   }
 
-  // 4) Boshqa xabar — ro'yxatdan o'tgan bo'lsa menuni ko'rsat
+  // 4) Boshqa xabar вЂ” ro'yxatdan o'tgan bo'lsa menuni ko'rsat
   const link = await TelegramLink.findOne({ orgId: bot.orgId, botId: bot._id, chatId }).lean();
   if (link?.patientId) {
     const pat = await Patient.findById(link.patientId).select('firstName').lean();
@@ -258,19 +258,19 @@ export const telegramWebhook = async (req, res) => {
   } else {
     await tgSendSafe(bot.token, 'sendMessage', {
       chat_id: chatId,
-      text: '☎️ /start bosing va telefonni ulashing.',
+      text: 'вЋпёЏ /start bosing va telefonni ulashing.',
     });
   }
   res.json({ ok: true });
 };
 
-/* ─── Bemor kartasini yuborish ─────────────────────────────────── */
+/* в”Ђв”Ђв”Ђ Bemor kartasini yuborish в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */
 async function sendPatientCard(bot, chatId) {
   const link = await TelegramLink.findOne({ botId: bot._id, chatId }).lean();
   if (!link?.patientId) {
     return tgSendSafe(bot.token, 'sendMessage', {
       chat_id: chatId,
-      text: "❌ Siz hali ro'yxatdan o'tmagansiz. /start bosing.",
+      text: "вќЊ Siz hali ro'yxatdan o'tmagansiz. /start bosing.",
     });
   }
 
@@ -278,7 +278,7 @@ async function sendPatientCard(bot, chatId) {
   if (!patient) {
     return tgSendSafe(bot.token, 'sendMessage', {
       chat_id: chatId,
-      text: '❌ Bemor topilmadi.',
+      text: 'вќЊ Bemor topilmadi.',
     });
   }
 
@@ -290,34 +290,34 @@ async function sendPatientCard(bot, chatId) {
   }
 
   const genderLabel = patient.gender === 'male'
-    ? '👨 Erkak'
-    : patient.gender === 'female' ? '👩 Ayol' : '';
+    ? 'рџ‘Ё Erkak'
+    : patient.gender === 'female' ? 'рџ‘© Ayol' : '';
 
   const regDate = patient.createdAt
     ? new Date(patient.createdAt).toLocaleDateString('uz-UZ')
-    : '—';
+    : 'вЂ”';
 
   // Bemor kartasi (chiroyli formatda)
   const rows = [
-    `╔══════════════════════╗`,
-    `║  🏥  BEMOR KARTASI   ║`,
-    `╚══════════════════════╝`,
+    `в•”в•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•—`,
+    `в•‘  рџЏҐ  BEMOR KARTASI   в•‘`,
+    `в•љв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ђв•ќ`,
     ``,
-    `👤 <b>${patient.firstName} ${patient.lastName || ''}</b>`,
+    `рџ‘¤ <b>${patient.firstName} ${patient.lastName || ''}</b>`,
   ];
 
-  if (patient.cardNo) rows.push(`🎫 Karta №: <code>${patient.cardNo}</code>`);
-  if (patient.phone) rows.push(`📞 Telefon: <code>${patient.phone}</code>`);
-  if (age) rows.push(`🎂 Yosh: ${age}`);
-  if (genderLabel) rows.push(`⚧  Jins: ${genderLabel}`);
-  if (patient.address) rows.push(`📍 Manzil: ${patient.address}`);
-  if (patient.bloodType) rows.push(`🩸 Qon guruhi: <b>${patient.bloodType}</b>`);
+  if (patient.cardNo) rows.push(`рџЋ« Karta в„–: <code>${patient.cardNo}</code>`);
+  if (patient.phone) rows.push(`рџ“ћ Telefon: <code>${patient.phone}</code>`);
+  if (age) rows.push(`рџЋ‚ Yosh: ${age}`);
+  if (genderLabel) rows.push(`вљ§  Jins: ${genderLabel}`);
+  if (patient.address) rows.push(`рџ“Ќ Manzil: ${patient.address}`);
+  if (patient.bloodType) rows.push(`рџ©ё Qon guruhi: <b>${patient.bloodType}</b>`);
 
   rows.push(``);
-  rows.push(`━━━━━━━━━━━━━━━━━━━━━━`);
-  rows.push(`📅 Ro'yxatga olingan: ${regDate}`);
+  rows.push(`в”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓв”Ѓ`);
+  rows.push(`рџ“… Ro'yxatga olingan: ${regDate}`);
   rows.push(``);
-  rows.push(`<i>ℹ️ Ushbu karta ma'lumot uchun.</i>`);
+  rows.push(`<i>в„№пёЏ Ushbu karta ma'lumot uchun.</i>`);
 
   await tgSendSafe(bot.token, 'sendMessage', {
     chat_id: chatId,
@@ -326,16 +326,16 @@ async function sendPatientCard(bot, chatId) {
     reply_markup: {
       inline_keyboard: [
         [
-          { text: '📅 Qabullarim', callback_data: 'my_appts' },
-          { text: '🔄 Yangilash', callback_data: 'my_card' },
+          { text: 'рџ“… Qabullarim', callback_data: 'my_appts' },
+          { text: 'рџ”„ Yangilash', callback_data: 'my_card' },
         ],
-        [{ text: '🏠 Bosh menyu', callback_data: 'main_menu' }],
+        [{ text: 'рџЏ  Bosh menyu', callback_data: 'main_menu' }],
       ]
     }
   });
 }
 
-/* ─── Qabullarim ────────────────────────────────────────────────── */
+/* в”Ђв”Ђв”Ђ Qabullarim в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */
 async function sendMyAppointments(bot, chatId) {
   const link = await TelegramLink.findOne({ botId: bot._id, chatId }).lean();
   if (!link?.patientId) return;
@@ -356,30 +356,30 @@ async function sendMyAppointments(bot, chatId) {
     if (!apts.length) {
       return tgSendSafe(bot.token, 'sendMessage', {
         chat_id: chatId,
-        text: '📅 Oxirgi 30 kunda qabul topilmadi.',
+        text: 'рџ“… Oxirgi 30 kunda qabul topilmadi.',
       });
     }
 
     const st = {
-      scheduled: '📋 Rejalashtirilgan',
-      waiting: '⏳ Kutmoqda',
-      in_progress: '🩺 Jarayonda',
-      done: '✅ Tugallangan',
-      cancelled: '❌ Bekor'
+      scheduled: 'рџ“‹ Rejalashtirilgan',
+      waiting: 'вЏі Kutmoqda',
+      in_progress: 'рџ©є Jarayonda',
+      done: 'вњ… Tugallangan',
+      cancelled: 'вќЊ Bekor'
     };
 
-    let txt = `📅 <b>Qabullarim (${apts.length} ta):</b>\n\n`;
+    let txt = `рџ“… <b>Qabullarim (${apts.length} ta):</b>\n\n`;
     apts.forEach((a, i) => {
       const dt = a.startAt
         ? new Date(a.startAt).toLocaleString('uz-UZ', {
           day: '2-digit', month: '2-digit', year: 'numeric',
           hour: '2-digit', minute: '2-digit'
         })
-        : a.date || '—';
+        : a.date || 'вЂ”';
       const doc = a.doctorId
         ? `Dr. ${a.doctorId.firstName} ${a.doctorId.lastName || ''}`
-        : '—';
-      txt += `${i + 1}. <b>${dt}</b>\n👨‍⚕️ ${doc}\n${st[a.status] || a.status}\n\n`;
+        : 'вЂ”';
+      txt += `${i + 1}. <b>${dt}</b>\nрџ‘ЁвЂЌвљ•пёЏ ${doc}\n${st[a.status] || a.status}\n\n`;
     });
 
     await tgSendSafe(bot.token, 'sendMessage', {
@@ -387,7 +387,7 @@ async function sendMyAppointments(bot, chatId) {
       text: txt,
       parse_mode: 'HTML',
       reply_markup: {
-        inline_keyboard: [[{ text: '🏠 Bosh menyu', callback_data: 'main_menu' }]]
+        inline_keyboard: [[{ text: 'рџЏ  Bosh menyu', callback_data: 'main_menu' }]]
       }
     });
   } catch (e) {
@@ -395,16 +395,16 @@ async function sendMyAppointments(bot, chatId) {
   }
 }
 
-/* ─── Asosiy menyu ──────────────────────────────────────────────── */
+/* в”Ђв”Ђв”Ђ Asosiy menyu в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ */
 async function sendMainMenu(token, chatId, patient) {
   await tgSendSafe(token, 'sendMessage', {
     chat_id: chatId,
-    text: `🏥 <b>Asosiy Menyu</b>\n\nSalom, <b>${patient?.firstName || 'Bemor'}</b>!\nQuyidagilardan birini tanlang:`,
+    text: `рџЏҐ <b>Asosiy Menyu</b>\n\nSalom, <b>${patient?.firstName || 'Bemor'}</b>!\nQuyidagilardan birini tanlang:`,
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: [
-        [{ text: '👤 Bemor Kartam', callback_data: 'my_card' }],
-        [{ text: '📅 Qabullarim', callback_data: 'my_appts' }],
+        [{ text: 'рџ‘¤ Bemor Kartam', callback_data: 'my_card' }],
+        [{ text: 'рџ“… Qabullarim', callback_data: 'my_appts' }],
       ]
     }
   });
@@ -422,20 +422,6 @@ export async function notifyAdminsByBot(orgId, text) {
   await Promise.all(
     links.map((l) => tgSendSafe(bot.token, 'sendMessage', { chat_id: l.chatId, text }))
   );
-}
-
-export async function notifyPatientByBot(orgId, patientId, text) {
-  const bot = await getActiveBot(orgId);
-  if (!bot) return;
-
-  let link = await TelegramLink.findOne({ orgId, botId: bot._id, patientId }).lean();
-  if (!link) {
-    const p = await Patient.findOne({ _id: patientId, orgId }).lean();
-    if (!p?.phone) return;
-    link = await TelegramLink.findOne({ orgId, botId: bot._id, phone: toE164(p.phone) }).lean();
-    if (!link) return;
-  }
-  await tgSendSafe(bot.token, 'sendMessage', { chat_id: link.chatId, text });
 }
 
 /* ============================ BROADCAST =========================== */
