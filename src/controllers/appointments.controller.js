@@ -427,13 +427,8 @@ export async function createMeetingRoom(req, res) {
 
   res.json({
     meetingLink,
-    roomName,
     telegramSent: true,
     message: "Video qabul xonasi tayyor. Bemorga Telegram xabar yuborildi.",
-    instructions: {
-      uz: "Havolani bemorga yuboring (Telegram orqali avtomatik yuborildi). Vaqt kelganda havolani bosing.",
-      ru: "Ссылка отправлена пациенту через Telegram. В назначенное время нажмите на ссылку."
-    }
   });
 }
 

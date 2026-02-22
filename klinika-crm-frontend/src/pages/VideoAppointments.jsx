@@ -30,7 +30,16 @@ export default function VideoAppointments() {
         time: '10:00', notes: '', price: 0,
     });
 
-    useEffect(() => { loadData(); }, []);
+    const [notify, setNotify] = useState(null);
+
+    // Sahifaga qaytganda refresh (orqaga bosganda data yo'qolmaslik uchun)
+    useEffect(() => {
+        loadData();
+        const onFocus = () => loadData();
+        window.addEventListener('focus', onFocus);
+        return () => window.removeEventListener('focus', onFocus);
+    }, []);
+
 
     const loadData = async () => {
         setLoading(true);
@@ -77,24 +86,37 @@ export default function VideoAppointments() {
         } finally { setSaving(false); }
     };
 
+    const showNotify = (type, msg) => {
+        setNotify({ type, msg });
+        setTimeout(() => setNotify(null), 5000);
+    };
+
     const startCall = async (apt) => {
-        // Agar meetingLink allaqachon bor bo'lsa — to'g'ri oching
-        if (apt.meetingLink) {
-            window.open(apt.meetingLink, '_blank');
-            return;
-        }
-        // Yo'q bo'lsa — backend dan yangi URL olib ochish
-        try {
-            const data = await http.post(`/appointments/${apt._id}/meeting`);
-            const url = data?.meetingLink || data?.url;
-            if (url) {
-                window.open(url, '_blank');
-                loadData(); // refresh (yangi link saqlangan)
-            } else {
-                alert('Google Meet URL yaratishda xatolik');
+        const link = apt.meetingLink;
+        if (link) {
+            // Link bor — to'g'ri oching va Telegram xabar yuborish
+            window.open(link, '_blank');
+            try {
+                await http.post(`/appointments/${apt._id}/meeting`);
+                showNotify('success', 'Google Meet ochildi. Bemor Telegram ga link yuborildi!');
+            } catch {
+                showNotify('info', 'Google Meet ochildi (Telegram yuborilmadi).');
             }
-        } catch (e) {
-            alert(e?.response?.data?.message || 'Xatolik yuz berdi');
+        } else {
+            // Link yo'q — backend dan yaratib olish
+            try {
+                const data = await http.post(`/appointments/${apt._id}/meeting`);
+                const url = data?.meetingLink;
+                if (url) {
+                    window.open(url, '_blank');
+                    showNotify('success', 'Google Meet yaratildi va bemorga Telegram orqali yuborildi!');
+                    loadData();
+                } else {
+                    showNotify('error', 'Google Meet URL yaratishda xatolik');
+                }
+            } catch (e) {
+                showNotify('error', e?.response?.data?.message || 'Xatolik yuz berdi');
+            }
         }
     };
 
@@ -122,6 +144,21 @@ export default function VideoAppointments() {
                     <Plus size={18} /> Yangi Video Qabul
                 </button>
             </div>
+
+            {/* ─── Notification ─────────────────────────────── */}
+            {notify && (
+                <div style={{
+                    padding: '12px 18px', borderRadius: 12, marginBottom: 16,
+                    fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10,
+                    background: notify.type === 'success' ? '#f0fdf4' : notify.type === 'error' ? '#fef2f2' : '#eff6ff',
+                    color: notify.type === 'success' ? '#15803d' : notify.type === 'error' ? '#dc2626' : '#1d4ed8',
+                    border: `1px solid ${notify.type === 'success' ? '#bbf7d0' : notify.type === 'error' ? '#fecaca' : '#bfdbfe'}`,
+                    animation: 'fadeIn 0.2s ease',
+                }}>
+                    {notify.type === 'success' ? '✅' : notify.type === 'error' ? '❌' : 'ℹ️'}
+                    {notify.msg}
+                </div>
+            )}
 
             {/* ─── Search ───────────────────────────────────── */}
             <div style={s.searchRow}>
