@@ -1,4 +1,4 @@
-// telegram.service.js Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљ v3 Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљ 2026-02-22
+// telegram.service.js Р Р†Р вЂљРІР‚Сњ v3 Р Р†Р вЂљРІР‚Сњ 2026-02-22
 import TelegramBot from 'node-telegram-bot-api';
 import { Bot } from '../models/Bot.js';
 import { Patient } from '../models/Patient.js';
@@ -188,77 +188,52 @@ async function sendMainMenu(bot, chatId, patient) {
     );
 }
 
-// Bemor kartasi РІР‚вЂќ barcode rasm + bemor ma'lumotlari
+// Bemor kartasi
 async function sendPatientCard(bot, chatId, patient) {
+    const markup = {
+        inline_keyboard: [
+            [
+                { text: '\u{1F4C5} Qabullarim', callback_data: 'appointments' },
+                { text: '\u{1F504} Yangilash', callback_data: 'my_card' }
+            ],
+            [{ text: '\u{1F3E0} Bosh menyu', callback_data: 'back_menu' }]
+        ]
+    };
+
+    const cardNo = String(patient.cardNo || patient.cardNumber || patient._id || '00000000').replace(/\D/g, '') || '00000000';
+    const fullName = [patient.firstName, patient.lastName].filter(Boolean).join(' ') || "Noma'lum";
+
+    let age = '';
+    if (patient.birthDate) {
+        age = (new Date().getFullYear() - new Date(patient.birthDate).getFullYear()) + ' yosh';
+    }
+    const gender = patient.gender === 'male' ? 'Erkak' : patient.gender === 'female' ? 'Ayol' : '';
+    const regDate = patient.createdAt ? new Date(patient.createdAt).toLocaleDateString('uz-UZ') : '';
+
+    const caption = [
+        '\u{1F3E5} BEMOR KARTASI',
+        '\u2501'.repeat(22),
+        '\u{1F464} ' + fullName,
+        patient.cardNo ? '\u{1F194} Karta: ' + patient.cardNo : '',
+        patient.phone ? '\u{1F4DE} Tel: ' + patient.phone : '',
+        age ? '\u{1F382} Yosh: ' + age : '',
+        gender ? '\u26A7\uFE0F Jins: ' + gender : '',
+        patient.address ? '\u{1F4CD} ' + patient.address : '',
+        regDate ? '\u{1F4C5} Ro\'yxat: ' + regDate : '',
+    ].filter(Boolean).join('\n');
+
+    // Barcode rasmini yuborishga urinish
+    const barcodeUrl = 'https://barcodeapi.org/api/code128/' + cardNo + '?width=2&height=55';
     try {
-        const cardNo = String(patient.cardNo || patient.cardNumber || patient._id || '00000000').replace(/\D/g, '') || '00000000';
-        const fullName = [patient.firstName, patient.lastName].filter(Boolean).join(' ') || "Noma'lum";
-        const phone = patient.phone || '\u2014';
-        const gender = patient.gender === 'male' ? 'Erkak' : patient.gender === 'female' ? 'Ayol' : '\u2014';
-
-        let ageStr = '';
-        if (patient.birthDate) {
-            const age = new Date().getFullYear() - new Date(patient.birthDate).getFullYear();
-            ageStr = age + ' yosh';
-        }
-
-        const regDate = patient.createdAt
-            ? new Date(patient.createdAt).toLocaleDateString('uz-UZ') : '';
-
-        // Caption matni
-        const caption = [
-            '\ud83c\udfe5 <b>BEMOR KARTASI</b>',
-            '<i>Klinika CRM Tizimi</i>',
-            '',
-            '\ud83d\udc64 <b>' + fullName + '</b>',
-            '\ud83c\udff7 Karta: <code>' + cardNo + '</code>',
-            '\ud83d\udcde Tel: <code>' + phone + '</code>',
-            ageStr ? '\ud83c\udf82 Yosh: ' + ageStr : '',
-            '\u2642\ufe0f Jins: ' + gender,
-            regDate ? '\ud83d\udcc5 Ro\'yxat: ' + regDate : '',
-            '',
-            '<i>Har safar klinikaga kelganingizda</i>',
-            '<i>ushbu kartani ko\'rsating!</i>',
-        ].filter(Boolean).join('\n');
-
-        // barcodeapi.org dan barcode rasmi
-        const barcodeUrl = 'https://barcodeapi.org/api/code128/' + cardNo + '?width=2&height=60';
-
-        const markup = {
-            inline_keyboard: [
-                [
-                    { text: '\ud83d\udcc5 Qabullarim', callback_data: 'appointments' },
-                    { text: '\ud83d\udd04 Yangilash', callback_data: 'my_card' }
-                ],
-                [{ text: '\ud83c\udfe0 Bosh menyu', callback_data: 'back_menu' }]
-            ]
-        };
-
-        await bot.sendPhoto(chatId, barcodeUrl, {
-            caption,
-            parse_mode: 'HTML',
-            reply_markup: markup,
-        });
-    } catch (err) {
-        console.error('sendPatientCard error:', err);
-        // Barcode yuklanmasa РІР‚вЂќ oddiy xabar
+        await bot.sendPhoto(chatId, barcodeUrl, { caption, reply_markup: markup });
+    } catch (photoErr) {
+        // Rasm kelmasa вЂ” text xabar
+        console.warn('sendPhoto failed, sending text:', photoErr.message);
         try {
-            await bot.sendMessage(chatId,
-                '\ud83c\udfe5 <b>BEMOR KARTASI</b>\n\n' +
-                '\ud83d\udc64 ' + [patient.firstName, patient.lastName].filter(Boolean).join(' ') + '\n' +
-                (patient.phone ? '\ud83d\udcde ' + patient.phone + '\n' : '') +
-                (patient.cardNo ? '\ud83c\udff7 ' + patient.cardNo : ''),
-                {
-                    parse_mode: 'HTML',
-                    reply_markup: {
-                        inline_keyboard: [
-                            [{ text: '\ud83d\udd04 Yangilash', callback_data: 'my_card' }],
-                            [{ text: '\ud83c\udfe0 Bosh menyu', callback_data: 'back_menu' }],
-                        ]
-                    }
-                }
-            );
-        } catch (_) { }
+            await bot.sendMessage(chatId, caption, { reply_markup: markup });
+        } catch (textErr) {
+            console.error('sendPatientCard text error:', textErr);
+        }
     }
 }
 
