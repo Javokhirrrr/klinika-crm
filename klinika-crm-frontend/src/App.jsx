@@ -59,6 +59,7 @@ const SimpleCommissions = lazy(() => import("./pages/SimpleCommissions.jsx"));
 const TelegramBot = lazy(() => import("./pages/TelegramBot.jsx"));
 const AnalyticsDashboard = lazy(() => import("./pages/AnalyticsDashboard.jsx"));
 const OutstandingDebts = lazy(() => import("./pages/OutstandingDebts.jsx"));
+const VideoAppointments = lazy(() => import("./pages/VideoAppointments.jsx"));
 
 // Other pages (less visited)
 const PatientProfile = lazy(() => import("./pages/PatientProfile.jsx"));
@@ -119,6 +120,8 @@ export default function App() {
                   <Route path="/dashboard/doctor" element={<DoctorDashboard />} />
                   {/* Video Call (auth kerak) */}
                   <Route path="/video-call/:appointmentId" element={<VideoCallPage />} />
+                  {/* Video Qabul bo'limi */}
+                  <Route path="/video-appointments" element={<VideoAppointments />} />
 
                   {/* Core pages */}
                   <Route path="/patients" element={<SimplePatients />} />
