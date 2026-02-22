@@ -12,7 +12,7 @@ RUN apk add --no-cache python3 make g++
 
 # Faqat package fayllarini ko'chirish (layer cache uchun)
 COPY package*.json ./
-RUN npm ci --omit=dev --ignore-scripts
+RUN npm install --omit=dev --ignore-scripts
 
 # ─── 2. Development stage ─────────────────────────────
 FROM node:18-alpine AS development
@@ -20,7 +20,7 @@ FROM node:18-alpine AS development
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --ignore-scripts
+RUN npm install --ignore-scripts
 
 COPY . .
 
