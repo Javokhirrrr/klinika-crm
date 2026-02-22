@@ -1,4 +1,4 @@
-// telegram.service.js вЂ” v3 вЂ” 2026-02-22
+// telegram.service.js РІР‚вЂќ v3 РІР‚вЂќ 2026-02-22
 import TelegramBot from 'node-telegram-bot-api';
 import { Bot } from '../models/Bot.js';
 import { Patient } from '../models/Patient.js';
@@ -188,7 +188,7 @@ async function sendMainMenu(bot, chatId, patient) {
     );
 }
 
-// Bemor kartasi вЂ” xuddi print sahifasidagi ko'rinishda rasm sifatida
+// Bemor kartasi РІР‚вЂќ xuddi print sahifasidagi ko'rinishda rasm sifatida
 async function sendPatientCard(bot, chatId, patient) {
     try {
         // "Tayyorlanmoqda" xabari
@@ -218,9 +218,9 @@ async function sendPatientCard(bot, chatId, patient) {
         try { await bot.deleteMessage(chatId, waitMsg.message_id); } catch (_) { }
 
         if (imgBuffer) {
-            // Puppeteer muvaffaqiyatli вЂ” to'liq karta rasmi
+            // Puppeteer muvaffaqiyatli РІР‚вЂќ to'liq karta rasmi
             await bot.sendPhoto(chatId, imgBuffer, {
-                caption: '\u{1F3E5} ' + (patient.firstName || '') + ' ' + (patient.lastName || '') + ' вЂ” Bemor Kartasi',
+                caption: '\u{1F3E5} ' + (patient.firstName || '') + ' ' + (patient.lastName || '') + ' РІР‚вЂќ Bemor Kartasi',
                 reply_markup: markup,
             }, { filename: 'bemor-karta.jpg', contentType: 'image/jpeg' });
         } else {
@@ -251,149 +251,148 @@ async function sendPatientCard(bot, chatId, patient) {
         await bot.sendMessage(chatId, 'Karta yuklashda xatolik yuz berdi.');
     }
 }
-try {
 
-    async function handleMyQueue(bot, chatId, orgId) {
-        try {
-            const patient = await Patient.findOne({ orgId, telegramChatId: chatId.toString() });
-            if (!patient) return bot.sendMessage(chatId, 'Bemor topilmadi');
-            await bot.sendMessage(chatId, '\u{1F3AB} Navbatim\n\nHozirda navbatda yo\'qsiz.\nQabul uchun klinikaga murojaat qiling.');
-        } catch (error) {
-            console.error('Queue error:', error);
-            await bot.sendMessage(chatId, 'Xatolik yuz berdi');
-        }
+async function handleMyQueue(bot, chatId, orgId) {
+    try {
+        const patient = await Patient.findOne({ orgId, telegramChatId: chatId.toString() });
+        if (!patient) return bot.sendMessage(chatId, 'Bemor topilmadi');
+        await bot.sendMessage(chatId, '\u{1F3AB} Navbatim\n\nHozirda navbatda yo\'qsiz.\nQabul uchun klinikaga murojaat qiling.');
+    } catch (error) {
+        console.error('Queue error:', error);
+        await bot.sendMessage(chatId, 'Xatolik yuz berdi');
     }
+}
 
-    async function handleMyPayments(bot, chatId, orgId) {
-        try {
-            await bot.sendMessage(chatId, "\u{1F4B3} To'lovlarim\n\nTo'lovlar tarixi hali mavjud emas.");
-        } catch (error) {
-            console.error('Payments error:', error);
-            await bot.sendMessage(chatId, 'Xatolik yuz berdi');
-        }
+async function handleMyPayments(bot, chatId, orgId) {
+    try {
+        await bot.sendMessage(chatId, "\u{1F4B3} To'lovlarim\n\nTo'lovlar tarixi hali mavjud emas.");
+    } catch (error) {
+        console.error('Payments error:', error);
+        await bot.sendMessage(chatId, 'Xatolik yuz berdi');
     }
+}
 
-    async function handleMyHistory(bot, chatId, orgId) {
-        try {
-            const patient = await Patient.findOne({ orgId, telegramChatId: chatId.toString() });
-            if (!patient) return bot.sendMessage(chatId, 'Bemor topilmadi');
-            const { MedicalHistory } = await import('../models/MedicalHistory.js');
-            const history = await MedicalHistory.find({ orgId, patientId: patient._id })
-                .sort({ date: -1 }).limit(5)
-                .populate('doctorId', 'firstName lastName spec');
-            if (!history.length) {
-                return bot.sendMessage(chatId, "\u{1F4CB} Kasallik tarixim\n\nHozircha kasallik tarixi yo'q.");
-            }
-            let msg = '\u{1F4CB} Kasallik tarixim\n\n';
-            history.forEach((entry, i) => {
-                const date = new Date(entry.date).toLocaleDateString('uz-UZ');
-                const doctor = entry.doctorId ? `${entry.doctorId.firstName} ${entry.doctorId.lastName}` : 'Noma\'lum';
-                msg += `${i + 1}. ${entry.title}\n\u{1F4C5} ${date}\n\u{1F468}\u200D\u2695\uFE0F ${doctor}\n\n`;
-            });
-            await bot.sendMessage(chatId, msg);
-        } catch (error) {
-            console.error('History error:', error);
-            await bot.sendMessage(chatId, 'Xatolik yuz berdi');
+async function handleMyHistory(bot, chatId, orgId) {
+    try {
+        const patient = await Patient.findOne({ orgId, telegramChatId: chatId.toString() });
+        if (!patient) return bot.sendMessage(chatId, 'Bemor topilmadi');
+        const { MedicalHistory } = await import('../models/MedicalHistory.js');
+        const history = await MedicalHistory.find({ orgId, patientId: patient._id })
+            .sort({ date: -1 }).limit(5)
+            .populate('doctorId', 'firstName lastName spec');
+        if (!history.length) {
+            return bot.sendMessage(chatId, "\u{1F4CB} Kasallik tarixim\n\nHozircha kasallik tarixi yo'q.");
         }
+        let msg = '\u{1F4CB} Kasallik tarixim\n\n';
+        history.forEach((entry, i) => {
+            const date = new Date(entry.date).toLocaleDateString('uz-UZ');
+            const doctor = entry.doctorId ? `${entry.doctorId.firstName} ${entry.doctorId.lastName}` : 'Noma\'lum';
+            msg += `${i + 1}. ${entry.title}\n\u{1F4C5} ${date}\n\u{1F468}\u200D\u2695\uFE0F ${doctor}\n\n`;
+        });
+        await bot.sendMessage(chatId, msg);
+    } catch (error) {
+        console.error('History error:', error);
+        await bot.sendMessage(chatId, 'Xatolik yuz berdi');
     }
+}
 
-    async function handleMyAppointments(bot, chatId, orgId) {
-        try {
-            const patient = await Patient.findOne({ orgId, telegramChatId: chatId.toString() });
-            if (!patient) return bot.sendMessage(chatId, 'Bemor topilmadi');
-            const { Appointment } = await import('../models/Appointment.js');
-            const apts = await Appointment.find({
-                orgId,
-                patientId: patient._id,
-                isDeleted: { $ne: true },
-            }).sort({ startAt: -1 }).limit(5).populate('doctorId', 'firstName lastName');
-            if (!apts.length) return bot.sendMessage(chatId, "\u{1F4C5} Qabullar\n\nQabullar mavjud emas.");
-            let msg = '\u{1F4C5} Qabullarim:\n\n';
-            apts.forEach((a, i) => {
-                const dt = a.startAt ? new Date(a.startAt).toLocaleString('uz-UZ') : a.date || '-';
-                const doc = a.doctorId ? `Dr. ${a.doctorId.firstName} ${a.doctorId.lastName || ''}` : '-';
-                msg += `${i + 1}. ${dt}\n\u{1F468}\u200D\u2695\uFE0F ${doc}\n\n`;
-            });
-            await bot.sendMessage(chatId, msg);
-        } catch (error) {
-            console.error('Appointments error:', error);
-            await bot.sendMessage(chatId, 'Xatolik yuz berdi');
-        }
+async function handleMyAppointments(bot, chatId, orgId) {
+    try {
+        const patient = await Patient.findOne({ orgId, telegramChatId: chatId.toString() });
+        if (!patient) return bot.sendMessage(chatId, 'Bemor topilmadi');
+        const { Appointment } = await import('../models/Appointment.js');
+        const apts = await Appointment.find({
+            orgId,
+            patientId: patient._id,
+            isDeleted: { $ne: true },
+        }).sort({ startAt: -1 }).limit(5).populate('doctorId', 'firstName lastName');
+        if (!apts.length) return bot.sendMessage(chatId, "\u{1F4C5} Qabullar\n\nQabullar mavjud emas.");
+        let msg = '\u{1F4C5} Qabullarim:\n\n';
+        apts.forEach((a, i) => {
+            const dt = a.startAt ? new Date(a.startAt).toLocaleString('uz-UZ') : a.date || '-';
+            const doc = a.doctorId ? `Dr. ${a.doctorId.firstName} ${a.doctorId.lastName || ''}` : '-';
+            msg += `${i + 1}. ${dt}\n\u{1F468}\u200D\u2695\uFE0F ${doc}\n\n`;
+        });
+        await bot.sendMessage(chatId, msg);
+    } catch (error) {
+        console.error('Appointments error:', error);
+        await bot.sendMessage(chatId, 'Xatolik yuz berdi');
     }
+}
 
-    async function handleSettings(bot, chatId) {
-        await bot.sendMessage(chatId, "\u2699\uFE0F Sozlamalar ishlab chiqilmoqda...");
+async function handleSettings(bot, chatId) {
+    await bot.sendMessage(chatId, "\u2699\uFE0F Sozlamalar ishlab chiqilmoqda...");
+}
+
+export const getBotForOrg = (orgId) => bots.get(orgId.toString());
+
+export const sendTelegramMessage = async (orgId, chatId, message, options = {}) => {
+    const bot = getBotForOrg(orgId);
+    if (!bot) return { success: false, error: 'Bot not found' };
+    try {
+        await bot.sendMessage(chatId, message, options);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
     }
+};
 
-    export const getBotForOrg = (orgId) => bots.get(orgId.toString());
+export const sendPatientNotification = async (patientId, message, options = {}) => {
+    try {
+        const patient = await Patient.findById(patientId);
+        if (!patient || !patient.telegramChatId) return { success: false, message: 'Not connected' };
+        return await sendTelegramMessage(patient.orgId, patient.telegramChatId, message, options);
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
 
-    export const sendTelegramMessage = async (orgId, chatId, message, options = {}) => {
-        const bot = getBotForOrg(orgId);
-        if (!bot) return { success: false, error: 'Bot not found' };
-        try {
-            await bot.sendMessage(chatId, message, options);
-            return { success: true };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    };
+export const reloadBots = async () => {
+    for (const [orgId, bot] of bots.entries()) {
+        try { await bot.stopPolling(); } catch (e) { }
+    }
+    bots.clear();
+    await initTelegramBot();
+};
 
-    export const sendPatientNotification = async (patientId, message, options = {}) => {
-        try {
-            const patient = await Patient.findById(patientId);
-            if (!patient || !patient.telegramChatId) return { success: false, message: 'Not connected' };
-            return await sendTelegramMessage(patient.orgId, patient.telegramChatId, message, options);
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    };
+export const sendQueueNotification = async (orgId, chatId, data) => {
+    const bot = getBotForOrg(orgId);
+    if (!bot) return { success: false, error: 'Bot not found' };
+    let message = '';
+    switch (data.type) {
+        case 'added':
+            message = `\u{1F3AB} Navbatga qo'shildingiz!\n\nNavbat: \u2116${data.queueNumber}\nShifokor: ${data.doctorName}\nKutish: ~${data.waitTime} daqiqa`;
+            break;
+        case 'called':
+            message = `\u{1F514} SIZNING NAVBATINGIZ!\n\n\u2116${data.queueNumber} - Shifokor xonasiga kiring.`;
+            break;
+        default:
+            return { success: false, error: 'Unknown type' };
+    }
+    try {
+        await bot.sendMessage(chatId, message);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
 
-    export const reloadBots = async () => {
-        for (const [orgId, bot] of bots.entries()) {
-            try { await bot.stopPolling(); } catch (e) { }
-        }
-        bots.clear();
-        await initTelegramBot();
-    };
+export const sendReceiptViaTelegram = async (orgId, chatId, pdfPath, payment) => {
+    const bot = getBotForOrg(orgId);
+    if (!bot) return { success: false, error: 'Bot not found' };
+    try {
+        await bot.sendMessage(chatId,
+            `\u{1F4B3} To'lov cheki\n\nChek: ${payment.receiptNumber}\nSumma: ${payment.amount.toLocaleString()} so'm\nSana: ${new Date(payment.createdAt).toLocaleDateString('uz-UZ')}`
+        );
+        await bot.sendDocument(chatId, pdfPath, { caption: `To'lov cheki #${payment.receiptNumber}` });
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+};
 
-    export const sendQueueNotification = async (orgId, chatId, data) => {
-        const bot = getBotForOrg(orgId);
-        if (!bot) return { success: false, error: 'Bot not found' };
-        let message = '';
-        switch (data.type) {
-            case 'added':
-                message = `\u{1F3AB} Navbatga qo'shildingiz!\n\nNavbat: \u2116${data.queueNumber}\nShifokor: ${data.doctorName}\nKutish: ~${data.waitTime} daqiqa`;
-                break;
-            case 'called':
-                message = `\u{1F514} SIZNING NAVBATINGIZ!\n\n\u2116${data.queueNumber} - Shifokor xonasiga kiring.`;
-                break;
-            default:
-                return { success: false, error: 'Unknown type' };
-        }
-        try {
-            await bot.sendMessage(chatId, message);
-            return { success: true };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    };
-
-    export const sendReceiptViaTelegram = async (orgId, chatId, pdfPath, payment) => {
-        const bot = getBotForOrg(orgId);
-        if (!bot) return { success: false, error: 'Bot not found' };
-        try {
-            await bot.sendMessage(chatId,
-                `\u{1F4B3} To'lov cheki\n\nChek: ${payment.receiptNumber}\nSumma: ${payment.amount.toLocaleString()} so'm\nSana: ${new Date(payment.createdAt).toLocaleDateString('uz-UZ')}`
-            );
-            await bot.sendDocument(chatId, pdfPath, { caption: `To'lov cheki #${payment.receiptNumber}` });
-            return { success: true };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    };
-
-    export default {
-        initTelegramBot, getBotForOrg, sendTelegramMessage,
-        sendPatientNotification, sendQueueNotification,
-        sendReceiptViaTelegram, reloadBots
-    };
+export default {
+    initTelegramBot, getBotForOrg, sendTelegramMessage,
+    sendPatientNotification, sendQueueNotification,
+    sendReceiptViaTelegram, reloadBots
+};
