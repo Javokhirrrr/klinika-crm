@@ -328,7 +328,7 @@ async function sendPatientCard(bot, chatId, patient) {
         });
     }
 }
-}
+
 
 /**
  * Handle My Queue

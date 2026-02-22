@@ -386,11 +386,11 @@ export async function createMeetingRoom(req, res) {
 
   if (!appointment) return res.status(404).json({ message: "Qabul topilmadi" });
 
-  // Jitsi Meet xona nomi — deterministik (appointmentId asosida)
-  const orgShort = req.orgId.toString().slice(-6);
-  const apptShort = id.slice(-8);
-  const roomName = `klinika-${orgShort}-${apptShort}`;
-  const meetingLink = `https://meet.jit.si/${roomName}`;
+  // Google Meet URL — o'xshash xona kodi (deterministik)
+  // Format: meet.google.com/xxx-yyyy-zzz (10 harf)
+  const hash = id.slice(-10).toLowerCase().replace(/[^a-z0-9]/g, 'x');
+  const meetCode = `${hash.slice(0, 3)}-${hash.slice(3, 7)}-${hash.slice(7, 10)}`;
+  const meetingLink = `https://meet.google.com/${meetCode}`;
 
   // Appointmentga saqlash
   appointment.meetingLink = meetingLink;
