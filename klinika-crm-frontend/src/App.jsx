@@ -5,7 +5,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/Toast";
-import AppLayout from "./layouts/HippoLayout";
+import AppLayout from "./layouts/AppLayout";
 import BarcodeScannerProvider from "./components/BarcodeScannerProvider";
 
 // ─── Loading Spinner ──────────────────────────────────────────────────────────
