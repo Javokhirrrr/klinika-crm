@@ -187,65 +187,62 @@ async function sendMainMenu(bot, chatId, patient) {
     );
 }
 
-// Bemor kartasi — print sahifasiga havola yuborish
+// Bemor kartasi — xuddi print sahifasidagi ko'rinishda rasm sifatida
 async function sendPatientCard(bot, chatId, patient) {
     try {
-        const cardNo = patient.cardNo || patient.cardNumber || patient._id.toString();
-        const fullName = (patient.firstName || '') + ' ' + (patient.lastName || '');
-        const phone = patient.phone || '';
+        // "Tayyorlanmoqda" xabari
+        const waitMsg = await bot.sendMessage(chatId, '\u23F3 Karta tayyorlanmoqda...');
 
-        // Karta ma'lumotlari text ko'rinishida
-        const lines = [
-            '\u{1F3E5} BEMOR KARTASI',
-            '',
-            '\u{1F464} ' + fullName.trim(),
-        ];
-        if (cardNo) lines.push('\u{1F4CD} Karta: ' + cardNo);
-        if (phone)  lines.push('\u{1F4DE} Tel: ' + phone);
-        if (patient.birthDate) {
-            const age = new Date().getFullYear() - new Date(patient.birthDate).getFullYear();
-            lines.push('\u{1F382} Yosh: ' + age);
-        }
-        if (patient.gender) {
-            lines.push('\u26A7\uFE0F Jins: ' + (patient.gender === 'male' ? 'Erkak' : 'Ayol'));
-        }
-        const regDate = patient.createdAt
-            ? new Date(patient.createdAt).toLocaleDateString('uz-UZ')
-            : 'N/A';
-        lines.push('');
-        lines.push('\u{1F4C5} Ro\'yxat: ' + regDate);
+        let imgBuffer = null;
 
-        // Barcode URL (tashqi servis)
-        const bcCardNo = String(cardNo).replace(/\D/g, '') || '00000000';
-        const barcodeUrl = `https://barcodeapi.org/api/code128/${bcCardNo}?width=2&height=60`;
-
-        // Avval barcode rasmni yuborish
+        // 1-urinish: puppeteer bilan to'liq karta rasmi
         try {
+            const { generatePatientCardPNG } = await import('../lib/cardRenderer.js');
+            imgBuffer = await generatePatientCardPNG(patient);
+        } catch (puppeteerErr) {
+            console.warn('Puppeteer card error:', puppeteerErr.message);
+        }
+
+        const markup = {
+            inline_keyboard: [
+                [
+                    { text: '\u{1F4C5} Qabullarim', callback_data: 'appointments' },
+                    { text: '\u{1F504} Yangilash', callback_data: 'my_card' }
+                ],
+                [{ text: '\u{1F3E0} Bosh menyu', callback_data: 'back_menu' }]
+            ]
+        };
+
+        // Kutish xabarini o'chirish
+        try { await bot.deleteMessage(chatId, waitMsg.message_id); } catch (_) { }
+
+        if (imgBuffer) {
+            // Puppeteer muvaffaqiyatli — to'liq karta rasmi
+            await bot.sendPhoto(chatId, imgBuffer, {
+                caption: '\u{1F3E5} ' + (patient.firstName || '') + ' ' + (patient.lastName || '') + ' — Bemor Kartasi',
+                reply_markup: markup,
+            }, { filename: 'bemor-karta.jpg', contentType: 'image/jpeg' });
+        } else {
+            // 2-fallback: oddiy barcode rasmini yuborish
+            const cardNo = String(patient.cardNo || patient.cardNumber || patient._id || '00000000').replace(/\D/g, '') || '00000000';
+            const barcodeUrl = `https://barcodeapi.org/api/code128/${cardNo}?width=2&height=60`;
+
+            const lines = [
+                '\u{1F3E5} BEMOR KARTASI',
+                '',
+                '\u{1F464} ' + [patient.firstName, patient.lastName].filter(Boolean).join(' '),
+                patient.cardNo ? '\u{1F4CD} Karta: ' + patient.cardNo : '',
+                patient.phone ? '\u{1F4DE} Tel: ' + patient.phone : '',
+                patient.gender ? '\u26A7\uFE0F Jins: ' + (patient.gender === 'male' ? 'Erkak' : 'Ayol') : '',
+            ].filter(Boolean);
+
+            const regDate = patient.createdAt
+                ? new Date(patient.createdAt).toLocaleDateString('uz-UZ') : '';
+            if (regDate) lines.push('\u{1F4C5} Ro\'yxat: ' + regDate);
+
             await bot.sendPhoto(chatId, barcodeUrl, {
                 caption: lines.join('\n'),
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: '\u{1F4C5} Qabullarim', callback_data: 'appointments' },
-                            { text: '\u{1F504} Yangilash',  callback_data: 'my_card' }
-                        ],
-                        [{ text: '\u{1F3E0} Bosh menyu', callback_data: 'back_menu' }]
-                    ]
-                }
-            });
-        } catch (photoErr) {
-            // Rasm kelmasa — oddiy text
-            console.warn('Barcode photo error, sending text:', photoErr.message);
-            await bot.sendMessage(chatId, lines.join('\n'), {
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: '\u{1F4C5} Qabullarim', callback_data: 'appointments' },
-                            { text: '\u{1F504} Yangilash',  callback_data: 'my_card' }
-                        ],
-                        [{ text: '\u{1F3E0} Bosh menyu', callback_data: 'back_menu' }]
-                    ]
-                }
+                reply_markup: markup,
             });
         }
     } catch (err) {
@@ -253,6 +250,7 @@ async function sendPatientCard(bot, chatId, patient) {
         await bot.sendMessage(chatId, 'Karta yuklashda xatolik yuz berdi.');
     }
 }
+try {
 
 async function handleMyQueue(bot, chatId, orgId) {
     try {
