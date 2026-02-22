@@ -2,6 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './QueueDisplay.css';
 
+// ─── API URL ─ http.js bilan bir xil manba ────────────────────────────────────
+const API_BASE = 'https://klinika-crm-eng-yangi-production.up.railway.app';
+
+
+
 const QueueDisplay = () => {
     const [departments, setDepartments] = useState([]);
     const [lastUpdated, setLastUpdated] = useState(null);
@@ -33,9 +38,8 @@ const QueueDisplay = () => {
         }
 
         try {
-            const API_URL = import.meta.env.VITE_API_URL
-                || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://klinika-crm-production.up.railway.app');
-            const response = await axios.get(`${API_URL}/api/queue/public/display?orgId=${orgId}`);
+            const response = await axios.get(`${API_BASE}/api/queue/public/display?orgId=${orgId}`);
+
 
             const { departments: newDepartments, lastUpdated } = response.data;
 
