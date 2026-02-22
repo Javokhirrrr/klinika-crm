@@ -1,4 +1,4 @@
-import TelegramBot from 'node-telegram-bot-api';
+﻿import TelegramBot from 'node-telegram-bot-api';
 import { Bot } from '../models/Bot.js';
 import { Patient } from '../models/Patient.js';
 import { env } from '../config/env.js';
@@ -15,25 +15,25 @@ export const initTelegramBot = async () => {
         const activeBots = await Bot.find({ isActive: true });
 
         if (activeBots.length === 0) {
-            console.log('⚠️ Hech qanday faol bot topilmadi');
-            console.log('💡 Sozlamalar → Bildirishnomalar → Bot qo\'shish');
+            console.log('вљ пёЏ Hech qanday faol bot topilmadi');
+            console.log('рџ’Ў Sozlamalar в†’ Bildirishnomalar в†’ Bot qo\'shish');
             return;
         }
 
-        console.log(`📱 ${activeBots.length} ta bot topildi`);
+        console.log(`рџ“± ${activeBots.length} ta bot topildi`);
 
         // Initialize each bot
         for (const botConfig of activeBots) {
             try {
                 await initializeSingleBot(botConfig);
             } catch (error) {
-                console.error(`❌ Bot ${botConfig.name} ishga tushmadi:`, error.message);
+                console.error(`вќЊ Bot ${botConfig.name} ishga tushmadi:`, error.message);
             }
         }
 
-        console.log(`✅ ${bots.size} ta bot muvaffaqiyatli ishga tushdi`);
+        console.log(`вњ… ${bots.size} ta bot muvaffaqiyatli ishga tushdi`);
     } catch (error) {
-        console.error('❌ Telegram botlarni yuklashda xatolik:', error);
+        console.error('вќЊ Telegram botlarni yuklashda xatolik:', error);
     }
 };
 
@@ -49,7 +49,7 @@ async function initializeSingleBot(botConfig) {
     // Store bot instance
     bots.set(orgId.toString(), bot);
 
-    console.log(`✅ Bot ishga tushdi: ${name} (${orgId})`);
+    console.log(`вњ… Bot ishga tushdi: ${name} (${orgId})`);
 
     // Setup commands for this bot
     setupBotCommands(bot, orgId);
@@ -73,11 +73,11 @@ function setupBotCommands(bot, orgId) {
                 await sendMainMenu(bot, chatId, patient);
             } else {
                 await bot.sendMessage(chatId,
-                    `🏥 *Klinika CRM Botiga xush kelibsiz!*\n\nTelefon raqamingizni yuboring:`,
+                    `рџЏҐ *Klinika CRM Botiga xush kelibsiz!*\n\nTelefon raqamingizni yuboring:`,
                     {
                         parse_mode: 'Markdown',
                         reply_markup: {
-                            keyboard: [[{ text: '📱 Telefon raqamni yuborish', request_contact: true }]],
+                            keyboard: [[{ text: 'рџ“± Telefon raqamni yuborish', request_contact: true }]],
                             resize_keyboard: true,
                             one_time_keyboard: true
                         }
@@ -86,7 +86,7 @@ function setupBotCommands(bot, orgId) {
             }
         } catch (error) {
             console.error('Start command error:', error);
-            await bot.sendMessage(chatId, '❌ Xatolik yuz berdi.');
+            await bot.sendMessage(chatId, 'вќЊ Xatolik yuz berdi.');
         }
     });
 
@@ -96,7 +96,7 @@ function setupBotCommands(bot, orgId) {
         try {
             const patient = await Patient.findOne({ orgId, telegramChatId: chatId.toString() });
             if (!patient) {
-                return bot.sendMessage(chatId, "❌ Siz hali ro'yxatdan o'tmagansiz. /start bosing.");
+                return bot.sendMessage(chatId, "вќЊ Siz hali ro'yxatdan o'tmagansiz. /start bosing.");
             }
             await sendPatientCard(bot, chatId, patient);
         } catch (e) {
@@ -134,7 +134,7 @@ function setupBotCommands(bot, orgId) {
                 await patient.save();
 
                 await bot.sendMessage(chatId,
-                    `✅ *Tasdiqlandi!*\n\n` +
+                    `вњ… *Tasdiqlandi!*\n\n` +
                     `Salom, ${patient.firstName} ${patient.lastName || ''}!\n\n` +
                     `Siz muvaffaqiyatli ro'yxatdan o'tdingiz.`,
                     {
@@ -150,10 +150,10 @@ function setupBotCommands(bot, orgId) {
             } else {
                 // Patient not found
                 await bot.sendMessage(chatId,
-                    `❌ *Kechirasiz!*\n\n` +
+                    `вќЊ *Kechirasiz!*\n\n` +
                     `Sizning telefon raqamingiz bizning bazamizda topilmadi.\n\n` +
                     `Iltimos, klinikaga murojaat qiling va ro'yxatdan o'ting.\n\n` +
-                    `📞 Telefon raqam: +998 XX XXX XX XX`,
+                    `рџ“ћ Telefon raqam: +998 XX XXX XX XX`,
                     {
                         parse_mode: 'Markdown',
                         reply_markup: {
@@ -164,7 +164,7 @@ function setupBotCommands(bot, orgId) {
             }
         } catch (error) {
             console.error('Contact handler error:', error);
-            await bot.sendMessage(chatId, '❌ Xatolik yuz berdi. Qaytadan urinib ko\'ring.');
+            await bot.sendMessage(chatId, 'вќЊ Xatolik yuz berdi. Qaytadan urinib ko\'ring.');
         }
     });
 
@@ -173,7 +173,7 @@ function setupBotCommands(bot, orgId) {
         const chatId = msg.chat.id;
 
         const helpText = `
-📚 *Yordam*
+рџ“љ *Yordam*
 
 *Mavjud komandalar:*
 /start - Botni boshlash
@@ -206,7 +206,7 @@ Agar savolingiz bo'lsa, klinikaga murojaat qiling.
                 case 'my_card': {
                     const patient = await Patient.findOne({ orgId, telegramChatId: chatId.toString() });
                     if (patient) await sendPatientCard(bot, chatId, patient);
-                    else await bot.sendMessage(chatId, "❌ Bemor topilmadi. /start bosing.");
+                    else await bot.sendMessage(chatId, "вќЊ Bemor topilmadi. /start bosing.");
                     break;
                 }
                 case 'back_menu': {
@@ -237,7 +237,7 @@ Agar savolingiz bo'lsa, klinikaga murojaat qiling.
             }
         } catch (error) {
             console.error('Callback query error:', error);
-            await bot.sendMessage(chatId, '❌ Xatolik yuz berdi');
+            await bot.sendMessage(chatId, 'вќЊ Xatolik yuz berdi');
         }
     });
 }
@@ -246,24 +246,24 @@ Agar savolingiz bo'lsa, klinikaga murojaat qiling.
  * Send main menu
  */
 async function sendMainMenu(bot, chatId, patient) {
-    const menuText = `🏥 *Asosiy Menyu*\n\nSalom, ${patient.firstName}!\nQuyidagi funksiyalardan foydalaning:`;
+    const menuText = `рџЏҐ *Asosiy Menyu*\n\nSalom, ${patient.firstName}!\nQuyidagi funksiyalardan foydalaning:`;
 
     const keyboard = {
         inline_keyboard: [
             [
-                { text: '👤 Bemor Kartam', callback_data: 'my_card' },
+                { text: 'рџ‘¤ Bemor Kartam', callback_data: 'my_card' },
             ],
             [
-                { text: '🎫 Navbatim', callback_data: 'queue' },
-                { text: '💳 To\'lovlar', callback_data: 'payments' }
+                { text: 'рџЋ« Navbatim', callback_data: 'queue' },
+                { text: 'рџ’і To\'lovlar', callback_data: 'payments' }
             ],
             [
-                { text: '📋 Kasallik tarixi', callback_data: 'history' },
-                { text: '📅 Qabullar', callback_data: 'appointments' }
+                { text: 'рџ“‹ Kasallik tarixi', callback_data: 'history' },
+                { text: 'рџ“… Qabullar', callback_data: 'appointments' }
             ],
             [
-                { text: '⚙️ Sozlamalar', callback_data: 'settings' },
-                { text: '❓ Yordam', callback_data: 'help' }
+                { text: 'вљ™пёЏ Sozlamalar', callback_data: 'settings' },
+                { text: 'вќ“ Yordam', callback_data: 'help' }
             ]
         ]
     };
@@ -275,53 +275,59 @@ async function sendMainMenu(bot, chatId, patient) {
 }
 
 /**
- * Bemor kartasini yuborish
+ * Bemor kartasini PDF qilib yuborish
  */
 async function sendPatientCard(bot, chatId, patient) {
-    let age = '';
-    if (patient.birthDate) {
-        const yil = new Date().getFullYear() - new Date(patient.birthDate).getFullYear();
-        age = `${yil} yosh`;
+    try {
+        await bot.sendMessage(chatId, 'в§— Karta tayyorlanmoqda...');
+
+        const { generatePatientCardPDF } = await import('../lib/patientCardImage.js');
+        const pdfBuffer = await generatePatientCardPDF(patient);
+
+        await bot.sendDocument(
+            chatId,
+            pdfBuffer,
+            {
+                caption: `рџЏҐ *${patient.firstName} ${patient.lastName || ''}* вЂ” Bemor Kartasi`,
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: 'рџ“… Qabullarim', callback_data: 'appointments' },
+                            { text: 'рџ”„ Yangilash', callback_data: 'my_card' },
+                        ],
+                        [{ text: 'рџЏ  Bosh menyu', callback_data: 'back_menu' }]
+                    ]
+                }
+            },
+            {
+                filename: `bemor-karta-${patient.cardNo || patient._id}.pdf`,
+                contentType: 'application/pdf',
+            }
+        );
+    } catch (err) {
+        console.error('sendPatientCard PDF error:', err);
+        // Fallback: text ko'rinishida yuborish
+        const rows = [
+            `рџЏҐ *BEMOR KARTASI*`, ``,
+            `*${patient.firstName} ${patient.lastName || ''}*`,
+        ];
+        if (patient.cardNo) rows.push(`рџЋ« Karta в„–: \`${patient.cardNo}\``);
+        if (patient.phone) rows.push(`рџ“ћ Telefon: \`${patient.phone}\``);
+        if (patient.gender) rows.push(`вљ§пёЏ Jins: ${patient.gender === 'male' ? 'Erkak' : 'Ayol'}`);
+        rows.push(``, `_в„№пёЏ Bemor kartasi_`);
+
+        await bot.sendMessage(chatId, rows.join('\n'), {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: 'рџ”„ Yangilash', callback_data: 'my_card' }],
+                    [{ text: 'рџЏ  Bosh menyu', callback_data: 'back_menu' }],
+                ]
+            }
+        });
     }
-    const genderLabel = patient.gender === 'male' ? '👨 Erkak'
-        : patient.gender === 'female' ? '👩 Ayol' : '';
-    const regDate = patient.createdAt
-        ? new Date(patient.createdAt).toLocaleDateString('uz-UZ')
-        : '—';
-
-    const rows = [
-        `╔══════════════════════╗`,
-        `║  🏥  BEMOR KARTASI   ║`,
-        `╚══════════════════════╝`,
-        ``,
-        `*${patient.firstName} ${patient.lastName || ''}*`,
-    ];
-
-    if (patient.cardNo) rows.push(`🎫 Karta \u2116: \`${patient.cardNo}\``);
-    if (patient.phone) rows.push(`📞 Telefon: \`${patient.phone}\``);
-    if (age) rows.push(`🎂 Yosh: ${age}`);
-    if (genderLabel) rows.push(`⚧️  Jins: ${genderLabel}`);
-    if (patient.address) rows.push(`📍 Manzil: ${patient.address}`);
-    if (patient.bloodType) rows.push(`🩸 Qon guruhi: *${patient.bloodType}*`);
-
-    rows.push(``);
-    rows.push(`━━━━━━━━━━━━━━━━━━━━━━`);
-    rows.push(`📅 Ro'yxatga olingan: ${regDate}`);
-    rows.push(``);
-    rows.push(`_ℹ️ Ushbu karta ma'lumot uchun._`);
-
-    await bot.sendMessage(chatId, rows.join('\n'), {
-        parse_mode: 'Markdown',
-        reply_markup: {
-            inline_keyboard: [
-                [
-                    { text: '📅 Qabullarim', callback_data: 'appointments' },
-                    { text: '🔄 Yangilash', callback_data: 'my_card' },
-                ],
-                [{ text: '🏠 Bosh menyu', callback_data: 'back_menu' }]
-            ]
-        }
-    });
+}
 }
 
 /**
@@ -335,20 +341,20 @@ async function handleMyQueue(bot, chatId, orgId) {
         });
 
         if (!patient) {
-            await bot.sendMessage(chatId, '❌ Bemor topilmadi');
+            await bot.sendMessage(chatId, 'вќЊ Bemor topilmadi');
             return;
         }
 
         // TODO: Get queue info from QueueEntry model
         await bot.sendMessage(chatId,
-            `🎫 *Navbatim*\n\n` +
+            `рџЋ« *Navbatim*\n\n` +
             `Hozirda navbatda yo'qsiz.\n\n` +
             `Qabul uchun klinikaga murojaat qiling.`,
             { parse_mode: 'Markdown' }
         );
     } catch (error) {
         console.error('My queue error:', error);
-        await bot.sendMessage(chatId, '❌ Xatolik yuz berdi');
+        await bot.sendMessage(chatId, 'вќЊ Xatolik yuz berdi');
     }
 }
 
@@ -358,13 +364,13 @@ async function handleMyQueue(bot, chatId, orgId) {
 async function handleMyPayments(bot, chatId, orgId) {
     try {
         await bot.sendMessage(chatId,
-            `💳 *To'lovlarim*\n\n` +
+            `рџ’і *To'lovlarim*\n\n` +
             `To'lovlar tarixi hali mavjud emas.`,
             { parse_mode: 'Markdown' }
         );
     } catch (error) {
         console.error('My payments error:', error);
-        await bot.sendMessage(chatId, '❌ Xatolik yuz berdi');
+        await bot.sendMessage(chatId, 'вќЊ Xatolik yuz berdi');
     }
 }
 
@@ -379,7 +385,7 @@ async function handleMyHistory(bot, chatId, orgId) {
         });
 
         if (!patient) {
-            await bot.sendMessage(chatId, '❌ Bemor topilmadi');
+            await bot.sendMessage(chatId, 'вќЊ Bemor topilmadi');
             return;
         }
 
@@ -396,7 +402,7 @@ async function handleMyHistory(bot, chatId, orgId) {
 
         if (history.length === 0) {
             await bot.sendMessage(chatId,
-                `📋 *Kasallik tarixim*\n\n` +
+                `рџ“‹ *Kasallik tarixim*\n\n` +
                 `Hozircha kasallik tarixi yo'q.`,
                 { parse_mode: 'Markdown' }
             );
@@ -404,7 +410,7 @@ async function handleMyHistory(bot, chatId, orgId) {
         }
 
         // Format history
-        let message = `📋 *Kasallik tarixim*\n\n`;
+        let message = `рџ“‹ *Kasallik tarixim*\n\n`;
         message += `Oxirgi ${history.length} ta yozuv:\n\n`;
 
         history.forEach((entry, index) => {
@@ -414,15 +420,15 @@ async function handleMyHistory(bot, chatId, orgId) {
                 'Noma\'lum';
 
             message += `${index + 1}. *${entry.title}*\n`;
-            message += `📅 ${date}\n`;
-            message += `👨‍⚕️ ${doctor}\n`;
+            message += `рџ“… ${date}\n`;
+            message += `рџ‘ЁвЂЌвљ•пёЏ ${doctor}\n`;
 
             if (entry.description) {
-                message += `📝 ${entry.description.substring(0, 100)}${entry.description.length > 100 ? '...' : ''}\n`;
+                message += `рџ“ќ ${entry.description.substring(0, 100)}${entry.description.length > 100 ? '...' : ''}\n`;
             }
 
             if (entry.medications && entry.medications.length > 0) {
-                message += `💊 Dorilar: ${entry.medications.length} ta\n`;
+                message += `рџ’Љ Dorilar: ${entry.medications.length} ta\n`;
             }
 
             message += `\n`;
@@ -433,7 +439,7 @@ async function handleMyHistory(bot, chatId, orgId) {
         await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
     } catch (error) {
         console.error('My history error:', error);
-        await bot.sendMessage(chatId, '❌ Xatolik yuz berdi');
+        await bot.sendMessage(chatId, 'вќЊ Xatolik yuz berdi');
     }
 }
 
@@ -443,13 +449,13 @@ async function handleMyHistory(bot, chatId, orgId) {
 async function handleMyAppointments(bot, chatId, orgId) {
     try {
         await bot.sendMessage(chatId,
-            `📅 *Qabullarim*\n\n` +
+            `рџ“… *Qabullarim*\n\n` +
             `Qabullar hali mavjud emas.`,
             { parse_mode: 'Markdown' }
         );
     } catch (error) {
         console.error('My appointments error:', error);
-        await bot.sendMessage(chatId, '❌ Xatolik yuz berdi');
+        await bot.sendMessage(chatId, 'вќЊ Xatolik yuz berdi');
     }
 }
 
@@ -459,13 +465,13 @@ async function handleMyAppointments(bot, chatId, orgId) {
 async function handleSettings(bot, chatId) {
     try {
         await bot.sendMessage(chatId,
-            `⚙️ *Sozlamalar*\n\n` +
+            `вљ™пёЏ *Sozlamalar*\n\n` +
             `Sozlamalar bo'limi ishlab chiqilmoqda...`,
             { parse_mode: 'Markdown' }
         );
     } catch (error) {
         console.error('Settings error:', error);
-        await bot.sendMessage(chatId, '❌ Xatolik yuz berdi');
+        await bot.sendMessage(chatId, 'вќЊ Xatolik yuz berdi');
     }
 }
 
@@ -483,7 +489,7 @@ export const sendTelegramMessage = async (orgId, chatId, message, options = {}) 
     const bot = getBotForOrg(orgId);
 
     if (!bot) {
-        console.error('❌ Bot topilmadi:', orgId);
+        console.error('вќЊ Bot topilmadi:', orgId);
         return { success: false, error: 'Bot not found for organization' };
     }
 
@@ -491,7 +497,7 @@ export const sendTelegramMessage = async (orgId, chatId, message, options = {}) 
         await bot.sendMessage(chatId, message, options);
         return { success: true };
     } catch (error) {
-        console.error('❌ Telegram xabar yuborishda xatolik:', error);
+        console.error('вќЊ Telegram xabar yuborishda xatolik:', error);
         return { success: false, error: error.message };
     }
 };
@@ -504,7 +510,7 @@ export const sendPatientNotification = async (patientId, message, options = {}) 
         const patient = await Patient.findById(patientId);
 
         if (!patient || !patient.telegramChatId) {
-            console.log('⚠️ Bemor Telegram\'ga ulanmagan');
+            console.log('вљ пёЏ Bemor Telegram\'ga ulanmagan');
             return { success: false, message: 'Patient not connected to Telegram' };
         }
 
@@ -519,13 +525,13 @@ export const sendPatientNotification = async (patientId, message, options = {}) 
  * Reload bots (when new bot added or removed)
  */
 export const reloadBots = async () => {
-    console.log('🔄 Botlarni qayta yuklash...');
+    console.log('рџ”„ Botlarni qayta yuklash...');
 
     // Stop all existing bots
     for (const [orgId, bot] of bots.entries()) {
         try {
             await bot.stopPolling();
-            console.log(`⏹️ Bot to'xtatildi: ${orgId}`);
+            console.log(`вЏ№пёЏ Bot to'xtatildi: ${orgId}`);
         } catch (error) {
             console.error(`Error stopping bot ${orgId}:`, error.message);
         }
@@ -545,7 +551,7 @@ export const sendQueueNotification = async (orgId, chatId, data) => {
     const bot = getBotForOrg(orgId);
 
     if (!bot) {
-        console.error('❌ Bot topilmadi:', orgId);
+        console.error('вќЊ Bot topilmadi:', orgId);
         return { success: false, error: 'Bot not found' };
     }
 
@@ -554,29 +560,29 @@ export const sendQueueNotification = async (orgId, chatId, data) => {
 
     switch (data.type) {
         case 'added':
-            message = `🎫 *Navbatga qo'shildingiz!*\n\n` +
-                `📋 Navbat: №${data.queueNumber}\n` +
-                `👨‍⚕️ Shifokor: ${data.doctorName}\n` +
-                `⏰ Taxminiy vaqt: ${data.estimatedTime}\n` +
-                `⏳ Kutish: ~${data.waitTime} daqiqa\n\n` +
+            message = `рџЋ« *Navbatga qo'shildingiz!*\n\n` +
+                `рџ“‹ Navbat: в„–${data.queueNumber}\n` +
+                `рџ‘ЁвЂЌвљ•пёЏ Shifokor: ${data.doctorName}\n` +
+                `вЏ° Taxminiy vaqt: ${data.estimatedTime}\n` +
+                `вЏі Kutish: ~${data.waitTime} daqiqa\n\n` +
                 `Navbatingiz yaqinlashganda xabar beramiz.`;
             break;
 
         case 'approaching':
-            message = `⚠️ *Navbatingiz yaqinlashmoqda!*\n\n` +
+            message = `вљ пёЏ *Navbatingiz yaqinlashmoqda!*\n\n` +
                 `Sizdan oldin ${data.remainingPatients} ta bemor qoldi.\n` +
                 `Iltimos, klinikaga yaqinlashing.`;
             break;
 
         case 'called':
-            message = `🔔 *SIZNING NAVBATINGIZ!*\n\n` +
-                `№${data.queueNumber} - Iltimos, shifokor xonasiga kiring.\n` +
-                `👨‍⚕️ ${data.doctorName}\n` +
-                `🚪 Xona: ${data.roomNumber || 'Qabulxona'}`;
+            message = `рџ”” *SIZNING NAVBATINGIZ!*\n\n` +
+                `в„–${data.queueNumber} - Iltimos, shifokor xonasiga kiring.\n` +
+                `рџ‘ЁвЂЌвљ•пёЏ ${data.doctorName}\n` +
+                `рџљЄ Xona: ${data.roomNumber || 'Qabulxona'}`;
             break;
 
         case 'skipped':
-            message = `⏭️ *Navbatingiz o'tkazib yuborildi*\n\n` +
+            message = `вЏ­пёЏ *Navbatingiz o'tkazib yuborildi*\n\n` +
                 `Iltimos, qabulxonaga murojaat qiling.`;
             break;
 
@@ -588,7 +594,7 @@ export const sendQueueNotification = async (orgId, chatId, data) => {
         await bot.sendMessage(chatId, message, options);
         return { success: true };
     } catch (error) {
-        console.error('❌ Queue notification error:', error);
+        console.error('вќЊ Queue notification error:', error);
         return { success: false, error: error.message };
     }
 };
@@ -600,14 +606,14 @@ export const sendReceiptViaTelegram = async (orgId, chatId, pdfPath, payment) =>
     const bot = getBotForOrg(orgId);
 
     if (!bot) {
-        console.error('❌ Bot topilmadi:', orgId);
+        console.error('вќЊ Bot topilmadi:', orgId);
         return { success: false, error: 'Bot not found' };
     }
 
     try {
         // Send message first
         await bot.sendMessage(chatId,
-            `💳 *To'lov cheki*\n\n` +
+            `рџ’і *To'lov cheki*\n\n` +
             `Chek #: ${payment.receiptNumber}\n` +
             `Summa: ${payment.amount.toLocaleString('uz-UZ')} so'm\n` +
             `Sana: ${new Date(payment.createdAt).toLocaleDateString('uz-UZ')}\n\n` +
@@ -620,10 +626,10 @@ export const sendReceiptViaTelegram = async (orgId, chatId, pdfPath, payment) =>
             caption: `To'lov cheki #${payment.receiptNumber}`
         });
 
-        console.log(`✅ Chek yuborildi: ${payment.receiptNumber} → ${chatId}`);
+        console.log(`вњ… Chek yuborildi: ${payment.receiptNumber} в†’ ${chatId}`);
         return { success: true };
     } catch (error) {
-        console.error('❌ Chek yuborishda xatolik:', error);
+        console.error('вќЊ Chek yuborishda xatolik:', error);
         return { success: false, error: error.message };
     }
 };
