@@ -44,6 +44,8 @@ import departmentsRoutes from "./routes/departments.routes.js";
 import doctorRoomRoutes from "./routes/doctorRoom.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
 import receiptRoutes from "./routes/receipt.routes.js";
+import icd10Routes from "./routes/icd10.routes.js";
+import videoCallRoutes from "./routes/videoCall.routes.js";
 
 const app = express();
 
@@ -126,6 +128,8 @@ app.use("/api/departments", departmentsRoutes);
 app.use("/api/doctor-room", doctorRoomRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/receipts", receiptRoutes);
+app.use("/api/icd10", icd10Routes);
+app.use("/api/appointments", videoCallRoutes);  // video call + recurring (appointments pastida)
 
 // --- FRONTEND STATIC FILES SERVING REMOVED (Split Deployment) ---
 

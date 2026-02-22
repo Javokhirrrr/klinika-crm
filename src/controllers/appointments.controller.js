@@ -366,3 +366,134 @@ export async function markAppointmentPaid(req, res) {
   if (!updated) return res.status(404).json({ message: "Not found" });
   res.json(updated);
 }
+
+/**
+ * POST /api/appointments/:id/meeting
+ * Jitsi Meet xonasini yaratish yoki olish (videocall)
+ */
+export async function createMeetingRoom(req, res) {
+  const { id } = req.params;
+  if (!okId(id)) return res.status(400).json({ message: "Invalid id" });
+
+  const appointment = await Appointment.findOne({
+    _id: OID(id),
+    orgId: req.orgId,
+    isDeleted: { $ne: true }
+  }).populate('doctorId', 'firstName lastName onlineConsultation');
+
+  if (!appointment) return res.status(404).json({ message: "Qabul topilmadi" });
+
+  // Jitsi Meet xona nomi — deterministik (appointmentId asosida)
+  // Format: klinika-[orgId-6harfli]-[appointmentId-8harfli]
+  const orgShort = req.orgId.toString().slice(-6);
+  const apptShort = id.slice(-8);
+  const roomName = `klinika-${orgShort}-${apptShort}`;
+  const meetingLink = `https://meet.jit.si/${roomName}`;
+
+  // Appointmentga saqlash
+  appointment.meetingLink = meetingLink;
+  appointment.appointmentType = 'telemedicine';
+  await appointment.save();
+
+  res.json({
+    meetingLink,
+    roomName,
+    message: "Video qabul xonasi tayyor",
+    instructions: {
+      uz: "Havolani bemorga yuboring. Vaqt kelganda havolani bosing.",
+      ru: "Отправьте ссылку пациенту. В назначенное время нажмите на ссылку."
+    }
+  });
+}
+
+/**
+ * POST /api/appointments/recurring
+ * Takrorlanuvchi qabullar seriyasini yaratish
+ * body: { patientId, doctorId, serviceIds, startAt, frequency:'daily'|'weekly'|'monthly', interval:1, occurrences:4, notes }
+ */
+export async function createRecurring(req, res) {
+  const b = req.body;
+
+  if (!okId(b.patientId)) return res.status(400).json({ message: "patientId kerak" });
+  if (!b.startAt) return res.status(400).json({ message: "startAt kerak" });
+  if (!['daily', 'weekly', 'monthly'].includes(b.frequency)) {
+    return res.status(400).json({ message: "frequency: daily | weekly | monthly" });
+  }
+
+  const occurrences = Math.min(parseInt(b.occurrences) || 4, 52); // Max 52 ta
+  const interval = parseInt(b.interval) || 1;
+  const startDate = new Date(b.startAt);
+
+  const appointments = [];
+  let currentDate = new Date(startDate);
+
+  for (let i = 0; i < occurrences; i++) {
+    appointments.push({
+      orgId: req.orgId,
+      patientId: OID(b.patientId),
+      doctorId: okId(b.doctorId) ? OID(b.doctorId) : undefined,
+      serviceIds: Array.isArray(b.serviceIds) ? b.serviceIds.filter(okId).map(OID) : [],
+      date: currentDate.toISOString().split('T')[0],
+      startAt: new Date(currentDate),
+      notes: b.notes || '',
+      price: b.price || 0,
+      status: 'scheduled',
+      isRecurring: true,
+      recurringPattern: {
+        frequency: b.frequency,
+        interval,
+        endDate: null,
+        occurrences,
+      },
+    });
+
+    // Keyingi sana
+    if (b.frequency === 'daily') {
+      currentDate.setDate(currentDate.getDate() + interval);
+    } else if (b.frequency === 'weekly') {
+      currentDate.setDate(currentDate.getDate() + interval * 7);
+    } else if (b.frequency === 'monthly') {
+      currentDate.setMonth(currentDate.getMonth() + interval);
+    }
+  }
+
+  const created = await Appointment.insertMany(appointments);
+
+  // Birinchi qabulning ID sini parentId sifatida saqlash
+  const parentId = created[0]._id;
+  await Appointment.updateMany(
+    { _id: { $in: created.map(a => a._id) } },
+    { $set: { parentAppointmentId: parentId } }
+  );
+
+  res.status(201).json({
+    message: `${created.length} ta takrorlanuvchi qabul yaratildi`,
+    total: created.length,
+    frequency: b.frequency,
+    firstDate: created[0]?.date,
+    lastDate: created[created.length - 1]?.date,
+    appointments: created,
+  });
+}
+
+/**
+ * GET /api/appointments/:id/recurring-series
+ * Bir takrorlanuvchi qabulning barcha sinflarini olish
+ */
+export async function getRecurringSeries(req, res) {
+  const { id } = req.params;
+  if (!okId(id)) return res.status(400).json({ message: "Invalid id" });
+
+  const series = await Appointment.find({
+    orgId: req.orgId,
+    parentAppointmentId: OID(id),
+    isDeleted: { $ne: true }
+  })
+    .sort({ startAt: 1 })
+    .populate('patientId', 'firstName lastName')
+    .populate('doctorId', 'firstName lastName')
+    .lean();
+
+  res.json({ series, total: series.length });
+}
+

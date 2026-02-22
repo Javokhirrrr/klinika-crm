@@ -1,8 +1,10 @@
 import { QueueEntry } from '../models/QueueEntry.js';
 import { Patient } from '../models/Patient.js';
 import { StatusCodes } from 'http-status-codes';
-import { emitQueueUpdate, emitPatientCalled, emitNewPatient } from '../socket/index.js';
+import { emitQueueUpdate, emitPatientCalled, emitNewPatient, emitQueueStatusChange } from '../socket/index.js';
 import { sendQueueNotification } from '../services/telegram.service.js';
+import QRCode from 'qrcode';
+import { env } from '../config/env.js';
 
 /**
  * Add patient to queue
@@ -639,7 +641,6 @@ export const getDoctorStats = async (req, res) => {
     try {
         const { doctorId } = req.params;
 
-        // Oxirgi 30 kun ichidagi tugallangan xizmatlar
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
         const completedServices = await QueueEntry.find({
@@ -649,14 +650,13 @@ export const getDoctorStats = async (req, res) => {
             completedAt: { $gte: thirtyDaysAgo }
         });
 
-        // O'rtacha xizmat vaqtini hisoblash
         let totalServiceTime = 0;
         let validCount = 0;
 
         completedServices.forEach(entry => {
             if (entry.serviceStartedAt && entry.completedAt) {
-                const duration = (new Date(entry.completedAt) - new Date(entry.serviceStartedAt)) / 60000; // daqiqa
-                if (duration > 0 && duration < 300) { // 5 soatdan kam
+                const duration = (new Date(entry.completedAt) - new Date(entry.serviceStartedAt)) / 60000;
+                if (duration > 0 && duration < 300) {
                     totalServiceTime += duration;
                     validCount++;
                 }
@@ -665,7 +665,7 @@ export const getDoctorStats = async (req, res) => {
 
         const avgServiceTime = validCount > 0
             ? Math.round(totalServiceTime / validCount)
-            : 15; // default 15 daq
+            : 15;
 
         res.json({
             doctorId,
@@ -676,6 +676,114 @@ export const getDoctorStats = async (req, res) => {
         });
     } catch (error) {
         console.error('Get doctor stats error:', error);
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            message: 'Xatolik yuz berdi',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * QR-kod generatsiyasi — navbat uchun
+ * POST /api/queue/:id/qr
+ */
+export const generateQueueQR = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const entry = await QueueEntry.findOne({
+            _id: id,
+            orgId: req.user.orgId
+        }).populate('patientId', 'firstName lastName');
+
+        if (!entry) {
+            return res.status(StatusCodes.NOT_FOUND).json({ message: 'Navbat topilmadi' });
+        }
+
+        // QR-kod ichidagi URL — frontendning public status sahifasi
+        const frontendUrl = env.publicUrl?.replace('5000', '5173') || 'https://zyra.uz';
+        const qrUrl = `${frontendUrl}/queue-status?id=${entry._id}&org=${entry.orgId}`;
+
+        // QR-kodni base64 formatda generatsiya
+        const qrDataURL = await QRCode.toDataURL(qrUrl, {
+            width: 300,
+            margin: 2,
+            color: { dark: '#1e293b', light: '#ffffff' },
+            errorCorrectionLevel: 'M'
+        });
+
+        res.json({
+            qrCode: qrDataURL,           // base64 image
+            qrUrl,                        // to'g'ridan-to'g'ri URL
+            queueNumber: entry.queueNumber,
+            patientName: entry.patientId
+                ? `${entry.patientId.firstName} ${entry.patientId.lastName || ''}`.trim()
+                : 'Bemor',
+            status: entry.status,
+        });
+    } catch (error) {
+        console.error('Generate QR error:', error);
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            message: 'QR generatsiyada xatolik',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * PUBLIC: Bemor navbat holatini ko'rishi (auth talab qilinmaydi)
+ * GET /api/queue/public/status/:queueId
+ */
+export const getQueueStatus = async (req, res) => {
+    try {
+        const { queueId } = req.params;
+        const { org } = req.query;
+
+        const entry = await QueueEntry.findOne({
+            _id: queueId,
+            ...(org ? { orgId: org } : {})
+        })
+            .populate('patientId', 'firstName lastName')
+            .populate('doctorId', 'firstName lastName spec room')
+            .lean();
+
+        if (!entry) {
+            return res.status(StatusCodes.NOT_FOUND).json({ message: 'Navbat topilmadi' });
+        }
+
+        // Oldidagi odamlar soni
+        const aheadCount = await QueueEntry.countDocuments({
+            orgId: entry.orgId,
+            doctorId: entry.doctorId?._id,
+            status: 'waiting',
+            joinedAt: { $lt: entry.joinedAt }
+        });
+
+        const statusLabels = {
+            waiting: '⏳ Kutmoqda',
+            called: '📢 Chaqirildi! Xonaga kiring',
+            in_service: '🩺 Qabul jarayonida',
+            completed: '✅ Qabul yakunlandi',
+            cancelled: '❌ Bekor qilindi',
+            no_show: '⚠️ Kelmadilar',
+        };
+
+        res.json({
+            queueNumber: entry.queueNumber,
+            status: entry.status,
+            statusLabel: statusLabels[entry.status] || entry.status,
+            aheadCount: entry.status === 'waiting' ? aheadCount : 0,
+            estimatedWaitMinutes: entry.status === 'waiting' ? aheadCount * 15 : 0,
+            doctor: entry.doctorId ? {
+                name: `${entry.doctorId.firstName} ${entry.doctorId.lastName || ''}`.trim(),
+                spec: entry.doctorId.spec,
+                room: entry.doctorId.room || '—'
+            } : null,
+            joinedAt: entry.joinedAt,
+            calledAt: entry.calledAt || null,
+        });
+    } catch (error) {
+        console.error('Get queue status error:', error);
         res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
             message: 'Xatolik yuz berdi',
             error: error.message

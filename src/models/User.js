@@ -7,7 +7,7 @@ const UserSchema = new mongoose.Schema({
   phone: { type: String, trim: true },
   passwordHash: String,
 
-  role: { type: String, enum: ['owner', 'admin', 'reception', 'doctor', 'accountant', 'nurse'], default: 'reception' },
+  role: { type: String, enum: ['owner', 'admin', 'reception', 'doctor', 'accountant', 'nurse', 'cashier'], default: 'reception' },
   globalRole: { type: String, enum: ['platform_admin', 'tenant_user', null], default: 'tenant_user' },
 
   // Permissions array for granular access control

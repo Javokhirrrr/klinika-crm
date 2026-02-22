@@ -21,6 +21,12 @@ router.get('/my-position', queueController.getMyPosition);
 // PUBLIC: Queue display for waiting room screens (no auth)
 router.get('/public/display', queueController.getPublicDisplay);
 
+// PUBLIC: Bemor navbat holatini QR orqali ko'rishi (no auth)
+router.get('/public/status/:queueId', queueController.getQueueStatus);
+
+// QR-kod generatsiyasi
+router.post('/:id/qr', authenticate, queueController.generateQueueQR);
+
 // Admin routes
 router.delete('/clear-old', authenticate, authorize(['owner', 'admin']), queueController.clearOldEntries);
 

@@ -36,6 +36,8 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword.jsx"));
 // Special public pages
 const Twa = lazy(() => import("./pages/Twa.jsx"));
 const QueueDisplay = lazy(() => import("./pages/QueueDisplay.jsx"));
+const QueueStatusPage = lazy(() => import("./pages/QueueStatusPage.jsx"));
+const VideoCallPage = lazy(() => import("./pages/VideoCallPage.jsx"));
 
 // Dashboard (birinchi ko'rinadigan — eager-ga yaqin)
 const Dashboard = lazy(() => import("./pages/HippoDashboard.jsx"));
@@ -97,6 +99,8 @@ export default function App() {
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/twa" element={<Twa />} />
                 <Route path="/queue-display" element={<QueueDisplay />} />
+                {/* PUBLIC: QR navbat holati — auth siz */}
+                <Route path="/queue-status" element={<QueueStatusPage />} />
 
                 {/* ── Protected + Layout ── */}
                 <Route element={
@@ -113,6 +117,8 @@ export default function App() {
                   <Route path="/dashboard/reception" element={<ReceptionDashboard />} />
                   <Route path="/dashboard/director" element={<DirectorDashboard />} />
                   <Route path="/dashboard/doctor" element={<DoctorDashboard />} />
+                  {/* Video Call (auth kerak) */}
+                  <Route path="/video-call/:appointmentId" element={<VideoCallPage />} />
 
                   {/* Core pages */}
                   <Route path="/patients" element={<SimplePatients />} />

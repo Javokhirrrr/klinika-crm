@@ -98,7 +98,22 @@ const DoctorSchema = new mongoose.Schema(
 
     // Department (Bo'lim)
     departmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
-    departmentName: { type: String, trim: true }  // Cache for quick access
+    departmentName: { type: String, trim: true },  // Cache for quick access
+
+    // ─── Onlayn Konsultatsiya (Video Call) ─────────────────────────────────────
+    onlineConsultation: {
+      enabled: { type: Boolean, default: false },
+      price: { type: Number, min: 0, default: 0 },   // Video qabul narxi
+      duration: { type: Number, default: 30 },         // Daqiqada (default 30 min)
+      // Jitsi Meet — bepul, API kalit talab qilmaydi
+      jitsiRoomPrefix: { type: String, trim: true },   // masalan: "dr-karimov" → meet.jit.si/dr-karimov-[appointmentId]
+    },
+    // Shifokor onlayn mavjud vaqtlari
+    onlineAvailability: [{
+      dayOfWeek: { type: Number, min: 0, max: 6 },  // 0=yakshanba, 1=dushanba...
+      startTime: { type: String },                   // "09:00"
+      endTime: { type: String }                      // "18:00"
+    }]
   },
   { timestamps: true }
 );
