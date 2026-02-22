@@ -67,32 +67,17 @@ function setupBotCommands(bot, orgId) {
     // /start command
     bot.onText(/\/start/, async (msg) => {
         const chatId = msg.chat.id;
-
         try {
-            // Check if already verified
-            const patient = await Patient.findOne({
-                orgId,
-                telegramChatId: chatId.toString()
-            });
-
+            const patient = await Patient.findOne({ orgId, telegramChatId: chatId.toString() });
             if (patient) {
-                // Already verified
                 await sendMainMenu(bot, chatId, patient);
             } else {
-                // New user - request phone number
                 await bot.sendMessage(chatId,
-                    `🏥 *Klinika CRM Botiga xush kelibsiz!*\n\n` +
-                    `Sizning ma'lumotlaringizni tekshirish uchun telefon raqamingizni yuboring.\n\n` +
-                    `Quyidagi tugmani bosing:`,
+                    `🏥 *Klinika CRM Botiga xush kelibsiz!*\n\nTelefon raqamingizni yuboring:`,
                     {
                         parse_mode: 'Markdown',
                         reply_markup: {
-                            keyboard: [
-                                [{
-                                    text: '📱 Telefon raqamni yuborish',
-                                    request_contact: true
-                                }]
-                            ],
+                            keyboard: [[{ text: '📱 Telefon raqamni yuborish', request_contact: true }]],
                             resize_keyboard: true,
                             one_time_keyboard: true
                         }
@@ -101,7 +86,21 @@ function setupBotCommands(bot, orgId) {
             }
         } catch (error) {
             console.error('Start command error:', error);
-            await bot.sendMessage(chatId, '❌ Xatolik yuz berdi. Qaytadan urinib ko\'ring.');
+            await bot.sendMessage(chatId, '❌ Xatolik yuz berdi.');
+        }
+    });
+
+    // /karta yoki /profil komandasi
+    bot.onText(/\/(karta|profil|card|profile)/, async (msg) => {
+        const chatId = msg.chat.id;
+        try {
+            const patient = await Patient.findOne({ orgId, telegramChatId: chatId.toString() });
+            if (!patient) {
+                return bot.sendMessage(chatId, "❌ Siz hali ro'yxatdan o'tmagansiz. /start bosing.");
+            }
+            await sendPatientCard(bot, chatId, patient);
+        } catch (e) {
+            console.error('/karta error:', e);
         }
     });
 
@@ -201,11 +200,20 @@ Agar savolingiz bo'lsa, klinikaga murojaat qiling.
         const data = query.data;
 
         try {
-            // Answer callback query
             await bot.answerCallbackQuery(query.id);
 
-            // Handle different callbacks
             switch (data) {
+                case 'my_card': {
+                    const patient = await Patient.findOne({ orgId, telegramChatId: chatId.toString() });
+                    if (patient) await sendPatientCard(bot, chatId, patient);
+                    else await bot.sendMessage(chatId, "❌ Bemor topilmadi. /start bosing.");
+                    break;
+                }
+                case 'back_menu': {
+                    const patient = await Patient.findOne({ orgId, telegramChatId: chatId.toString() });
+                    if (patient) await sendMainMenu(bot, chatId, patient);
+                    break;
+                }
                 case 'queue':
                     await handleMyQueue(bot, chatId, orgId);
                     break;
@@ -222,10 +230,10 @@ Agar savolingiz bo'lsa, klinikaga murojaat qiling.
                     await handleSettings(bot, chatId);
                     break;
                 case 'help':
-                    await bot.sendMessage(chatId, 'Yordam bo\'limi...');
+                    await bot.sendMessage(chatId, 'Yordam: /karta - bemor kartangiz, /start - boshlash');
                     break;
                 default:
-                    await bot.sendMessage(chatId, 'Noma\'lum buyruq');
+                    await bot.sendMessage(chatId, "Noma'lum buyruq");
             }
         } catch (error) {
             console.error('Callback query error:', error);
@@ -238,20 +246,13 @@ Agar savolingiz bo'lsa, klinikaga murojaat qiling.
  * Send main menu
  */
 async function sendMainMenu(bot, chatId, patient) {
-    const menuText = `
-🏥 *Asosiy Menyu*
-
-Salom, ${patient.firstName}!
-
-Quyidagi funksiyalardan foydalaning:
-    `;
+    const menuText = `🏥 *Asosiy Menyu*\n\nSalom, ${patient.firstName}!\nQuyidagi funksiyalardan foydalaning:`;
 
     const keyboard = {
         inline_keyboard: [
-            // Web App button (uncomment when you have ngrok or production URL)
-            // [
-            //     { text: '🌐 Web App ochish', web_app: { url: env.webappUrl + '/telegram-webapp/' } }
-            // ],
+            [
+                { text: '👤 Bemor Kartam', callback_data: 'my_card' },
+            ],
             [
                 { text: '🎫 Navbatim', callback_data: 'queue' },
                 { text: '💳 To\'lovlar', callback_data: 'payments' }
@@ -270,6 +271,56 @@ Quyidagi funksiyalardan foydalaning:
     await bot.sendMessage(chatId, menuText, {
         parse_mode: 'Markdown',
         reply_markup: keyboard
+    });
+}
+
+/**
+ * Bemor kartasini yuborish
+ */
+async function sendPatientCard(bot, chatId, patient) {
+    let age = '';
+    if (patient.birthDate) {
+        const yil = new Date().getFullYear() - new Date(patient.birthDate).getFullYear();
+        age = `${yil} yosh`;
+    }
+    const genderLabel = patient.gender === 'male' ? '👨 Erkak'
+        : patient.gender === 'female' ? '👩 Ayol' : '';
+    const regDate = patient.createdAt
+        ? new Date(patient.createdAt).toLocaleDateString('uz-UZ')
+        : '—';
+
+    const rows = [
+        `╔══════════════════════╗`,
+        `║  🏥  BEMOR KARTASI   ║`,
+        `╚══════════════════════╝`,
+        ``,
+        `*${patient.firstName} ${patient.lastName || ''}*`,
+    ];
+
+    if (patient.cardNo) rows.push(`🎫 Karta \u2116: \`${patient.cardNo}\``);
+    if (patient.phone) rows.push(`📞 Telefon: \`${patient.phone}\``);
+    if (age) rows.push(`🎂 Yosh: ${age}`);
+    if (genderLabel) rows.push(`⚧️  Jins: ${genderLabel}`);
+    if (patient.address) rows.push(`📍 Manzil: ${patient.address}`);
+    if (patient.bloodType) rows.push(`🩸 Qon guruhi: *${patient.bloodType}*`);
+
+    rows.push(``);
+    rows.push(`━━━━━━━━━━━━━━━━━━━━━━`);
+    rows.push(`📅 Ro'yxatga olingan: ${regDate}`);
+    rows.push(``);
+    rows.push(`_ℹ️ Ushbu karta ma'lumot uchun._`);
+
+    await bot.sendMessage(chatId, rows.join('\n'), {
+        parse_mode: 'Markdown',
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: '📅 Qabullarim', callback_data: 'appointments' },
+                    { text: '🔄 Yangilash', callback_data: 'my_card' },
+                ],
+                [{ text: '🏠 Bosh menyu', callback_data: 'back_menu' }]
+            ]
+        }
     });
 }
 
