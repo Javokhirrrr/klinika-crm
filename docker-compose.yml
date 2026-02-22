@@ -1,19 +1,27 @@
 version: "3.9"
 
+# ─────────────────────────────────────────────────────
+# Klinika CRM — Production Docker Compose
+# zyra.uz deployment
+# ─────────────────────────────────────────────────────
+
 services:
-  # MongoDB Database
+
+  # ─── MongoDB ───────────────────────────────────────
   mongo:
     image: mongo:7
-    container_name: klinika_crm_mongo
+    container_name: klinika_mongo
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017" # Faqat localhost'dan kirish (xavfsizlik)
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-root}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-example}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-changeme123}
+      MONGO_INITDB_DATABASE: klinika_crm
     volumes:
       - mongo_data:/data/db
       - mongo_config:/data/configdb
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/init.js:ro
     networks:
       - klinika_network
     healthcheck:
@@ -21,40 +29,44 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
-  # Redis Cache
+  # ─── Redis ─────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: klinika_crm_redis
+    container_name: klinika_redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379" # Faqat localhost'dan kirish
     volumes:
       - redis_data:/data
     networks:
       - klinika_network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 5
-    command: redis-server --appendonly yes
+    command: >
+      redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-redis_secret}
 
-  # Backend API
+  # ─── Backend API ────────────────────────────────────
   api:
     build:
       context: .
       dockerfile: Dockerfile
       target: production
-    container_name: klinika_crm_api
+    container_name: klinika_api
     restart: unless-stopped
     ports:
-      - "${PORT:-5000}:5000"
+      - "127.0.0.1:5000:5000" # Nginx orqali chiqadi (to'g'ridan-to'g'ri emas)
     env_file: .env
     environment:
-      MONGO_URI: "mongodb://${MONGO_ROOT_USER:-root}:${MONGO_ROOT_PASSWORD:-example}@mongo:27017/klinika_crm?authSource=admin"
-      REDIS_URL: "redis://redis:6379"
       NODE_ENV: production
+      PORT: 5000
+      MONGO_URI: "mongodb://${MONGO_ROOT_USER:-root}:${MONGO_ROOT_PASSWORD:-changeme123}@mongo:27017/klinika_crm?authSource=admin"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:-redis_secret}@redis:6379"
+      CORS_ORIGINS: "https://zyra.uz,https://www.zyra.uz,https://app.zyra.uz"
     depends_on:
       mongo:
         condition: service_healthy
@@ -62,48 +74,73 @@ services:
         condition: service_healthy
     volumes:
       - ./uploads:/app/uploads
+      - api_logs:/app/logs
     networks:
       - klinika_network
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      test: [ "CMD", "node", "-e", "require('http').get('http://localhost:5000/api/health', (r)=>{process.exit(r.statusCode===200?0:1)})" ]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  # Frontend (Production Build)
-  frontend:
-    build:
-      context: ./klinika-crm-frontend
-      dockerfile: Dockerfile
-    container_name: klinika_crm_frontend
+  # ─── Nginx (Reverse Proxy) ──────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: klinika_nginx
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./klinika-crm-frontend/dist:/usr/share/nginx/html:ro
+      - certbot_www:/var/www/certbot:ro
+      - certbot_conf:/etc/letsencrypt:ro
+      - nginx_logs:/var/log/nginx
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    networks:
+      - klinika_network
+    healthcheck:
+      test: [ "CMD", "nginx", "-t" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ─── Certbot (SSL Let's Encrypt) ───────────────────
+  certbot:
+    image: certbot/certbot:latest
+    container_name: klinika_certbot
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
+    # Har 12 soatda sertifikatni yangilaydi
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
       - klinika_network
 
-  # MongoDB Admin UI (Development only)
+  # ─── MongoDB Admin UI (faqat dev profili) ──────────
   mongo-express:
     image: mongo-express:1.0.2
-    container_name: klinika_crm_mongo_express
+    container_name: klinika_mongo_express
     restart: unless-stopped
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
     environment:
       ME_CONFIG_MONGODB_SERVER: mongo
       ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ROOT_USER:-root}
-      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ROOT_PASSWORD:-example}
-      ME_CONFIG_BASICAUTH: "false"
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ROOT_PASSWORD:-changeme123}
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USER:-admin}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASS:-express_secret}
     depends_on:
       mongo:
         condition: service_healthy
     networks:
       - klinika_network
     profiles:
-      - dev
+      - dev # Faqat: docker compose --profile dev up
 
 volumes:
   mongo_data:
@@ -112,7 +149,18 @@ volumes:
     driver: local
   redis_data:
     driver: local
+  api_logs:
+    driver: local
+  nginx_logs:
+    driver: local
+  certbot_www:
+    driver: local
+  certbot_conf:
+    driver: local
 
 networks:
   klinika_network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
