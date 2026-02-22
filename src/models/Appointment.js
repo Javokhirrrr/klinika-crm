@@ -4,7 +4,7 @@ const appointmentSchema = new Schema({
   orgId: { type: Schema.Types.ObjectId, ref: 'Organization', index: true },
 
   patientId: { type: Schema.Types.ObjectId, ref: 'Patient', required: true, index: true },
-  doctorId: { type: Schema.Types.ObjectId, ref: 'Doctor', required: true, index: true },
+  doctorId: { type: Schema.Types.ObjectId, ref: 'Doctor', required: false, index: true },
   serviceIds: [{ type: Schema.Types.ObjectId, ref: 'Service' }],
 
   date: { type: String, required: true, index: true }, // Format: "YYYY-MM-DD"

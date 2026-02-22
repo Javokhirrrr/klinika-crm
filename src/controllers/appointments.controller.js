@@ -156,8 +156,10 @@ export async function createAppointment(req, res) {
     startAt: startDate,
     notes: b.notes || b.note || "",
     price: b.price || 0,
-    status: b.status || "scheduled",  // default: "scheduled" (bemor hali kelmagan)
+    status: b.status || "scheduled",
     isPaid: false,
+    appointmentType: b.appointmentType || 'in_person',
+    meetingLink: b.meetingLink || undefined,
   });
 
   // 🎯 AVTOMATIK NAVBATGA QO'SHISH

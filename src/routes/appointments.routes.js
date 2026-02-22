@@ -10,6 +10,9 @@ import {
   deleteAppointment,
   setAppointmentStatus,
   markAppointmentPaid,
+  createMeetingRoom,
+  createRecurring,
+  getRecurringSeries,
 } from "../controllers/appointments.controller.js";
 import {
   getAvailableSlots,
@@ -50,5 +53,14 @@ r.patch("/:id/status", setAppointmentStatus);
 
 // POST /api/appointments/:id/mark-paid   (resepshen tugmasi uchun)
 r.post("/:id/mark-paid", markAppointmentPaid);
+
+// POST /api/appointments/recurring  — takrorlanuvchi qabullar
+r.post("/recurring", createRecurring);
+
+// POST /api/appointments/:id/meeting  — Jitsi video xona (+ Telegram havolasi)
+r.post("/:id/meeting", createMeetingRoom);
+
+// GET /api/appointments/:id/recurring-series
+r.get("/:id/recurring-series", getRecurringSeries);
 
 export default r;
