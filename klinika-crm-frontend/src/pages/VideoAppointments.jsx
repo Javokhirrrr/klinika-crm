@@ -77,7 +77,26 @@ export default function VideoAppointments() {
         } finally { setSaving(false); }
     };
 
-    const startCall = (apt) => navigate(`/video-call/${apt._id}`);
+    const startCall = async (apt) => {
+        // Agar meetingLink allaqachon bor bo'lsa — to'g'ri oching
+        if (apt.meetingLink) {
+            window.open(apt.meetingLink, '_blank');
+            return;
+        }
+        // Yo'q bo'lsa — backend dan yangi URL olib ochish
+        try {
+            const data = await http.post(`/appointments/${apt._id}/meeting`);
+            const url = data?.meetingLink || data?.url;
+            if (url) {
+                window.open(url, '_blank');
+                loadData(); // refresh (yangi link saqlangan)
+            } else {
+                alert('Google Meet URL yaratishda xatolik');
+            }
+        } catch (e) {
+            alert(e?.response?.data?.message || 'Xatolik yuz berdi');
+        }
+    };
 
     const filtered = appointments.filter(a => {
         if (!search) return true;
@@ -97,7 +116,7 @@ export default function VideoAppointments() {
             <div style={s.header}>
                 <div>
                     <h1 style={s.title}>🎥 Video Qabul</h1>
-                    <p style={s.subtitle}>Jitsi Meet orqali onlayn konsultatsiya</p>
+                    <p style={s.subtitle}>Google Meet orqali onlayn konsultatsiya</p>
                 </div>
                 <button style={s.addBtn} onClick={openModal}>
                     <Plus size={18} /> Yangi Video Qabul
