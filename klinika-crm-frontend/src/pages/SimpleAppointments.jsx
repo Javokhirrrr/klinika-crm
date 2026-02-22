@@ -21,7 +21,7 @@ import {
 import {
     Plus, Calendar, Clock, Check,
     X, DollarSign, Printer, Activity, ArrowRight,
-    Filter, Banknote, CreditCard, Users, Search, ChevronRight, Save
+    Filter, Banknote, CreditCard, Users, Search, ChevronRight, Save, Video, RefreshCw
 } from 'lucide-react';
 import http from '../lib/http';
 import { useAuth } from '../context/AuthContext';
@@ -61,7 +61,7 @@ export default function SimpleAppointments() {
     // New Appointment Form Data
     const [formData, setFormData] = useState({
         patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '',
-        price: 0
+        price: 0, appointmentType: 'in_person'
     });
     const [selectedServices, setSelectedServices] = useState([]); // [{_id, name, price, qty}]
 
@@ -165,10 +165,11 @@ export default function SimpleAppointments() {
                 scheduledAt: `${formData.date}T${formData.time}:00`,
                 startsAt: `${formData.date}T${formData.time}:00`,
                 price: Number(totalServicesPrice || formData.price || 0),
-                services: selectedServices.map(s => s._id)
+                services: selectedServices.map(s => s._id),
+                appointmentType: formData.appointmentType || 'in_person',
             });
             setShowModal(false);
-            setFormData({ patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '', price: 0 });
+            setFormData({ patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '', price: 0, appointmentType: 'in_person' });
             setSelectedServices([]);
             loadData();
         } catch (error) { console.error('Create error:', error); alert('Xatolik!'); }
@@ -482,6 +483,18 @@ export default function SimpleAppointments() {
                                                                 <Check className="h-4 w-4" />
                                                             </Button>
                                                         )}
+                                                        {/* 🎥 Video Call tugmasi — faqat telemedicine uchun */}
+                                                        {apt.appointmentType === 'telemedicine' && (
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="h-8 w-8 text-violet-600 hover:bg-violet-50 hover:text-violet-700 rounded-full"
+                                                                onClick={() => navigate(`/video-call/${apt._id}`)}
+                                                                title="Video Qabul"
+                                                            >
+                                                                <Video className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
                                                         <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-full" onClick={() => handleOpenPayment(apt)} title="To'lov">
                                                             <DollarSign className="h-4 w-4" />
                                                         </Button>
@@ -616,6 +629,40 @@ export default function SimpleAppointments() {
 
                         {/* RIGHT: Date + Time Slots */}
                         <div className="w-[300px] shrink-0 bg-white p-6 space-y-5 overflow-y-auto">
+                            {/* Qabul Turi */}
+                            <div className="space-y-2">
+                                <Label className="text-sm font-semibold text-gray-600 mb-1.5 block">Qabul Turi</Label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {[
+                                        { v: 'in_person', l: '🏥 Shaxsiy', desc: 'Klinikada' },
+                                        { v: 'telemedicine', l: '🎥 Video', desc: 'Onlayn' },
+                                        { v: 'home_visit', l: '🏠 Uy', desc: 'Tashrif' },
+                                    ].map(t => (
+                                        <button key={t.v} type="button"
+                                            onClick={() => setFormData(f => ({ ...f, appointmentType: t.v }))}
+                                            className={cn(
+                                                "flex flex-col items-center py-2 px-1 rounded-lg border-2 text-xs font-semibold transition-all",
+                                                formData.appointmentType === t.v
+                                                    ? t.v === 'telemedicine'
+                                                        ? "bg-violet-50 border-violet-400 text-violet-700"
+                                                        : "bg-blue-50 border-blue-400 text-blue-700"
+                                                    : "bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300"
+                                            )}
+                                        >
+                                            <span className="text-base">{t.l.split(' ')[0]}</span>
+                                            <span>{t.l.split(' ')[1]}</span>
+                                            <span className="text-gray-400 font-normal">{t.desc}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                {formData.appointmentType === 'telemedicine' && (
+                                    <div className="flex items-center gap-2 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2">
+                                        <Video className="h-4 w-4 text-violet-500 shrink-0" />
+                                        <span className="text-xs text-violet-700">Saqlangandan keyin 🎥 tugma paydo bo'ladi</span>
+                                    </div>
+                                )}
+                            </div>
+
                             {/* Date Picker */}
                             <div className="space-y-2">
                                 <Label className="text-sm font-semibold text-gray-600 mb-1.5 block">Sana</Label>
