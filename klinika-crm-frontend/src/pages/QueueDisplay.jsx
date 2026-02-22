@@ -33,8 +33,10 @@ const QueueDisplay = () => {
         }
 
         try {
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            const API_URL = import.meta.env.VITE_API_URL
+                || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://klinika-crm-production.up.railway.app');
             const response = await axios.get(`${API_URL}/api/queue/public/display?orgId=${orgId}`);
+
             const { departments: newDepartments, lastUpdated } = response.data;
 
             // Check for newly called patients
