@@ -1,4 +1,4 @@
-// telegram.service.js РІР‚вЂќ v3 РІР‚вЂќ 2026-02-22
+// telegram.service.js Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљ v3 Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљ 2026-02-22
 import TelegramBot from 'node-telegram-bot-api';
 import { Bot } from '../models/Bot.js';
 import { Patient } from '../models/Patient.js';
@@ -188,69 +188,80 @@ async function sendMainMenu(bot, chatId, patient) {
     );
 }
 
-// Bemor kartasi РІР‚вЂќ xuddi print sahifasidagi ko'rinishda rasm sifatida
+// Bemor kartasi РІР‚вЂќ barcode rasm + bemor ma'lumotlari
 async function sendPatientCard(bot, chatId, patient) {
     try {
-        // "Tayyorlanmoqda" xabari
-        const waitMsg = await bot.sendMessage(chatId, '\u23F3 Karta tayyorlanmoqda...');
+        const cardNo = String(patient.cardNo || patient.cardNumber || patient._id || '00000000').replace(/\D/g, '') || '00000000';
+        const fullName = [patient.firstName, patient.lastName].filter(Boolean).join(' ') || "Noma'lum";
+        const phone = patient.phone || '\u2014';
+        const gender = patient.gender === 'male' ? 'Erkak' : patient.gender === 'female' ? 'Ayol' : '\u2014';
 
-        let imgBuffer = null;
-
-        // 1-urinish: puppeteer bilan to'liq karta rasmi
-        try {
-            const { generatePatientCardPNG } = await import('../lib/cardRenderer.js');
-            imgBuffer = await generatePatientCardPNG(patient);
-        } catch (puppeteerErr) {
-            console.warn('Puppeteer card error:', puppeteerErr.message);
+        let ageStr = '';
+        if (patient.birthDate) {
+            const age = new Date().getFullYear() - new Date(patient.birthDate).getFullYear();
+            ageStr = age + ' yosh';
         }
+
+        const regDate = patient.createdAt
+            ? new Date(patient.createdAt).toLocaleDateString('uz-UZ') : '';
+
+        // Caption matni
+        const caption = [
+            '\ud83c\udfe5 <b>BEMOR KARTASI</b>',
+            '<i>Klinika CRM Tizimi</i>',
+            '',
+            '\ud83d\udc64 <b>' + fullName + '</b>',
+            '\ud83c\udff7 Karta: <code>' + cardNo + '</code>',
+            '\ud83d\udcde Tel: <code>' + phone + '</code>',
+            ageStr ? '\ud83c\udf82 Yosh: ' + ageStr : '',
+            '\u2642\ufe0f Jins: ' + gender,
+            regDate ? '\ud83d\udcc5 Ro\'yxat: ' + regDate : '',
+            '',
+            '<i>Har safar klinikaga kelganingizda</i>',
+            '<i>ushbu kartani ko\'rsating!</i>',
+        ].filter(Boolean).join('\n');
+
+        // barcodeapi.org dan barcode rasmi
+        const barcodeUrl = 'https://barcodeapi.org/api/code128/' + cardNo + '?width=2&height=60';
 
         const markup = {
             inline_keyboard: [
                 [
-                    { text: '\u{1F4C5} Qabullarim', callback_data: 'appointments' },
-                    { text: '\u{1F504} Yangilash', callback_data: 'my_card' }
+                    { text: '\ud83d\udcc5 Qabullarim', callback_data: 'appointments' },
+                    { text: '\ud83d\udd04 Yangilash', callback_data: 'my_card' }
                 ],
-                [{ text: '\u{1F3E0} Bosh menyu', callback_data: 'back_menu' }]
+                [{ text: '\ud83c\udfe0 Bosh menyu', callback_data: 'back_menu' }]
             ]
         };
 
-        // Kutish xabarini o'chirish
-        try { await bot.deleteMessage(chatId, waitMsg.message_id); } catch (_) { }
-
-        if (imgBuffer) {
-            // Puppeteer muvaffaqiyatli РІР‚вЂќ to'liq karta rasmi
-            await bot.sendPhoto(chatId, imgBuffer, {
-                caption: '\u{1F3E5} ' + (patient.firstName || '') + ' ' + (patient.lastName || '') + ' РІР‚вЂќ Bemor Kartasi',
-                reply_markup: markup,
-            }, { filename: 'bemor-karta.jpg', contentType: 'image/jpeg' });
-        } else {
-            // 2-fallback: oddiy barcode rasmini yuborish
-            const cardNo = String(patient.cardNo || patient.cardNumber || patient._id || '00000000').replace(/\D/g, '') || '00000000';
-            const barcodeUrl = `https://barcodeapi.org/api/code128/${cardNo}?width=2&height=60`;
-
-            const lines = [
-                '\u{1F3E5} BEMOR KARTASI',
-                '',
-                '\u{1F464} ' + [patient.firstName, patient.lastName].filter(Boolean).join(' '),
-                patient.cardNo ? '\u{1F4CD} Karta: ' + patient.cardNo : '',
-                patient.phone ? '\u{1F4DE} Tel: ' + patient.phone : '',
-                patient.gender ? '\u26A7\uFE0F Jins: ' + (patient.gender === 'male' ? 'Erkak' : 'Ayol') : '',
-            ].filter(Boolean);
-
-            const regDate = patient.createdAt
-                ? new Date(patient.createdAt).toLocaleDateString('uz-UZ') : '';
-            if (regDate) lines.push('\u{1F4C5} Ro\'yxat: ' + regDate);
-
-            await bot.sendPhoto(chatId, barcodeUrl, {
-                caption: lines.join('\n'),
-                reply_markup: markup,
-            });
-        }
+        await bot.sendPhoto(chatId, barcodeUrl, {
+            caption,
+            parse_mode: 'HTML',
+            reply_markup: markup,
+        });
     } catch (err) {
         console.error('sendPatientCard error:', err);
-        await bot.sendMessage(chatId, 'Karta yuklashda xatolik yuz berdi.');
+        // Barcode yuklanmasa РІР‚вЂќ oddiy xabar
+        try {
+            await bot.sendMessage(chatId,
+                '\ud83c\udfe5 <b>BEMOR KARTASI</b>\n\n' +
+                '\ud83d\udc64 ' + [patient.firstName, patient.lastName].filter(Boolean).join(' ') + '\n' +
+                (patient.phone ? '\ud83d\udcde ' + patient.phone + '\n' : '') +
+                (patient.cardNo ? '\ud83c\udff7 ' + patient.cardNo : ''),
+                {
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: '\ud83d\udd04 Yangilash', callback_data: 'my_card' }],
+                            [{ text: '\ud83c\udfe0 Bosh menyu', callback_data: 'back_menu' }],
+                        ]
+                    }
+                }
+            );
+        } catch (_) { }
     }
 }
+
 
 async function handleMyQueue(bot, chatId, orgId) {
     try {
