@@ -465,3 +465,53 @@ export const broadcastMessage = async (req, res) => {
 
   res.json({ ok: true, sent, failed, total: links.length });
 };
+
+/* ============================= NOTIFY PATIENT ============================= */
+/**
+ * notifyPatientByBot
+ * patientId bo'yicha bemorning barcha Telegram chatlarini topib xabar yuboradi.
+ * appointments.controller.js va boshqa controllerlar tomonidan chaqiriladi.
+ */
+export async function notifyPatientByBot(orgId, patientId, message) {
+  try {
+    // Ushbu orgga tegishli barcha aktiv botlarni topamiz
+    const bots = await TelegramBot.find({ orgId, isActive: true }).lean();
+    if (!bots.length) {
+      console.log('[notify] Aktiv bot topilmadi, orgId:', orgId);
+      return { sent: 0, reason: 'no_bot' };
+    }
+
+    // Patientning Telegram link (chatId) lari
+    const links = await TelegramLink.find({
+      patientId,
+      isVerified: true,
+    }).lean();
+
+    if (!links.length) {
+      console.log('[notify] Bemor Telegram ga ulanmagan, patientId:', patientId);
+      return { sent: 0, reason: 'no_link' };
+    }
+
+    let sent = 0;
+    for (const bot of bots) {
+      for (const link of links) {
+        try {
+          const ok = await tgSendSafe(bot.token, 'sendMessage', {
+            chat_id: link.chatId,
+            text: message,
+            parse_mode: 'Markdown',
+            disable_web_page_preview: false,
+          });
+          if (ok) sent++;
+        } catch (e) {
+          console.warn('[notify] sendMessage failed:', e.message);
+        }
+      }
+    }
+    console.log(`[notify] Yuborildi: ${sent}/${links.length}`);
+    return { sent };
+  } catch (e) {
+    console.error('[notify] notifyPatientByBot error:', e.message);
+    return { sent: 0, error: e.message };
+  }
+}
