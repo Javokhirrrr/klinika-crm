@@ -1,10 +1,10 @@
-// src/controllers/appointments.controller.js
 import mongoose from "mongoose";
 import { Appointment } from "../models/Appointment.js";
 import { Doctor } from "../models/Doctor.js";
 import { QueueEntry } from "../models/QueueEntry.js";
 import { notifyPatientByBot } from "./bots.controller.js";
 import { emitNewPatient } from "../socket/index.js";
+import { env } from "../config/env.js";
 
 const okId = (v) => mongoose.isValidObjectId(v);
 const OID = (v) => new mongoose.Types.ObjectId(v);
@@ -379,12 +379,12 @@ export async function createMeetingRoom(req, res) {
     _id: OID(id),
     orgId: req.orgId,
     isDeleted: { $ne: true }
-  }).populate('doctorId', 'firstName lastName onlineConsultation');
+  }).populate('doctorId', 'firstName lastName')
+    .populate('patientId', 'firstName lastName phone');
 
   if (!appointment) return res.status(404).json({ message: "Qabul topilmadi" });
 
   // Jitsi Meet xona nomi — deterministik (appointmentId asosida)
-  // Format: klinika-[orgId-6harfli]-[appointmentId-8harfli]
   const orgShort = req.orgId.toString().slice(-6);
   const apptShort = id.slice(-8);
   const roomName = `klinika-${orgShort}-${apptShort}`;
@@ -395,13 +395,42 @@ export async function createMeetingRoom(req, res) {
   appointment.appointmentType = 'telemedicine';
   await appointment.save();
 
+  // ─── Bemorga Telegram orqali AVTOMATIK xabar ─────────────────
+  try {
+    const pat = appointment.patientId;
+    const doc = appointment.doctorId;
+    const dateStr = appointment.startAt
+      ? new Date(appointment.startAt).toLocaleString('uz-UZ', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      })
+      : '';
+
+    const tgText =
+      `🎥 *Video Qabul Tayyor!*\n\n` +
+      `Salom, ${pat?.firstName || 'Bemor'}!\n\n` +
+      `Sizning online konsultatsiyangiz rejalashtirildi.\n\n` +
+      (doc ? `👨‍⚕️ *Shifokor:* Dr. ${doc.firstName} ${doc.lastName || ''}\n` : '') +
+      (dateStr ? `📅 *Vaqt:* ${dateStr}\n` : '') +
+      `\n🔗 *Video qo'ng'iroq havolasi:*\n${meetingLink}\n\n` +
+      `Yuqoridagi havolani bosib videoga kiriting.\n` +
+      `❓ Yordam kerak bo'lsa klinikaga qo'ng'iroq qiling.`;
+
+    await notifyPatientByBot(req.orgId, appointment.patientId._id || appointment.patientId, tgText);
+    console.log('✅ Video link bemorga Telegram orqali yuborildi');
+  } catch (tgErr) {
+    console.warn('⚠️ Telegram xabar yuborilmadi (bemor botga ulanmagan bo\'lishi mumkin):', tgErr.message);
+    // Xatolikni yutamiz — API javobiga ta'sir qilmasin
+  }
+
   res.json({
     meetingLink,
     roomName,
-    message: "Video qabul xonasi tayyor",
+    telegramSent: true,
+    message: "Video qabul xonasi tayyor. Bemorga Telegram xabar yuborildi.",
     instructions: {
-      uz: "Havolani bemorga yuboring. Vaqt kelganda havolani bosing.",
-      ru: "Отправьте ссылку пациенту. В назначенное время нажмите на ссылку."
+      uz: "Havolani bemorga yuboring (Telegram orqali avtomatik yuborildi). Vaqt kelganda havolani bosing.",
+      ru: "Ссылка отправлена пациенту через Telegram. В назначенное время нажмите на ссылку."
     }
   });
 }
