@@ -382,116 +382,141 @@ export default function SimpleDoctorRoom() {
                                 {/* ═══ NAVBAT TAB ═══ */}
                                 {(activeTab === 'queue' || activeTab === 'visit') && (
                                     <>
-                                        {/* Chaqirilgan */}
-                                        {queueCalled.map(e => (
-                                            <div key={e._id} style={{
-                                                borderRadius: 12, padding: '12px 14px',
-                                                background: '#fffbeb', border: '1.5px solid #fbbf24',
-                                                animation: 'pulse 1.5s ease infinite',
-                                            }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                                    <span style={{ fontWeight: 800, fontSize: 18, color: '#f59e0b' }}>
-                                                        #{e.queueNumber}
-                                                    </span>
-                                                    <span style={{ fontSize: 11, fontWeight: 700, background: '#fef3c7', color: '#d97706', borderRadius: 8, padding: '2px 10px' }}>
-                                                        📢 Chaqirildi
-                                                    </span>
-                                                </div>
-                                                <div style={{ fontWeight: 700, fontSize: 14 }}>
-                                                    {e.patientId?.firstName} {e.patientId?.lastName}
-                                                </div>
-                                                {e.patientId?.phone && <div style={{ fontSize: 12, color: '#64748b' }}>📞 {e.patientId.phone}</div>}
-                                                <button onClick={() => startQueueService(e)}
-                                                    style={{
-                                                        marginTop: 8, width: '100%', padding: '8px', borderRadius: 10,
-                                                        border: 'none', background: '#f59e0b', color: '#fff',
-                                                        fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit'
-                                                    }}>
-                                                    ▶ Qabulni Boshlash
-                                                </button>
+                                        {/* ─ Navbat yo'q ─ */}
+                                        {queueEntries.length === 0 && (
+                                            <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                                                <div style={{ fontSize: 44, marginBottom: 8 }}>🎉</div>
+                                                <div style={{ fontSize: 15, fontWeight: 700 }}>Navbat bo'sh</div>
+                                                <div style={{ fontSize: 12, marginTop: 4 }}>Yangi bemor qo'shilganda ko'rinadi</div>
                                             </div>
-                                        ))}
+                                        )}
 
-                                        {/* Xizmatda */}
-                                        {queueInService.map(e => (
-                                            <div key={e._id} style={{
-                                                borderRadius: 12, padding: '12px 14px',
-                                                background: '#f0fdf4', border: '1.5px solid #86efac',
-                                            }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                                    <span style={{ fontWeight: 800, fontSize: 18, color: '#10b981' }}>#{e.queueNumber}</span>
-                                                    <span style={{ fontSize: 11, fontWeight: 700, background: '#dcfce7', color: '#15803d', borderRadius: 8, padding: '2px 10px' }}>
-                                                        🩺 Xizmatda
-                                                    </span>
-                                                </div>
-                                                <div style={{ fontWeight: 700, fontSize: 14 }}>
-                                                    {e.patientId?.firstName} {e.patientId?.lastName}
-                                                </div>
-                                                <button onClick={() => completeQueueService(e._id)}
-                                                    style={{
-                                                        marginTop: 8, width: '100%', padding: '8px', borderRadius: 10,
-                                                        border: 'none', background: '#10b981', color: '#fff',
-                                                        fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit'
-                                                    }}>
-                                                    ✅ Yakunlash
-                                                </button>
-                                            </div>
-                                        ))}
-
-                                        {/* Kutayotganlar */}
-                                        {queueWaiting.map((e, idx) => {
+                                        {/* ─── Barcha navbatdagi bemorlar bitta ro'yhatta ─── */}
+                                        {[
+                                            ...queueInService.map(e => ({ ...e, _step: 3 })),
+                                            ...queueCalled.map(e => ({ ...e, _step: 2 })),
+                                            ...queueWaiting.map((e, idx) => ({ ...e, _step: 1, _idx: idx })),
+                                        ].map(e => {
                                             const pri = PRIORITY[e.priority] || PRIORITY.normal;
                                             const waitMins = e.joinedAt ? Math.floor((Date.now() - new Date(e.joinedAt)) / 60000) : 0;
+                                            const name = `${e.patientId?.firstName || ''} ${e.patientId?.lastName || ''}`.trim();
+
+                                            // ─ Rang va stil ─
+                                            const stepStyles = {
+                                                3: { bg: '#f0fdf4', border: '#86efac', badgeBg: '#dcfce7', badgeColor: '#15803d', badgeText: '🩺 Xizmatda', numColor: '#10b981' },
+                                                2: { bg: '#fffbeb', border: '#fbbf24', badgeBg: '#fef3c7', badgeColor: '#d97706', badgeText: '📢 Chaqirildi', numColor: '#f59e0b' },
+                                                1: { bg: '#fff', border: '#e2e8f0', badgeBg: null, badgeColor: pri.color, badgeText: pri.label, numColor: '#1e293b' },
+                                            }[e._step];
+
                                             return (
                                                 <div key={e._id} style={{
-                                                    borderRadius: 12, padding: '12px 14px',
-                                                    background: '#fff', border: '1px solid #e2e8f0',
-                                                    borderLeft: `4px solid ${pri.color}`,
+                                                    borderRadius: 14, padding: '14px 16px',
+                                                    background: stepStyles.bg,
+                                                    border: `1.5px solid ${stepStyles.border}`,
+                                                    borderLeft: e._step === 1 ? `5px solid ${pri.color}` : `1.5px solid ${stepStyles.border}`,
+                                                    ...(e._step === 2 ? { animation: 'pulseBorder 1.5s ease infinite' } : {}),
+                                                    marginBottom: 4,
                                                 }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                                        <span style={{ fontWeight: 800, fontSize: 16, color: '#1e293b' }}>
-                                                            #{e.queueNumber}
-                                                            <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', marginLeft: 6 }}>
-                                                                ({idx + 1}-navbat)
-                                                            </span>
-                                                        </span>
+                                                    {/* Bemor nomi + badge */}
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                            <span style={{
+                                                                fontWeight: 900, fontSize: 20,
+                                                                color: stepStyles.numColor,
+                                                                minWidth: 36,
+                                                            }}>#{e.queueNumber}</span>
+                                                            {e._step === 1 && (
+                                                                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>
+                                                                    {e._idx + 1}-o'rin
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <span style={{
-                                                            fontSize: 11, fontWeight: 700, color: pri.color,
-                                                            background: e.priority === 'emergency' ? '#fef2f2' : e.priority === 'urgent' ? '#fffbeb' : '#f0fdf4',
-                                                            borderRadius: 8, padding: '2px 10px'
+                                                            fontSize: 11, fontWeight: 700,
+                                                            background: stepStyles.badgeBg || (e.priority === 'emergency' ? '#fef2f2' : e.priority === 'urgent' ? '#fffbeb' : '#f0fdf4'),
+                                                            color: stepStyles.badgeColor,
+                                                            borderRadius: 8, padding: '3px 10px',
                                                         }}>
-                                                            {pri.label}
+                                                            {stepStyles.badgeText}
                                                         </span>
                                                     </div>
-                                                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
-                                                        {e.patientId?.firstName} {e.patientId?.lastName}
+
+                                                    {/* Ism */}
+                                                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginBottom: 2 }}>
+                                                        {name || '—'}
                                                     </div>
-                                                    {e.patientId?.phone && <div style={{ fontSize: 12, color: '#64748b' }}>📞 {e.patientId.phone}</div>}
-                                                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>⏱️ {waitMins} daqiqa kutdi</div>
-                                                    <button onClick={() => callQueuePatient(e)}
-                                                        style={{
-                                                            marginTop: 8, width: '100%', padding: '8px', borderRadius: 10,
-                                                            border: 'none', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
-                                                            color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit'
-                                                        }}>
-                                                        📢 Chaqirish
-                                                    </button>
+                                                    {e.patientId?.phone && (
+                                                        <div style={{ fontSize: 12, color: '#64748b' }}>📞 {e.patientId.phone}</div>
+                                                    )}
+                                                    {e._step === 1 && (
+                                                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>⏱️ {waitMins} daqiqa kutdi</div>
+                                                    )}
+
+                                                    {/* ─ Ketma-ket tugmalar ─ */}
+                                                    <div style={{ marginTop: 10 }}>
+
+                                                        {/* 1-QADAM: Chaqirish (waiting) */}
+                                                        {e._step === 1 && (
+                                                            <button onClick={() => callQueuePatient(e)}
+                                                                style={{
+                                                                    width: '100%', padding: '10px 0', borderRadius: 10,
+                                                                    border: 'none',
+                                                                    background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+                                                                    color: '#fff', fontWeight: 800, fontSize: 13,
+                                                                    cursor: 'pointer', fontFamily: 'inherit',
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                                    boxShadow: '0 4px 12px rgba(99,102,241,0.35)',
+                                                                    letterSpacing: 0.3,
+                                                                }}>
+                                                                📢 Chaqirish
+                                                            </button>
+                                                        )}
+
+                                                        {/* 2-QADAM: Boshlash (called → in_service) */}
+                                                        {e._step === 2 && (
+                                                            <button onClick={() => startQueueService(e)}
+                                                                style={{
+                                                                    width: '100%', padding: '10px 0', borderRadius: 10,
+                                                                    border: 'none',
+                                                                    background: 'linear-gradient(135deg,#f59e0b,#d97706)',
+                                                                    color: '#fff', fontWeight: 800, fontSize: 13,
+                                                                    cursor: 'pointer', fontFamily: 'inherit',
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                                    boxShadow: '0 4px 12px rgba(245,158,11,0.4)',
+                                                                    animation: 'pulseBtn 1.2s ease infinite',
+                                                                    letterSpacing: 0.3,
+                                                                }}>
+                                                                ▶ Qabulni Boshlash
+                                                            </button>
+                                                        )}
+
+                                                        {/* 3-QADAM: Yakunlash (in_service → complete) */}
+                                                        {e._step === 3 && (
+                                                            <button onClick={() => completeQueueService(e._id)}
+                                                                style={{
+                                                                    width: '100%', padding: '10px 0', borderRadius: 10,
+                                                                    border: 'none',
+                                                                    background: 'linear-gradient(135deg,#10b981,#059669)',
+                                                                    color: '#fff', fontWeight: 800, fontSize: 13,
+                                                                    cursor: 'pointer', fontFamily: 'inherit',
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                                    boxShadow: '0 4px 12px rgba(16,185,129,0.35)',
+                                                                    letterSpacing: 0.3,
+                                                                }}>
+                                                                ✅ Yakunlash
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
-
-                                        {queueEntries.length === 0 && (
-                                            <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
-                                                <div style={{ fontSize: 40, marginBottom: 8 }}>🎉</div>
-                                                <div style={{ fontSize: 14, fontWeight: 600 }}>Navbat bo'sh</div>
-                                            </div>
-                                        )}
                                     </>
                                 )}
 
                                 {/* ═══ QABULLAR TAB ═══ */}
                                 {activeTab === 'apts' && (
                                     <>
+
                                         {inProgressAppts.map(apt => (
                                             <button key={apt._id} className="w-full p-4 rounded-xl bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 text-left transition-all hover:shadow-md relative overflow-hidden"
                                                 onClick={() => handleSelectAppointment(apt)}>
@@ -773,6 +798,6 @@ export default function SimpleDoctorRoom() {
                 @keyframes slideDown { from{transform:translateY(-100%)} to{transform:translateY(0)} }
                 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
             `}</style>
-        </div>
+        </div >
     );
 }
