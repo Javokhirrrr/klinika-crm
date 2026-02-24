@@ -1,75 +1,69 @@
 import { useState, useEffect, useRef } from 'react';
 
+// Token bilan fetch — cross-origin iframe auth muammosini hal qiladi
+async function fetchReceiptHtml(url) {
+    const token = localStorage.getItem('accessToken') || '';
+
+    // URL da /api/ yo'q bo'lsa qo'shish
+    const finalUrl = url.includes('/api/')
+        ? url
+        : url.replace(/(https?:\/\/[^/]+)/, '$1/api');
+
+    // Avval token bilan so'rov
+    const res = await fetch(finalUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
+    });
+
+    if (!res.ok) {
+        // Backup: tokenni query param sifatida
+        const urlWithToken = finalUrl.includes('?')
+            ? `${finalUrl}&token=${token}`
+            : `${finalUrl}?token=${token}`;
+        const res2 = await fetch(urlWithToken, { credentials: 'include' });
+        if (!res2.ok) throw new Error(`Receipt ${res2.status}`);
+        return res2.text();
+    }
+    return res.text();
+}
+
 export default function ReceiptPreviewModal({ url, open, onClose }) {
     const [html, setHtml] = useState('');
+    const [loadError, setLoadError] = useState(null);
     const iframeRef = useRef(null);
-    const [isPrinting, setIsPrinting] = useState(false);
 
-    // 1. Fetch HTML when URL changes and open is true
+    // 1. URL yoki open o'zgarganda HTML yuklash
     useEffect(() => {
-        if (open && url) {
-            setHtml(''); // Reset
-            setIsPrinting(true);
+        if (!open || !url) return;
+        setHtml('');
+        setLoadError(null);
 
-            fetch(url)
-                .then(res => res.text())
-                .then(text => {
-                    setHtml(text);
-                })
-                .catch(err => {
-                    console.error("Receipt load error:", err);
-                    alert("Chekni yuklashda xatolik yuz berdi");
-                    onClose();
-                });
-        }
+        fetchReceiptHtml(url)
+            .then(text => setHtml(text))
+            .catch(err => {
+                console.error('Receipt load error:', err);
+                setLoadError(err.message);
+            });
     }, [open, url]);
 
-    // 2. Auto-print when HTML is ready
+    // 2. HTML tayyor bo'lganda print dialog ochish
     useEffect(() => {
         if (!html || !iframeRef.current) return;
 
         const iframe = iframeRef.current;
-
-        // Function to trigger print
-        const triggerPrint = () => {
-            try {
-                iframe.contentWindow.focus();
-                iframe.contentWindow.print();
-            } catch (e) {
-                console.error("Print error:", e);
-                // Fallback or alert if blocked
-            }
-        };
-
-        // Small delay to ensure styles/images load (if any)
         const timer = setTimeout(() => {
-            triggerPrint();
-        }, 500);
+            try {
+                iframe.contentWindow?.focus();
+                iframe.contentWindow?.print();
+            } catch (e) {
+                console.error('Print trigger error:', e);
+            }
+        }, 600);
 
-        // Cleanup
-        // We can try to detect when printing is done, but it's tricky.
-        // We will just rely on the user. If they cancel, they stay on the page.
-        // The parent (SimplePayments) keeps 'open' true.
-        // If they click 'Print' again, the parent updates 'url' (or same url).
-        // If same URL, we need to ensure this effect runs again?
-        // No, 'open'/state management in parent is simple. 
-        // We should explicitly call onClose() after some time? 
-        // No, let's keep it mounted until parent closes it or we decide to.
-        // Actually, better to reset 'open' so the next click works properly if logic depends on it.
-        // But we can't detect print completion reliably.
-        // So we will trigger onClose after a delay, HOPEFULLY after the dialog appears.
-        // If we close 'open', the iframe unmounts. If iframe unmounts, print dialog might close in some browsers?
-        // SAFE BET: Keep it open. The user doesn't see it (hidden).
-        // But we need to handle "Re-print same receipt". 
-        // Parent: setReceiptUrl(url); setShow(true).
-        // If we call onClose(), parent sets show(false).
-
-        // Listen for afterprint in the iframe window
-        const iframeWin = iframe.contentWindow;
-        if (iframeWin) {
-            iframeWin.onafterprint = () => {
-                onClose();
-            };
+        // Print tugagandan keyin yopish
+        const win = iframe.contentWindow;
+        if (win) {
+            win.onafterprint = () => { onClose(); };
         }
 
         return () => clearTimeout(timer);
@@ -77,13 +71,46 @@ export default function ReceiptPreviewModal({ url, open, onClose }) {
 
     if (!open) return null;
 
+    // Xatolik bo'lsa — ko'rinadigan modal ko'rsatamiz
+    if (loadError) {
+        return (
+            <div style={{
+                position: 'fixed', inset: 0, zIndex: 9999,
+                background: 'rgba(0,0,0,0.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+                <div style={{
+                    background: '#fff', borderRadius: 16, padding: '32px 40px',
+                    maxWidth: 400, textAlign: 'center',
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+                }}>
+                    <div style={{ fontSize: 48, marginBottom: 12 }}>⚠️</div>
+                    <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: '#1e293b' }}>
+                        Chek yuklanmadi
+                    </div>
+                    <div style={{ color: '#64748b', fontSize: 14, marginBottom: 20 }}>
+                        {loadError}
+                    </div>
+                    <button onClick={onClose} style={{
+                        padding: '10px 28px', borderRadius: 10, border: 'none',
+                        background: '#6366f1', color: '#fff', fontWeight: 700,
+                        fontSize: 14, cursor: 'pointer',
+                    }}>
+                        Yopish
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // HTML yuklanmoqda — yashirin iframe (print avtomatik ishga tushadi)
     return (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, opacity: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: 0, height: 0, opacity: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 9998 }}>
             <iframe
                 ref={iframeRef}
-                srcDoc={html}
+                srcDoc={html || '<html><body></body></html>'}
                 title="Receipt"
-                style={{ width: '80mm', height: '1000px', border: 'none' }}
+                style={{ width: '80mm', height: '1200px', border: 'none' }}
             />
         </div>
     );

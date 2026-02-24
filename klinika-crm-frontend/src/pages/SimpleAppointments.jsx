@@ -300,7 +300,7 @@ export default function SimpleAppointments() {
         if (processingPayment) return;
         setProcessingPayment(true);
 
-        // 1. Modalni darhol yopamiz — foydalanuvchi kutmasin
+        // 1. Modalni darhol yopamiz
         setShowPaymentModal(false);
         setShowModal(false);
 
@@ -321,6 +321,19 @@ export default function SimpleAppointments() {
                 const newAppt = apptRes.data || apptRes;
                 appointmentId = newAppt._id;
                 patientId = newAppt.patientId || formData.patientId;
+
+                // Optimistik yangilash — yangi qabulni darhol ro'yxatga qo'shish
+                if (newAppt._id) {
+                    const optimistic = {
+                        ...newAppt,
+                        status: newAppt.status || 'scheduled',
+                        patientId: patients.find(p => p._id === formData.patientId) || { _id: formData.patientId, firstName: '...', lastName: '' },
+                        doctorId: doctors.find(d => d._id === formData.doctorId) || { _id: formData.doctorId, name: 'Dr.' },
+                    };
+                    setAppointments(prev => [optimistic, ...prev]);
+                    setStats(prev => ({ ...prev, total: prev.total + 1, waiting: prev.waiting + 1 }));
+                }
+
                 setFormData({ patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '', price: 0 });
                 setSelectedServices([]);
             } else {
@@ -342,30 +355,27 @@ export default function SimpleAppointments() {
                 newPaymentId = newPayment?._id;
             }
 
-            // 4. Ro'yxatni yangilash (fon)
-            refreshAppointments();
+            // 4. Ro'yxatni serverdan yangilash (await — real data)
+            await refreshAppointments();
 
-            // 5. Chop etish
+            // 5. Chop etish — print oynasini ochish
             if (print) {
                 const BASE = 'https://klinika-crm-eng-yangi-production.up.railway.app';
-                const token = localStorage.getItem('accessToken') || '';
+                const printUrl = newPaymentId
+                    ? `${BASE}/api/receipts/payments/${newPaymentId}/print`
+                    : `${BASE}/api/receipts/appointments/${appointmentId}/print`;
 
-                // To'lov chekini ko'rsatish
-                if (newPaymentId) {
-                    const printUrl = `${BASE}/api/receipts/payments/${newPaymentId}/print?token=${token}`;
+                // Kichik kechikish — modal state settle bo'lsin
+                setTimeout(() => {
                     setReceiptUrl(printUrl);
                     setShowReceiptModal(true);
-                } else if (appointmentId) {
-                    const printUrl = `${BASE}/api/receipts/appointments/${appointmentId}/print?token=${token}`;
-                    setReceiptUrl(printUrl);
-                    setShowReceiptModal(true);
-                }
+                }, 100);
             }
 
         } catch (error) {
             console.error('Payment error:', error);
-            // Oyna allaqachon yopilgan, xatolikni toast orqali ko'rsatamiz
-            alert('To\'lov saqlashda xatolik: ' + (error?.message || ''));
+            await refreshAppointments(); // Xatolik bo'lsa ham ro'yxatni yangilash
+            alert("To'lov saqlashda xatolik: " + (error?.message || ''));
         } finally {
             setProcessingPayment(false);
         }
