@@ -252,25 +252,44 @@ export default function SimpleDoctorRoom() {
         if (!diagnosis) { toast('Tashxis kiritish majburiy!', 'error'); return; }
         try {
             setSaving(true);
-            await http.patch(`/appointments/${selectedApt._id}/update-status`, { status: 'done' });
-            if (addedServices.length > 0) {
-                await http.put(`/appointments/${selectedApt._id}`, {
-                    serviceIds: addedServices.map(s => s._id || s),
-                    price: calcTotal(),
-                    notes: prescription || selectedApt.notes || ''
+            const isReal = !selectedApt._isQueueOnly && !selectedApt._id?.startsWith('queue-');
+
+            if (isReal) {
+                // Haqiqiy appointment — statusni done ga o'zgartirish
+                await http.patch(`/appointments/${selectedApt._id}/update-status`, { status: 'done' })
+                    .catch(() => { });
+
+                if (addedServices.length > 0) {
+                    await http.put(`/appointments/${selectedApt._id}`, {
+                        serviceIds: addedServices.map(s => s._id || s),
+                        price: calcTotal(),
+                        notes: prescription || selectedApt.notes || ''
+                    }).catch(() => { });
+                }
+
+                // Doctor room complete endpoint
+                await http.post('/doctor-room/complete', {
+                    appointmentId: selectedApt._id,
+                    diagnosis, prescription,
+                    services: addedServices.map(s => s._id || s),
+                }).catch(async () => {
+                    // Fallback: notesga yozib qo'yish
+                    await http.put(`/appointments/${selectedApt._id}`, {
+                        notes: `Tashxis: ${diagnosis}\nRetsept: ${prescription}`
+                    }).catch(() => { });
+                });
+            } else {
+                // Virtual (navbat) appointment — faqat doktor room ga yuboramiz
+                await http.post('/doctor-room/complete', {
+                    diagnosis, prescription,
+                    patientId: selectedApt.patientId?._id || selectedApt.patientId,
+                    services: addedServices.map(s => s._id || s),
                 }).catch(() => { });
             }
-            await http.post('/doctor-room/complete', {
-                appointmentId: selectedApt._id,
-                diagnosis, prescription,
-                services: addedServices.map(s => s._id || s),
-            }).catch(async () => {
-                await http.put(`/appointments/${selectedApt._id}`, {
-                    notes: `Tashxis: ${diagnosis}\nRetsept: ${prescription}`
-                }).catch(() => { });
-            });
+
             toast('Qabul yakunlandi va saqlandi! ✅');
             fetchAppointments(selectedDoctorId || null);
+            fetchQueue(selectedDoctorId || null);
             setSelectedApt(null); setDiagnosis(''); setPrescription(''); setAddedServices([]);
             setActiveTab('queue');
         } catch (e) { toast('Xatolik!', 'error'); console.error(e); }
