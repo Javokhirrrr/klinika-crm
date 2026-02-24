@@ -244,57 +244,74 @@ export default function SimpleDoctorRoom() {
                 : [...prev, service]
         );
     };
-
     const calcTotal = () => addedServices.reduce((sum, s) => sum + (s.price || 0), 0);
 
     const handleFinalize = async () => {
         if (!selectedApt) return;
-        if (!diagnosis) { toast('Tashxis kiritish majburiy!', 'error'); return; }
+        setSaving(true);
+
+        // Barcha state qiymatlarini darhol snapshot qilib olamiz (closure bug oldini olish)
+        const isReal = !selectedApt._isQueueOnly && !selectedApt._id?.startsWith('queue-');
+        const aptId = selectedApt._id;
+        const patId = selectedApt.patientId?._id || selectedApt.patientId;
+        const diagnosisText = diagnosis || '—';
+        const prescriptionText = prescription || '';
+        const snapServices = [...addedServices]; // ← snapshot, state clear bo'lishidan OLDIN
+        const snapTotal = snapServices.reduce((s, sv) => s + (sv.price || 0), 0);
+
+        // 1. DARHOL panel yopish (optimistik) — foydalanuvchi kutmasin
+        setSelectedApt(null);
+        setDiagnosis('');
+        setPrescription('');
+        setAddedServices([]);
+        setActiveTab('queue');
+
+        // 2. Stats DARHOL yangilash
+        if (isReal) {
+            setAppointments(prev => prev.map(a => a._id === aptId ? { ...a, status: 'done' } : a));
+        }
+        toast('Qabul yakunlandi! ✅');
+        setSaving(false);
+
+        // 3. Fon da server bilan sinxronlash (snapshot data ishlatiladi)
         try {
-            setSaving(true);
-            const isReal = !selectedApt._isQueueOnly && !selectedApt._id?.startsWith('queue-');
-
             if (isReal) {
-                // Haqiqiy appointment — statusni done ga o'zgartirish
-                await http.patch(`/appointments/${selectedApt._id}/update-status`, { status: 'done' })
-                    .catch(() => { });
+                await http.patch(`/appointments/${aptId}/update-status`, { status: 'done' }).catch(() => { });
 
-                if (addedServices.length > 0) {
-                    await http.put(`/appointments/${selectedApt._id}`, {
-                        serviceIds: addedServices.map(s => s._id || s),
-                        price: calcTotal(),
-                        notes: prescription || selectedApt.notes || ''
+                if (snapServices.length > 0) {
+                    await http.put(`/appointments/${aptId}`, {
+                        serviceIds: snapServices.map(s => s._id || s),
+                        price: snapTotal,
+                        notes: prescriptionText
                     }).catch(() => { });
                 }
 
-                // Doctor room complete endpoint
                 await http.post('/doctor-room/complete', {
-                    appointmentId: selectedApt._id,
-                    diagnosis, prescription,
-                    services: addedServices.map(s => s._id || s),
+                    appointmentId: aptId,
+                    diagnosis: diagnosisText,
+                    prescription: prescriptionText,
+                    services: snapServices.map(s => s._id || s),
                 }).catch(async () => {
-                    // Fallback: notesga yozib qo'yish
-                    await http.put(`/appointments/${selectedApt._id}`, {
-                        notes: `Tashxis: ${diagnosis}\nRetsept: ${prescription}`
+                    await http.put(`/appointments/${aptId}`, {
+                        notes: `Tashxis: ${diagnosisText}\nRetsept: ${prescriptionText}`
                     }).catch(() => { });
                 });
             } else {
-                // Virtual (navbat) appointment — faqat doktor room ga yuboramiz
                 await http.post('/doctor-room/complete', {
-                    diagnosis, prescription,
-                    patientId: selectedApt.patientId?._id || selectedApt.patientId,
-                    services: addedServices.map(s => s._id || s),
+                    diagnosis: diagnosisText,
+                    prescription: prescriptionText,
+                    patientId: patId,
+                    services: snapServices.map(s => s._id || s),
                 }).catch(() => { });
             }
-
-            toast('Qabul yakunlandi va saqlandi! ✅');
+        } catch (e) {
+            console.error('Finalize error:', e);
+        } finally {
             fetchAppointments(selectedDoctorId || null);
             fetchQueue(selectedDoctorId || null);
-            setSelectedApt(null); setDiagnosis(''); setPrescription(''); setAddedServices([]);
-            setActiveTab('queue');
-        } catch (e) { toast('Xatolik!', 'error'); console.error(e); }
-        finally { setSaving(false); }
+        }
     };
+
 
     // ─── Tarix modal ──────────────────────────────────────────────────────────────
     const openHistoryModal = async () => {

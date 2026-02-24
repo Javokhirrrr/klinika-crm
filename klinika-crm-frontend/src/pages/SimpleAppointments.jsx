@@ -218,17 +218,29 @@ export default function SimpleAppointments() {
         } catch (err) { alert("O'chirishda xatolik!"); }
     };
 
-    // ─── Status o'zgartirish ──────────────────────────────────────────────────────────────
+    // ─── Status o'zgartirish (optimistik) ────────────────────────────────
     const handleChangeStatus = async (id, status) => {
-        try {
-            await http.patch(`/appointments/${id}/update-status`, { status });
-            loadData();
-        } catch (err) { alert('Status o\'zgartishda xatolik!'); }
+        // 1. Darhol UI yangilash
+        setAppointments(prev => prev.map(a => a._id === id ? { ...a, status } : a));
+        // 2. API fonda
+        http.patch(`/appointments/${id}/update-status`, { status })
+            .then(() => loadData()) // server bilan sinxronlash
+            .catch(err => {
+                // Xatolik bo'lsa qaytarish
+                loadData();
+                alert('Status o\'zgartishda xatolik: ' + (err?.response?.data?.message || ''));
+            });
     };
     const handleCheckIn = async (id) => {
         if (!window.confirm("Bemor klinikaga keldimi?")) return;
-        try { await http.patch(`/appointments/${id}/check-in`); loadData(); }
-        catch (error) { alert(error?.response?.data?.message || "Xatolik"); }
+        // Optimistik
+        setAppointments(prev => prev.map(a => a._id === id ? { ...a, status: 'waiting' } : a));
+        http.patch(`/appointments/${id}/check-in`)
+            .then(() => loadData())
+            .catch(error => {
+                loadData();
+                alert(error?.response?.data?.message || "Xatolik");
+            });
     };
 
     // --- Payment Logic ---
