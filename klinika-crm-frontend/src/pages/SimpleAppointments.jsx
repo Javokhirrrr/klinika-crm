@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn, printFromUrl } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -30,12 +30,14 @@ import {
 } from 'lucide-react';
 import http from '../lib/http';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../hooks/useSocket';
 import ReceiptPreviewModal from '@/components/ReceiptPreviewModal';
 
 export default function SimpleAppointments() {
     // Force refresh
     const navigate = useNavigate();
     const { user } = useAuth();
+    const orgId = user?.orgId;
     const [appointments, setAppointments] = useState([]);
     const [patients, setPatients] = useState([]);
     const [doctors, setDoctors] = useState([]);
@@ -86,7 +88,39 @@ export default function SimpleAppointments() {
         http.get('/settings/receipt_template')
             .then(res => setReceiptSettings(res?.value))
             .catch(console.error);
+
+        // ⚡ Tez polling zaxira (socket ishlamasa ham ishlaydi)
+        const iv = setInterval(() => refreshAppointments(), 5000);
+        return () => clearInterval(iv);
     }, [filterDate, filterDoctor]);
+
+    // 🔌 Socket.IO real-time yangilash
+    useSocket(orgId, {
+        'appointment:status-changed': (data) => {
+            // Darhol UI ni yangilash (server bilan sinxronlash)
+            setAppointments(prev => {
+                const updated = prev.map(a => {
+                    if (String(a._id) === String(data.appointmentId)) {
+                        return { ...a, status: data.status };
+                    }
+                    return a;
+                });
+                setStats({
+                    total: updated.length,
+                    waiting: updated.filter(a => a.status === 'waiting' || a.status === 'scheduled').length,
+                    in_progress: updated.filter(a => a.status === 'in_progress').length,
+                    done: updated.filter(a => a.status === 'done').length,
+                });
+                return updated;
+            });
+        },
+        'appointment:created': () => {
+            refreshAppointments();
+        },
+        'queue:updated': () => {
+            refreshAppointments();
+        },
+    });
 
     useEffect(() => {
         if (formData.doctorId && formData.date) fetchSlots();
@@ -224,21 +258,19 @@ export default function SimpleAppointments() {
         setAppointments(prev => prev.map(a => a._id === id ? { ...a, status } : a));
         // 2. API fonda
         http.patch(`/appointments/${id}/update-status`, { status })
-            .then(() => loadData()) // server bilan sinxronlash
+            .then(() => refreshAppointments())
             .catch(err => {
-                // Xatolik bo'lsa qaytarish
-                loadData();
+                refreshAppointments();
                 alert('Status o\'zgartishda xatolik: ' + (err?.response?.data?.message || ''));
             });
     };
     const handleCheckIn = async (id) => {
         if (!window.confirm("Bemor klinikaga keldimi?")) return;
-        // Optimistik
         setAppointments(prev => prev.map(a => a._id === id ? { ...a, status: 'waiting' } : a));
         http.patch(`/appointments/${id}/check-in`)
-            .then(() => loadData())
+            .then(() => refreshAppointments())
             .catch(error => {
-                loadData();
+                refreshAppointments();
                 alert(error?.response?.data?.message || "Xatolik");
             });
     };

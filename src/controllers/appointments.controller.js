@@ -3,8 +3,25 @@ import { Appointment } from "../models/Appointment.js";
 import { Doctor } from "../models/Doctor.js";
 import { QueueEntry } from "../models/QueueEntry.js";
 import { notifyPatientByBot } from "./bots.controller.js";
-import { emitNewPatient } from "../socket/index.js";
+import { emitNewPatient, getIO } from "../socket/index.js";
 import { env } from "../config/env.js";
+
+// Real-time appointment status emit helper
+function emitAptStatus(orgId, appointment) {
+  try {
+    const io = getIO();
+    if (!io) return;
+    io.to(`org:${orgId}`).emit('appointment:status-changed', {
+      appointmentId: appointment._id,
+      status: appointment.status,
+      patientId: appointment.patientId,
+      doctorId: appointment.doctorId,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.warn('Socket emit error:', e.message);
+  }
+}
 
 const okId = (v) => mongoose.isValidObjectId(v);
 const OID = (v) => new mongoose.Types.ObjectId(v);
@@ -351,6 +368,10 @@ export async function setAppointmentStatus(req, res) {
   );
 
   if (!updated) return res.status(404).json({ message: "Not found" });
+
+  // 🔴 Real-time
+  emitAptStatus(req.orgId, updated);
+
   res.json(updated);
 }
 

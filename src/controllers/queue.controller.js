@@ -226,6 +226,7 @@ export const callPatient = async (req, res) => {
         // Emit WebSocket event
         emitPatientCalled(req.user.orgId, queueEntry);
         emitQueueUpdate(req.user.orgId, { action: 'patient_called' });
+        emitQueueStatusChange(req.user.orgId, queueEntry);
 
         // Send Telegram notification
         if (queueEntry.patientId?.telegramChatId) {
@@ -285,6 +286,7 @@ export const startService = async (req, res) => {
 
         // Emit WebSocket events
         emitQueueUpdate(req.user.orgId, { action: 'service_started' });
+        emitQueueStatusChange(req.user.orgId, queueEntry);
 
         // Emit specific event for queue display to hide alert
         const io = req.app.get('io');

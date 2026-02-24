@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSocket } from '../hooks/useSocket';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +30,7 @@ function speak(text) {
 
 export default function SimpleDoctorRoom() {
     const { user } = useAuth();
+    const orgId = user?.orgId;
 
     // ─── State ─────────────────────────────────────────────────────────────────
     const [appointments, setAppointments] = useState([]);
@@ -132,10 +134,62 @@ export default function SimpleDoctorRoom() {
         const docId = selectedDoctorId || null;
         fetchAppointments(docId);
         fetchQueue(docId);
-        // 5 soniyada bir yangilash (optimistik update + qisqa interval = tez tizim)
-        const iv = setInterval(() => { fetchAppointments(docId); fetchQueue(docId); }, 5000);
+        // 3 soniyada bir yangilash (socket + polling = ikki qatlam kafolat)
+        const iv = setInterval(() => { fetchAppointments(docId); fetchQueue(docId); }, 3000);
         return () => clearInterval(iv);
     }, [selectedDoctorId, fetchAppointments, fetchQueue]);
+
+    // 🔌 Socket.IO — DARHOL real-time yangilash
+    useSocket(orgId, {
+        // Qabul statusi o'zgarganda
+        'appointment:status-changed': (data) => {
+            setAppointments(prev => prev.map(a =>
+                String(a._id) === String(data.appointmentId)
+                    ? { ...a, status: data.status }
+                    : a
+            ));
+            setSelectedApt(prev => prev && String(prev._id) === String(data.appointmentId)
+                ? { ...prev, status: data.status }
+                : prev
+            );
+            // done bo'lsa tarix ro'yxatini ham yangilash
+            if (data.status === 'done') {
+                setAllHistory(prev => prev.map(a =>
+                    String(a._id) === String(data.appointmentId) ? { ...a, status: 'done' } : a
+                ));
+                // Yangi server data olish
+                fetchAppointments(selectedDoctorId || null);
+            }
+        },
+        // Navbat yangilanganda (queue:updated, queue:status-changed)
+        'queue:updated': () => {
+            fetchQueue(selectedDoctorId || null);
+        },
+        'queue:status-changed': (data) => {
+            setQueueEntries(prev => prev.map(e =>
+                String(e._id) === String(data.queueEntryId)
+                    ? { ...e, status: data.status }
+                    : e
+            ));
+        },
+        'queue:new-patient': () => {
+            fetchQueue(selectedDoctorId || null);
+        },
+        'queue:patient-called': (data) => {
+            // Boshqa kompyuter dan chaqirilsa ham updatelansin
+            setQueueEntries(prev => prev.map(e =>
+                String(e._id) === String(data.queueEntryId || data._id)
+                    ? { ...e, status: 'called' }
+                    : e
+            ));
+        },
+        // Yangi appointment yaratilsa
+        'appointment:created': () => {
+            fetchAppointments(selectedDoctorId || null);
+            fetchQueue(selectedDoctorId || null);
+        },
+    });
+
 
     // ─── Queue actions (optimistik update — UI darhol o'zgaradi) ──────────────
     const callQueuePatient = async (entry) => {
@@ -256,8 +310,9 @@ export default function SimpleDoctorRoom() {
         const patId = selectedApt.patientId?._id || selectedApt.patientId;
         const diagnosisText = diagnosis || '—';
         const prescriptionText = prescription || '';
-        const snapServices = [...addedServices]; // ← snapshot, state clear bo'lishidan OLDIN
+        const snapServices = [...addedServices];
         const snapTotal = snapServices.reduce((s, sv) => s + (sv.price || 0), 0);
+        const snapApt = { ...selectedApt }; // tarix uchun
 
         // 1. DARHOL panel yopish (optimistik) — foydalanuvchi kutmasin
         setSelectedApt(null);
@@ -269,6 +324,12 @@ export default function SimpleDoctorRoom() {
         // 2. Stats DARHOL yangilash
         if (isReal) {
             setAppointments(prev => prev.map(a => a._id === aptId ? { ...a, status: 'done' } : a));
+            // allHistory ga DARHOL qo'shish
+            setAllHistory(prev => {
+                const exists = prev.find(a => String(a._id) === String(aptId));
+                if (exists) return prev.map(a => String(a._id) === String(aptId) ? { ...a, status: 'done', price: snapTotal || a.price } : a);
+                return [{ ...snapApt, status: 'done', price: snapTotal || snapApt.price || 0 }, ...prev];
+            });
         }
         toast('Qabul yakunlandi! ✅');
         setSaving(false);

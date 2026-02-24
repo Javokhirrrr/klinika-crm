@@ -2,6 +2,24 @@
 import { User } from "../models/User.js";
 import { Appointment } from "../models/Appointment.js";
 import mongoose from "mongoose";
+import { getIO } from "../socket/index.js";
+
+// Real-time appointment status emit helper
+function emitAppointmentStatus(orgId, appointment) {
+    try {
+        const io = getIO();
+        if (!io) return;
+        io.to(`org:${orgId}`).emit('appointment:status-changed', {
+            appointmentId: appointment._id,
+            status: appointment.status,
+            patientId: appointment.patientId,
+            doctorId: appointment.doctorId,
+            timestamp: new Date().toISOString(),
+        });
+    } catch (e) {
+        console.warn('Socket emit error:', e.message);
+    }
+}
 
 /**
  * Generate time slots between start and end time
@@ -90,6 +108,9 @@ export async function checkIn(req, res) {
             return res.status(404).json({ message: "Appointment not found or already checked in" });
         }
 
+        // 🔴 Real-time: barcha sahifalarga darhol xabar
+        emitAppointmentStatus(orgId, appointment);
+
         return res.json({ message: "Check-in successful", appointment });
     } catch (error) {
         console.error("Check-in error:", error);
@@ -98,8 +119,8 @@ export async function checkIn(req, res) {
 }
 
 /**
- * PATCH /api/appointments/:id/status
- * Update status (e.g. to in_progress or done)
+ * PATCH /api/appointments/:id/update-status (alias) or /:id/status
+ * Update appointment status — emits real-time socket event to ALL clients
  */
 export async function updateStatus(req, res) {
     try {
@@ -125,6 +146,9 @@ export async function updateStatus(req, res) {
         if (!appointment) {
             return res.status(404).json({ message: "Appointment not found" });
         }
+
+        // 🔴 Real-time: qabul va shifokor xonasi sahifalariga DARHOL xabar
+        emitAppointmentStatus(orgId, appointment);
 
         return res.json({ message: `Status updated to ${status}`, appointment });
     } catch (error) {
