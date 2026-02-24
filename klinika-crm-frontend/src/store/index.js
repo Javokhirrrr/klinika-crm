@@ -12,36 +12,26 @@ export const useUIStore = create(
                 toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
                 setTheme: (theme) => set({ theme }),
             }),
-            {
-                name: 'ui-storage',
-            }
+            { name: 'ui-storage' }
         )
     )
 );
 
 // Patients Store
 export const usePatientsStore = create(
-    devtools((set, get) => ({
+    devtools((set) => ({
         patients: [],
         loading: false,
         error: null,
         selectedPatient: null,
-
         setPatients: (patients) => set({ patients }),
         setLoading: (loading) => set({ loading }),
         setError: (error) => set({ error }),
         setSelectedPatient: (patient) => set({ selectedPatient: patient }),
-
-        addPatient: (patient) => set((state) => ({
-            patients: [patient, ...state.patients],
-        })),
-
+        addPatient: (patient) => set((state) => ({ patients: [patient, ...state.patients] })),
         updatePatient: (id, updates) => set((state) => ({
-            patients: state.patients.map((p) =>
-                p._id === id ? { ...p, ...updates } : p
-            ),
+            patients: state.patients.map((p) => p._id === id ? { ...p, ...updates } : p),
         })),
-
         deletePatient: (id) => set((state) => ({
             patients: state.patients.filter((p) => p._id !== id),
         })),
@@ -54,19 +44,14 @@ export const useAppointmentsStore = create(
         appointments: [],
         loading: false,
         error: null,
-
         setAppointments: (appointments) => set({ appointments }),
         setLoading: (loading) => set({ loading }),
         setError: (error) => set({ error }),
-
         addAppointment: (appointment) => set((state) => ({
             appointments: [appointment, ...state.appointments],
         })),
-
         updateAppointment: (id, updates) => set((state) => ({
-            appointments: state.appointments.map((a) =>
-                a._id === id ? { ...a, ...updates } : a
-            ),
+            appointments: state.appointments.map((a) => a._id === id ? { ...a, ...updates } : a),
         })),
     }))
 );
@@ -75,22 +60,63 @@ export const useAppointmentsStore = create(
 export const useNotificationsStore = create(
     devtools((set) => ({
         notifications: [],
-
         addNotification: (notification) => set((state) => ({
-            notifications: [
-                ...state.notifications,
-                {
-                    id: Date.now(),
-                    type: 'info',
-                    ...notification,
-                },
-            ],
+            notifications: [...state.notifications, { id: Date.now(), type: 'info', ...notification }],
         })),
-
         removeNotification: (id) => set((state) => ({
             notifications: state.notifications.filter((n) => n.id !== id),
         })),
-
         clearNotifications: () => set({ notifications: [] }),
     }))
+);
+
+// ─── DoctorRoom Session Store ─────────────────────────────────────────────────
+// persist middleware — sahifalar orasida o'tganda ham panel ochiq qoladi!
+export const useDoctorRoomStore = create(
+    devtools(
+        persist(
+            (set) => ({
+                selectedApt: null,
+                diagnosis: '',
+                prescription: '',
+                addedServices: [],
+                activeTab: 'queue',
+
+                setSelectedApt: (apt) => set({ selectedApt: apt }),
+                setDiagnosis: (v) => set({ diagnosis: v }),
+                setPrescription: (v) => set({ prescription: v }),
+                setAddedServices: (v) => set({ addedServices: v }),
+                setActiveTab: (v) => set({ activeTab: v }),
+
+                toggleService: (service) => set((state) => {
+                    const id = service._id || service;
+                    const exists = state.addedServices.find(s => (s._id || s) === id);
+                    return {
+                        addedServices: exists
+                            ? state.addedServices.filter(s => (s._id || s) !== id)
+                            : [...state.addedServices, service],
+                    };
+                }),
+
+                // Faqat "Saqlash va Yakunlash" bosqanda tozalash
+                clearSession: () => set({
+                    selectedApt: null,
+                    diagnosis: '',
+                    prescription: '',
+                    addedServices: [],
+                    activeTab: 'queue',
+                }),
+            }),
+            {
+                name: 'doctor-room-session',
+                partialize: (state) => ({
+                    selectedApt: state.selectedApt,
+                    diagnosis: state.diagnosis,
+                    prescription: state.prescription,
+                    addedServices: state.addedServices,
+                    activeTab: state.activeTab,
+                }),
+            }
+        )
+    )
 );

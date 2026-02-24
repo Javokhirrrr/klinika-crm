@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSocket } from '../hooks/useSocket';
+import { useDoctorRoomStore } from '../store/index';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,24 +33,28 @@ export default function SimpleDoctorRoom() {
     const { user } = useAuth();
     const orgId = user?.orgId;
 
-    // ─── State ─────────────────────────────────────────────────────────────────
+    // ─── Persist store (sahifalar orasida saqlanadi) ──────────────────────────
+    const {
+        selectedApt, setSelectedApt,
+        diagnosis, setDiagnosis,
+        prescription, setPrescription,
+        addedServices, setAddedServices,
+        activeTab, setActiveTab,
+        clearSession,
+    } = useDoctorRoomStore();
+
+    // ─── Component state (navigatsiyada yo'qolsa muammo emas) ─────────────────
     const [appointments, setAppointments] = useState([]);
-    const [queueEntries, setQueueEntries] = useState([]);  // ← navbat
-    const [selectedApt, setSelectedApt] = useState(null);
+    const [queueEntries, setQueueEntries] = useState([]);
     const [services, setServices] = useState([]);
-    const [addedServices, setAddedServices] = useState([]);  // qo'shilgan xizmatlar
-    const [diagnosis, setDiagnosis] = useState('');
-    const [prescription, setPrescription] = useState('');
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('queue');  // queue | visit
     const [saving, setSaving] = useState(false);
     const [doctors, setDoctors] = useState([]);
     const [selectedDoctorId, setSelectedDoctorId] = useState('');
     const [myDoctorId, setMyDoctorId] = useState('');
-    const [notify, setNotify] = useState(null);   // bildirishnoma
-    const [calledNotif, setCalledNotif] = useState(null);   // "chaqirildi" banner
+    const [notify, setNotify] = useState(null);
+    const [calledNotif, setCalledNotif] = useState(null);
     const prevCalledRef = useRef(new Set());
-    // ─── Tarix modali ──────────────────────────────────────────────────────────────
     const [showHistoryModal, setShowHistoryModal] = useState(false);
     const [historyFilter, setHistoryFilter] = useState({ date: '', doctorId: '', search: '' });
     const [allHistory, setAllHistory] = useState([]);
@@ -63,7 +68,6 @@ export default function SimpleDoctorRoom() {
     // ─── Data load ─────────────────────────────────────────────────────────────
     const loadData = useCallback(async () => {
         try {
-            setLoading(true);
             const [servRes, docRes] = await Promise.all([
                 http.get('/services').catch(() => ({ items: [] })),
                 http.get('/doctors', { params: { limit: 100 } }).catch(() => ({ items: [] })),
@@ -208,49 +212,67 @@ export default function SimpleDoctorRoom() {
     };
 
     const startQueueService = async (entry) => {
-        // 1. Darhol UI ni yangilash
+        const pat = entry.patientId?._id || entry.patientId;
+
+        // 1. DARHOL UI yangilash (API ni kutmasdan!)
         setQueueEntries(prev => prev.map(e => e._id === entry._id ? { ...e, status: 'in_service' } : e));
+
+        // 2. DARHOL panel ochish — mavjud appointments dan bemor topilsa shu zahoti
+        const existingApt = appointments.find(a =>
+            (a.patientId?._id || a.patientId) === pat &&
+            ['scheduled', 'waiting', 'in_progress'].includes(a.status)
+        );
+
+        if (existingApt) {
+            // Mavjud qabulni DARHOL ko'rsatish
+            const aptToShow = existingApt.status !== 'in_progress'
+                ? { ...existingApt, status: 'in_progress' }
+                : existingApt;
+            setSelectedApt(aptToShow);
+            setAddedServices(aptToShow.serviceIds || []);
+            setDiagnosis('');
+            setPrescription('');
+            setActiveTab('visit');
+            setAppointments(prev => prev.map(a => a._id === aptToShow._id ? aptToShow : a));
+        } else {
+            // Virtual panel — qabul yoq bo'lsa
+            setSelectedApt({
+                _id: `queue-${entry._id}`,
+                _isQueueOnly: true,
+                status: 'in_progress',
+                patientId: entry.patientId,
+                doctorId: entry.doctorId,
+                startsAt: new Date().toISOString(),
+                price: 0, serviceIds: [],
+            });
+            setAddedServices([]);
+            setDiagnosis('');
+            setPrescription('');
+            setActiveTab('visit');
+        }
+
         toast('Xizmat boshlandi ▶');
 
+        // 3. Fonda API chaqirish (panel allaqachon ochilgan)
         try {
-            // 2. Queue API
             await http.post(`/queue/${entry._id}/start`);
 
-            // 3. FRESH appointments (stale state ishlatmaymiz — return value!)
-            const pat = entry.patientId?._id || entry.patientId;
-            const freshApts = await fetchAppointments(selectedDoctorId || null);
-
-            let matchApt = freshApts.find(a =>
-                (a.patientId?._id || a.patientId) === pat &&
-                ['scheduled', 'waiting', 'in_progress'].includes(a.status)
-            );
-
-            if (matchApt) {
-                // 4a. Optimistik status update
-                if (matchApt.status !== 'in_progress') {
-                    matchApt = { ...matchApt, status: 'in_progress' };
-                    setAppointments(prev => prev.map(a => a._id === matchApt._id ? matchApt : a));
-                    http.patch(`/appointments/${matchApt._id}/update-status`, { status: 'in_progress' }).catch(() => { });
+            if (existingApt && existingApt.status !== 'in_progress') {
+                http.patch(`/appointments/${existingApt._id}/update-status`, { status: 'in_progress' }).catch(() => {});
+            } else if (!existingApt) {
+                // Server dan fresh data olish
+                const freshApts = await fetchAppointments(selectedDoctorId || null);
+                const matchApt = freshApts.find(a =>
+                    (a.patientId?._id || a.patientId) === pat &&
+                    ['scheduled', 'waiting', 'in_progress'].includes(a.status)
+                );
+                if (matchApt) {
+                    setSelectedApt({ ...matchApt, status: 'in_progress' });
+                    setAddedServices(matchApt.serviceIds || []);
+                    if (matchApt.status !== 'in_progress') {
+                        http.patch(`/appointments/${matchApt._id}/update-status`, { status: 'in_progress' }).catch(() => {});
+                    }
                 }
-                // 5. O'ng panelni ochish
-                setSelectedApt(matchApt);
-                setAddedServices(matchApt.serviceIds || []);
-                setDiagnosis(''); setPrescription('');
-                setActiveTab('visit');
-            } else {
-                // 4b. Qabul yo'q — virtual panel (queue entry ma'lumotlari bilan)
-                setSelectedApt({
-                    _id: `queue-${entry._id}`,
-                    _isQueueOnly: true,
-                    status: 'in_progress',
-                    patientId: entry.patientId,
-                    doctorId: entry.doctorId,
-                    startsAt: new Date().toISOString(),
-                    price: 0, serviceIds: [],
-                });
-                setAddedServices([]);
-                setDiagnosis(''); setPrescription('');
-                setActiveTab('visit');
             }
             fetchQueue(selectedDoctorId || null);
         } catch (e) {
@@ -290,12 +312,14 @@ export default function SimpleDoctorRoom() {
         } catch (e) { toast(e?.response?.data?.message || 'Statusni yangilashda xatolik', 'error'); }
     };
 
-    // Xizmat qo'shish/olib tashlash
+    // Xizmat qo'shish/olib tashlash — store orqali
     const toggleService = (service) => {
-        setAddedServices(prev =>
-            prev.find(s => (s._id || s) === (service._id || service))
-                ? prev.filter(s => (s._id || s) !== (service._id || service))
-                : [...prev, service]
+        const id = service._id || service;
+        const exists = addedServices.find(s => (s._id || s) === id);
+        setAddedServices(
+            exists
+                ? addedServices.filter(s => (s._id || s) !== id)
+                : [...addedServices, service]
         );
     };
     const calcTotal = () => addedServices.reduce((sum, s) => sum + (s.price || 0), 0);
@@ -314,12 +338,8 @@ export default function SimpleDoctorRoom() {
         const snapTotal = snapServices.reduce((s, sv) => s + (sv.price || 0), 0);
         const snapApt = { ...selectedApt }; // tarix uchun
 
-        // 1. DARHOL panel yopish (optimistik) — foydalanuvchi kutmasin
-        setSelectedApt(null);
-        setDiagnosis('');
-        setPrescription('');
-        setAddedServices([]);
-        setActiveTab('queue');
+        // 1. DARHOL panel yopish — store tozalash (faqat bu yerda yopiladi!)
+        clearSession();
 
         // 2. Stats DARHOL yangilash
         if (isReal) {
@@ -814,10 +834,7 @@ export default function SimpleDoctorRoom() {
                                                 <Play className="h-5 w-5 mr-2 fill-current" /> Qabulni Boshlash
                                             </Button>
                                         )}
-                                        <Button variant="ghost" size="icon" className="h-12 w-12 text-white hover:bg-white/10"
-                                            onClick={() => { setSelectedApt(null); setActiveTab('queue'); }}>
-                                            <X className="h-5 w-5" />
-                                        </Button>
+
                                     </div>
                                 </CardContent>
                             </Card>
