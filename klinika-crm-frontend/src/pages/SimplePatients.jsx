@@ -14,7 +14,7 @@ import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import {
-    Plus, Search, Phone, Calendar, MoreVertical, Printer, Eye, UserPlus
+    Plus, Search, Phone, Calendar, MoreVertical, Printer, Eye, UserPlus, Pencil, Trash2
 } from 'lucide-react';
 import http from '../lib/http';
 
@@ -26,6 +26,8 @@ export default function SimplePatients() {
     const [showModal, setShowModal] = useState(false);
     const [showPrintPreview, setShowPrintPreview] = useState(false);
     const [selectedPatientForPrint, setSelectedPatientForPrint] = useState(null);
+    const [editPatient, setEditPatient] = useState(null);      // Tahrirlash
+    const [deletePatient, setDeletePatient] = useState(null);  // O'chirish tasdiqlash
     const [formData, setFormData] = useState({
         firstName: '', lastName: '', phone: '',
         birthDate: '', gender: 'male', address: '', cardNo: ''
@@ -63,6 +65,44 @@ export default function SimplePatients() {
         } catch (error) {
             console.error('Create error:', error);
             alert('Xatolik yuz berdi!');
+        }
+    };
+
+    // ─── Tahrirlash ────────────────────────────────────────────────────────────
+    const openEdit = (patient) => {
+        setEditPatient({
+            _id: patient._id,
+            firstName: patient.firstName || '',
+            lastName: patient.lastName || '',
+            phone: patient.phone || '',
+            birthDate: patient.birthDate ? patient.birthDate.split('T')[0] : '',
+            gender: patient.gender || 'male',
+            address: patient.address || '',
+        });
+    };
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            await http.put(`/patients/${editPatient._id}`, editPatient);
+            setEditPatient(null);
+            loadPatients();
+        } catch (err) {
+            console.error('Edit error:', err);
+            alert('Tahrirlashda xatolik!');
+        }
+    };
+
+    // ─── O'chirish ─────────────────────────────────────────────────────────────
+    const handleDelete = async () => {
+        if (!deletePatient) return;
+        try {
+            await http.del(`/patients/${deletePatient._id}`);
+            setDeletePatient(null);
+            loadPatients();
+        } catch (err) {
+            console.error('Delete error:', err);
+            alert("O'chirishda xatolik!");
         }
     };
 
@@ -312,7 +352,7 @@ export default function SimplePatients() {
                                                 <MoreVertical className="h-4 w-4 text-gray-600" />
                                             </Button>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-48">
+                                        <DropdownMenuContent align="end" className="w-52">
                                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/patients/${patient._id}`); }}>
                                                 <Eye className="h-4 w-4 mr-2" />
                                                 Profilni ko'rish
@@ -320,6 +360,14 @@ export default function SimplePatients() {
                                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); printPatientCard(patient); }}>
                                                 <Printer className="h-4 w-4 mr-2" />
                                                 Kartani chop etish
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEdit(patient); }}>
+                                                <Pencil className="h-4 w-4 mr-2 text-blue-500" />
+                                                <span className="text-blue-600 font-medium">Tahrirlash</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeletePatient(patient); }}>
+                                                <Trash2 className="h-4 w-4 mr-2 text-red-500" />
+                                                <span className="text-red-600 font-medium">O'chirish</span>
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -534,6 +582,96 @@ export default function SimplePatients() {
                         >
                             <Printer className="h-4 w-4 mr-2" />
                             Chop Etish
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* ─── Tahrirlash modali ─── */}
+            <Dialog open={!!editPatient} onOpenChange={(open) => !open && setEditPatient(null)}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold">✏️ Bemorni Tahrirlash</DialogTitle>
+                    </DialogHeader>
+                    {editPatient && (
+                        <form onSubmit={handleEditSubmit} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label className="text-sm font-bold text-gray-700">Ism *</Label>
+                                    <Input required value={editPatient.firstName}
+                                        onChange={e => setEditPatient({ ...editPatient, firstName: e.target.value })}
+                                        className="mt-1.5" />
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-bold text-gray-700">Familiya *</Label>
+                                    <Input required value={editPatient.lastName}
+                                        onChange={e => setEditPatient({ ...editPatient, lastName: e.target.value })}
+                                        className="mt-1.5" />
+                                </div>
+                            </div>
+                            <div>
+                                <Label className="text-sm font-bold text-gray-700">Telefon *</Label>
+                                <Input required type="tel" value={editPatient.phone}
+                                    onChange={e => setEditPatient({ ...editPatient, phone: e.target.value })}
+                                    className="mt-1.5" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label className="text-sm font-bold text-gray-700">Tug'ilgan sana</Label>
+                                    <Input type="date" value={editPatient.birthDate}
+                                        onChange={e => setEditPatient({ ...editPatient, birthDate: e.target.value })}
+                                        className="mt-1.5" />
+                                </div>
+                                <div>
+                                    <Label className="text-sm font-bold text-gray-700">Jins</Label>
+                                    <select value={editPatient.gender}
+                                        onChange={e => setEditPatient({ ...editPatient, gender: e.target.value })}
+                                        className="mt-1.5 w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm font-medium">
+                                        <option value="male">Erkak</option>
+                                        <option value="female">Ayol</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <Label className="text-sm font-bold text-gray-700">Manzil</Label>
+                                <Input value={editPatient.address}
+                                    onChange={e => setEditPatient({ ...editPatient, address: e.target.value })}
+                                    className="mt-1.5" />
+                            </div>
+                            <DialogFooter className="gap-2">
+                                <Button type="button" variant="outline" onClick={() => setEditPatient(null)}>Bekor qilish</Button>
+                                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Saqlash</Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* ─── O'chirish tasdiqlash modali ─── */}
+            <Dialog open={!!deletePatient} onOpenChange={(open) => !open && setDeletePatient(null)}>
+                <DialogContent className="sm:max-w-[420px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-red-600">🗑️ Bemorni O'chirish</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <div className="flex items-center gap-4 p-4 bg-red-50 rounded-xl border border-red-100">
+                            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-xl font-bold text-red-600">
+                                {deletePatient?.firstName?.[0]}{deletePatient?.lastName?.[0]}
+                            </div>
+                            <div>
+                                <div className="font-bold text-gray-900">{deletePatient?.firstName} {deletePatient?.lastName}</div>
+                                <div className="text-sm text-gray-500">{deletePatient?.phone}</div>
+                            </div>
+                        </div>
+                        <p className="mt-4 text-sm text-gray-600 text-center">
+                            Bu bemorni o'chirishni tasdiqlaysizmi? <br />
+                            <span className="text-red-500 font-semibold">Bu amal qaytarib bo'lmaydi!</span>
+                        </p>
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button type="button" variant="outline" onClick={() => setDeletePatient(null)}>Bekor qilish</Button>
+                        <Button onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white">
+                            <Trash2 className="h-4 w-4 mr-2" /> Ha, O'chirish
                         </Button>
                     </DialogFooter>
                 </DialogContent>

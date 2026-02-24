@@ -16,12 +16,17 @@ import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger
 } from '@/components/ui/dialog';
 import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+    DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
+import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
+
 import {
     Plus, Calendar, Clock, Check,
     X, DollarSign, Printer, Activity, ArrowRight,
-    Filter, Banknote, CreditCard, Users, Search, ChevronRight, Save, Video, RefreshCw
+    Filter, Banknote, CreditCard, Users, Search, ChevronRight, Save, Video, RefreshCw, Pencil, Trash2, MoreVertical
 } from 'lucide-react';
 import http from '../lib/http';
 import { useAuth } from '../context/AuthContext';
@@ -175,6 +180,24 @@ export default function SimpleAppointments() {
         } catch (error) { console.error('Create error:', error); alert('Xatolik!'); }
     };
 
+    // ─── Qabul o'chirish ──────────────────────────────────────────────────────────────
+    const [deleteApt, setDeleteApt] = useState(null);
+    const handleDeleteApt = async () => {
+        if (!deleteApt) return;
+        try {
+            await http.del(`/appointments/${deleteApt._id}`);
+            setDeleteApt(null);
+            loadData();
+        } catch (err) { alert("O'chirishda xatolik!"); }
+    };
+
+    // ─── Status o'zgartirish ──────────────────────────────────────────────────────────────
+    const handleChangeStatus = async (id, status) => {
+        try {
+            await http.patch(`/appointments/${id}/update-status`, { status });
+            loadData();
+        } catch (err) { alert('Status o\'zgartishda xatolik!'); }
+    };
     const handleCheckIn = async (id) => {
         if (!window.confirm("Bemor klinikaga keldimi?")) return;
         try { await http.patch(`/appointments/${id}/check-in`); loadData(); }
@@ -476,28 +499,47 @@ export default function SimpleAppointments() {
                                                         <StatusIcon className="h-3.5 w-3.5" /> {status.label}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell className="text-right pr-6">
+                                                <TableCell className="text-right pr-4">
                                                     <div className="flex items-center justify-end gap-1">
                                                         {apt.status === 'scheduled' && (
-                                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 rounded-full" onClick={() => handleCheckIn(apt._id)} title="Keldi (Check-in)">
+                                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-600 hover:bg-emerald-50 rounded-full" onClick={() => handleCheckIn(apt._id)} title="Keldi">
                                                                 <Check className="h-4 w-4" />
                                                             </Button>
                                                         )}
-                                                        {/* 🎥 Video Call tugmasi — faqat telemedicine uchun */}
                                                         {apt.appointmentType === 'telemedicine' && (
-                                                            <Button
-                                                                size="icon"
-                                                                variant="ghost"
-                                                                className="h-8 w-8 text-violet-600 hover:bg-violet-50 hover:text-violet-700 rounded-full"
-                                                                onClick={() => navigate(`/video-call/${apt._id}`)}
-                                                                title="Video Qabul"
-                                                            >
+                                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-violet-600 hover:bg-violet-50 rounded-full" onClick={() => navigate(`/video-call/${apt._id}`)} title="Video">
                                                                 <Video className="h-4 w-4" />
                                                             </Button>
                                                         )}
-                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:bg-blue-50 hover:text-blue-700 rounded-full" onClick={() => handleOpenPayment(apt)} title="To'lov">
+                                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-600 hover:bg-blue-50 rounded-full" onClick={() => handleOpenPayment(apt)} title="To'lov">
                                                             <DollarSign className="h-4 w-4" />
                                                         </Button>
+                                                        {/* ─ 3-nuqta dropdown: Tahrirlash + O'chirish ─ */}
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button size="icon" variant="ghost" className="h-8 w-8 text-gray-500 hover:bg-gray-100 rounded-full">
+                                                                    <MoreVertical className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="w-52">
+                                                                <DropdownMenuItem onClick={() => handleChangeStatus(apt._id, 'scheduled')}>
+                                                                    <Calendar className="h-4 w-4 mr-2 text-blue-500" /> Rejalashtirilgan
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleChangeStatus(apt._id, 'waiting')}>
+                                                                    <Clock className="h-4 w-4 mr-2 text-amber-500" /> Kutmoqda
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleChangeStatus(apt._id, 'done')}>
+                                                                    <Check className="h-4 w-4 mr-2 text-emerald-500" /> Tugallandi
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleChangeStatus(apt._id, 'cancelled')}>
+                                                                    <X className="h-4 w-4 mr-2 text-gray-400" /> Bekor qilish
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuSeparator />
+                                                                <DropdownMenuItem className="text-red-600" onClick={() => setDeleteApt(apt)}>
+                                                                    <Trash2 className="h-4 w-4 mr-2 text-red-500" /> O'chirish
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -917,6 +959,38 @@ export default function SimpleAppointments() {
             </Dialog>
 
             <ReceiptPreviewModal open={showReceiptModal} onClose={() => setShowReceiptModal(false)} url={receiptUrl} />
+
+            {/* ─── Qabul O'chirish Modal ─── */}
+            <Dialog open={!!deleteApt} onOpenChange={(open) => !open && setDeleteApt(null)}>
+                <DialogContent className="sm:max-w-[420px]">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-red-600">🗑️ Qabulni O'chirish</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <div className="flex items-center gap-4 p-4 bg-red-50 rounded-xl border border-red-100">
+                            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-xl font-bold text-red-600">
+                                {deleteApt?.patientId?.firstName?.[0]}{deleteApt?.patientId?.lastName?.[0]}
+                            </div>
+                            <div>
+                                <div className="font-bold text-gray-900">{deleteApt?.patientId?.firstName} {deleteApt?.patientId?.lastName}</div>
+                                <div className="text-sm text-gray-500">
+                                    Dr. {deleteApt?.doctorId?.name} · {deleteApt?.startsAt ? new Date(deleteApt.startsAt).toLocaleString('uz-UZ') : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <p className="mt-4 text-sm text-gray-600 text-center">
+                            Bu qabulni o'chirishni tasdiqlaysizmi?<br />
+                            <span className="text-red-500 font-semibold">Bu amal qaytarib bo'lmaydi!</span>
+                        </p>
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button type="button" variant="outline" onClick={() => setDeleteApt(null)}>Bekor qilish</Button>
+                        <Button onClick={handleDeleteApt} className="bg-red-600 hover:bg-red-700 text-white">
+                            <Trash2 className="h-4 w-4 mr-2" /> Ha, O'chirish
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
