@@ -85,15 +85,17 @@ export default function SimpleDoctorRoom() {
 
     useEffect(() => { loadData(); }, [loadData]);
 
-    // ─── Appointments ──────────────────────────────────────────────────────────
+    // ─── Appointments ──────────────────────────────────────────────
     const fetchAppointments = useCallback(async (doctorId) => {
         try {
             const today = new Date().toISOString().split('T')[0];
             const params = { date: today };
             if (doctorId) params.doctorId = doctorId;
             const res = await http.get('/appointments', { params });
-            setAppointments(res.items || res || []);
-        } catch (e) { console.error(e); }
+            const items = res.items || res || [];
+            setAppointments(items);
+            return items; // ← fresh data (stale closure fix)
+        } catch (e) { console.error(e); return []; }
     }, []);
 
     // ─── Queue entries (navbat) ────────────────────────────────────────────────
@@ -130,68 +132,92 @@ export default function SimpleDoctorRoom() {
         const docId = selectedDoctorId || null;
         fetchAppointments(docId);
         fetchQueue(docId);
-        const iv = setInterval(() => { fetchAppointments(docId); fetchQueue(docId); }, 10000);
+        // 5 soniyada bir yangilash (optimistik update + qisqa interval = tez tizim)
+        const iv = setInterval(() => { fetchAppointments(docId); fetchQueue(docId); }, 5000);
         return () => clearInterval(iv);
     }, [selectedDoctorId, fetchAppointments, fetchQueue]);
 
-    // ─── Queue actions ─────────────────────────────────────────────────────────
+    // ─── Queue actions (optimistik update — UI darhol o'zgaradi) ──────────────
     const callQueuePatient = async (entry) => {
-        try {
-            await http.post(`/queue/${entry._id}/call`);
-            const name = `${entry.patientId?.firstName || ''} ${entry.patientId?.lastName || ''}`.trim();
-            speak(`${entry.queueNumber || ''}-raqamli ${name}, shifokor xonasiga kiring`);
-            toast(`${name} chaqirildi 📢`);
-            fetchQueue(selectedDoctorId || null);
-        } catch (e) { toast(e?.response?.data?.message || 'Xatolik', 'error'); }
+        // 1. Darhol UI ni yangilash
+        setQueueEntries(prev => prev.map(e => e._id === entry._id ? { ...e, status: 'called' } : e));
+        const name = `${entry.patientId?.firstName || ''} ${entry.patientId?.lastName || ''}`.trim();
+        speak(`${entry.queueNumber || ''}-raqamli ${name}, shifokor xonasiga kiring`);
+        toast(`${name} chaqirildi 📢`);
+        // 2. API (orqada)
+        http.post(`/queue/${entry._id}/call`)
+            .then(() => fetchQueue(selectedDoctorId || null))
+            .catch(e => {
+                setQueueEntries(prev => prev.map(e2 => e2._id === entry._id ? { ...e2, status: 'waiting' } : e2));
+                toast(e?.response?.data?.message || 'Chaqirishda xatolik', 'error');
+            });
     };
 
     const startQueueService = async (entry) => {
-        try {
-            await http.post(`/queue/${entry._id}/start`);
-            toast('Xizmat boshlandi ▶');
-            fetchQueue(selectedDoctorId || null);
+        // 1. Darhol UI ni yangilash
+        setQueueEntries(prev => prev.map(e => e._id === entry._id ? { ...e, status: 'in_service' } : e));
+        toast('Xizmat boshlandi ▶');
 
-            // Bemor uchun moslik appointment topamiz
+        try {
+            // 2. Queue API
+            await http.post(`/queue/${entry._id}/start`);
+
+            // 3. FRESH appointments (stale state ishlatmaymiz — return value!)
             const pat = entry.patientId?._id || entry.patientId;
-            let matchApt = appointments.find(a =>
+            const freshApts = await fetchAppointments(selectedDoctorId || null);
+
+            let matchApt = freshApts.find(a =>
                 (a.patientId?._id || a.patientId) === pat &&
                 ['scheduled', 'waiting', 'in_progress'].includes(a.status)
             );
 
             if (matchApt) {
-                // Statusni in_progress ga o'zgartirish
+                // 4a. Optimistik status update
                 if (matchApt.status !== 'in_progress') {
-                    await http.patch(`/appointments/${matchApt._id}/update-status`, { status: 'in_progress' }).catch(() => { });
                     matchApt = { ...matchApt, status: 'in_progress' };
                     setAppointments(prev => prev.map(a => a._id === matchApt._id ? matchApt : a));
+                    http.patch(`/appointments/${matchApt._id}/update-status`, { status: 'in_progress' }).catch(() => { });
                 }
-                // O'ng panelni va visit tab ni ochish
-                handleSelectAppointment(matchApt);
+                // 5. O'ng panelni ochish
+                setSelectedApt(matchApt);
+                setAddedServices(matchApt.serviceIds || []);
+                setDiagnosis(''); setPrescription('');
                 setActiveTab('visit');
             } else {
-                // Appointment yo'q bo'lsa — yangilangan ma'lumotlarni yuklash
-                await fetchAppointments(selectedDoctorId || null);
-                const refreshedApt = appointments.find(a =>
-                    (a.patientId?._id || a.patientId) === pat &&
-                    ['scheduled', 'waiting', 'in_progress'].includes(a.status)
-                );
-                if (refreshedApt) {
-                    handleSelectAppointment(refreshedApt);
-                    setActiveTab('visit');
-                } else {
-                    toast('Bemor qabulga yozilmagan. Qo\'lda qabul panel oching.', 'info');
-                }
+                // 4b. Qabul yo'q — virtual panel (queue entry ma'lumotlari bilan)
+                setSelectedApt({
+                    _id: `queue-${entry._id}`,
+                    _isQueueOnly: true,
+                    status: 'in_progress',
+                    patientId: entry.patientId,
+                    doctorId: entry.doctorId,
+                    startsAt: new Date().toISOString(),
+                    price: 0, serviceIds: [],
+                });
+                setAddedServices([]);
+                setDiagnosis(''); setPrescription('');
+                setActiveTab('visit');
             }
-        } catch (e) { toast(e?.response?.data?.message || 'Xatolik', 'error'); }
+            fetchQueue(selectedDoctorId || null);
+        } catch (e) {
+            setQueueEntries(prev => prev.map(e2 => e2._id === entry._id ? { ...e2, status: 'called' } : e2));
+            toast(e?.response?.data?.message || 'Boshlashda xatolik', 'error');
+        }
     };
 
     const completeQueueService = async (entryId) => {
-        try {
-            await http.post(`/queue/${entryId}/complete`);
-            toast('Xizmat yakunlandi ✅');
-            fetchQueue(selectedDoctorId || null);
-        } catch (e) { toast(e?.response?.data?.message || 'Xatolik', 'error'); }
+        // 1. Darhol UI dan o'chirish
+        setQueueEntries(prev => prev.filter(e => e._id !== entryId));
+        toast('Xizmat yakunlandi ✅');
+        // 2. API + appointments refresh (parallel)
+        http.post(`/queue/${entryId}/complete`)
+            .then(() => fetchAppointments(selectedDoctorId || null))
+            .catch(e => {
+                toast(e?.response?.data?.message || 'Yakunlashda xatolik', 'error');
+                fetchQueue(selectedDoctorId || null);
+            });
     };
+
 
     // ─── Appointment actions ───────────────────────────────────────────────────
     const handleSelectAppointment = (apt) => {
