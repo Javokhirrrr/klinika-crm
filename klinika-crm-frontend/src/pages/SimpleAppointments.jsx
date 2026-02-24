@@ -93,34 +93,61 @@ export default function SimpleAppointments() {
         else setAvailableSlots([]);
     }, [formData.doctorId, formData.date]);
 
-    const loadData = async () => {
+    // patients va services ni bir marta yuklab cache saqlaymiz
+    const patsLoaded = useState(false);
+    const svcLoaded = useState(false);
+
+    // ─── Asosiy ma'lumotlarni yuklash ──────────────────────────────────────────
+    const loadData = async (forceReloadAll = false) => {
         try {
             setLoading(true);
             const params = { date: filterDate };
             if (filterDoctor && filterDoctor !== 'all') params.doctorId = filterDoctor;
 
-            const [appts, pats, docs, svcs] = await Promise.all([
-                http.get('/appointments', { params }).catch(() => ({ items: [] })),
-                http.get('/patients').catch(() => ({ items: [] })),
-                http.get('/users', { role: 'doctor' }).catch(() => ({ items: [] })),
-                http.get('/services').catch(() => ({ items: [] }))
-            ]);
-
+            // Appointments har doim (filter o'zgardi)
+            const appts = await http.get('/appointments', { params }).catch(() => ({ items: [] }));
             const items = appts.items || appts || [];
             setAppointments(items);
-            setPatients(pats.items || pats || []);
-            setDoctors(docs.items || docs || []);
-            setServices(svcs.items || svcs || []);
-
             setStats({
                 total: items.length,
                 waiting: items.filter(a => a.status === 'waiting' || a.status === 'scheduled').length,
                 in_progress: items.filter(a => a.status === 'in_progress').length,
                 done: items.filter(a => a.status === 'done').length
             });
+
+            // Patients, doctors, services — faqat birinchi marta yoki majburiy (tez)
+            if (forceReloadAll || !patsLoaded[0]) {
+                const [pats, docs, svcs] = await Promise.all([
+                    http.get('/patients').catch(() => ({ items: [] })),
+                    http.get('/users', { role: 'doctor' }).catch(() => ({ items: [] })),
+                    http.get('/services').catch(() => ({ items: [] }))
+                ]);
+                setPatients(pats.items || pats || []);
+                setDoctors(docs.items || docs || []);
+                setServices(svcs.items || svcs || []);
+                patsLoaded[1](true);
+            }
         } catch (error) { console.error('Load error:', error); }
         finally { setLoading(false); }
     };
+
+    // Faqat roster'ni yangilash (to'lovdan keyin — tez)
+    const refreshAppointments = async () => {
+        try {
+            const params = { date: filterDate };
+            if (filterDoctor && filterDoctor !== 'all') params.doctorId = filterDoctor;
+            const appts = await http.get('/appointments', { params }).catch(() => ({ items: [] }));
+            const items = appts.items || appts || [];
+            setAppointments(items);
+            setStats({
+                total: items.length,
+                waiting: items.filter(a => a.status === 'waiting' || a.status === 'scheduled').length,
+                in_progress: items.filter(a => a.status === 'in_progress').length,
+                done: items.filter(a => a.status === 'done').length
+            });
+        } catch { }
+    };
+
 
     const fetchSlots = async () => {
         try {
@@ -266,28 +293,34 @@ export default function SimpleAppointments() {
         return { finalTotal, debt, change };
     };
 
-    // Process Payment (Save or Save & Print)
+    // ─── Process Payment (Saqlash / Saqlash va Chop Etish) ─────────────────────
+    const [processingPayment, setProcessingPayment] = useState(false);
+
     const handleProcessPayment = async (print = false) => {
+        if (processingPayment) return;
+        setProcessingPayment(true);
+
+        // 1. Modalni darhol yopamiz — foydalanuvchi kutmasin
+        setShowPaymentModal(false);
+        setShowModal(false);
+
         try {
             const { finalTotal } = calculateTotals();
             let appointmentId = null;
             let patientId = null;
 
-            // 1. Create Appointment if NEW
+            // 2. Yangi qabul bo'lsa — create
             if (paymentContext.type === 'new') {
                 const apptRes = await http.post('/appointments', {
                     ...formData,
                     scheduledAt: `${formData.date}T${formData.time}:00`,
                     startsAt: `${formData.date}T${formData.time}:00`,
-                    price: finalTotal, // Use net price (after discount) for appointment cost
+                    price: finalTotal,
                     services: selectedServices.map(s => s._id)
                 });
                 const newAppt = apptRes.data || apptRes;
                 appointmentId = newAppt._id;
                 patientId = newAppt.patientId || formData.patientId;
-
-                // Close New Appt Modal
-                setShowModal(false);
                 setFormData({ patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '', price: 0 });
                 setSelectedServices([]);
             } else {
@@ -295,34 +328,46 @@ export default function SimpleAppointments() {
                 patientId = paymentContext.data.patientId?._id || paymentContext.data.patientId;
             }
 
-            // 2. Create Payment
-            let newPayment = null;
+            // 3. To'lov yaratish
+            let newPaymentId = null;
             if (paymentData.amount > 0) {
                 const payRes = await http.post('/payments', {
                     appointmentId,
                     patientId,
                     amount: Number(paymentData.amount),
                     method: paymentData.method,
-                    note: paymentData.note || 'Kassaga to\'lov'
+                    note: paymentData.note || "Kassaga to'lov"
                 });
-                newPayment = payRes.data || payRes;
+                const newPayment = payRes.data || payRes;
+                newPaymentId = newPayment?._id;
             }
 
-            // 3. Print
+            // 4. Ro'yxatni yangilash (fon)
+            refreshAppointments();
+
+            // 5. Chop etish
             if (print) {
-                const printUrl = newPayment
-                    ? `${http.API_BASE || ''}/api/receipts/payments/${newPayment._id}/print`
-                    : `${http.API_BASE || ''}/api/receipts/appointments/${appointmentId}/print`;
-                printFromUrl(printUrl);
-            }
+                const BASE = 'https://klinika-crm-eng-yangi-production.up.railway.app';
+                const token = localStorage.getItem('accessToken') || '';
 
-            // 4. Close Payment Modal
-            setShowPaymentModal(false);
-            loadData();
+                // To'lov chekini ko'rsatish
+                if (newPaymentId) {
+                    const printUrl = `${BASE}/api/receipts/payments/${newPaymentId}/print?token=${token}`;
+                    setReceiptUrl(printUrl);
+                    setShowReceiptModal(true);
+                } else if (appointmentId) {
+                    const printUrl = `${BASE}/api/receipts/appointments/${appointmentId}/print?token=${token}`;
+                    setReceiptUrl(printUrl);
+                    setShowReceiptModal(true);
+                }
+            }
 
         } catch (error) {
-            console.error('Payment Processing Error:', error);
-            alert("Xatolik yuz berdi: " + (error?.response?.data?.message || error.message));
+            console.error('Payment error:', error);
+            // Oyna allaqachon yopilgan, xatolikni toast orqali ko'rsatamiz
+            alert('To\'lov saqlashda xatolik: ' + (error?.message || ''));
+        } finally {
+            setProcessingPayment(false);
         }
     };
 
@@ -918,13 +963,27 @@ export default function SimpleAppointments() {
                             )}
 
                             <div className="flex flex-col gap-3 mt-4">
-                                <Button onClick={() => handleProcessPayment(true)} className="h-12 w-full bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-lg shadow-amber-500/20 rounded-xl">
-                                    <Printer className="h-5 w-5 mr-2" /> Saqlash Va Chop Etish
+                                <Button
+                                    onClick={() => handleProcessPayment(true)}
+                                    disabled={processingPayment}
+                                    className="h-12 w-full bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-lg shadow-amber-500/20 rounded-xl disabled:opacity-60"
+                                >
+                                    {processingPayment
+                                        ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Saqlanmoqda...</>
+                                        : <><Printer className="h-5 w-5 mr-2" /> Saqlash Va Chop Etish</>
+                                    }
                                 </Button>
                                 <div className="flex gap-3">
                                     <Button variant="outline" onClick={() => setShowPaymentModal(false)} className="flex-1 h-12 rounded-xl border-gray-300 font-semibold text-gray-600">Bekor Qilish</Button>
-                                    <Button onClick={() => handleProcessPayment(false)} className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-lg shadow-primary/20">
-                                        Saqlash
+                                    <Button
+                                        onClick={() => handleProcessPayment(false)}
+                                        disabled={processingPayment}
+                                        className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold shadow-lg shadow-primary/20 disabled:opacity-60"
+                                    >
+                                        {processingPayment
+                                            ? <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Saqlanmoqda...</>
+                                            : 'Saqlash'
+                                        }
                                     </Button>
                                 </div>
                             </div>
