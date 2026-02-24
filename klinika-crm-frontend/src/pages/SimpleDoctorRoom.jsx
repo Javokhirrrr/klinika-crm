@@ -47,6 +47,10 @@ export default function SimpleDoctorRoom() {
     const [notify, setNotify] = useState(null);   // bildirishnoma
     const [calledNotif, setCalledNotif] = useState(null);   // "chaqirildi" banner
     const prevCalledRef = useRef(new Set());
+    // ─── Tarix modali ──────────────────────────────────────────────────────────────
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [historyFilter, setHistoryFilter] = useState({ date: '', doctorId: '', search: '' });
+    const [allHistory, setAllHistory] = useState([]);
 
     // ─── Toast ─────────────────────────────────────────────────────────────────
     const toast = useCallback((msg, type = 'success') => {
@@ -146,13 +150,38 @@ export default function SimpleDoctorRoom() {
             await http.post(`/queue/${entry._id}/start`);
             toast('Xizmat boshlandi ▶');
             fetchQueue(selectedDoctorId || null);
-            // Appointmentga o'tish
+
+            // Bemor uchun moslik appointment topamiz
             const pat = entry.patientId?._id || entry.patientId;
-            const matchApt = appointments.find(a =>
+            let matchApt = appointments.find(a =>
                 (a.patientId?._id || a.patientId) === pat &&
-                ['scheduled', 'waiting'].includes(a.status)
+                ['scheduled', 'waiting', 'in_progress'].includes(a.status)
             );
-            if (matchApt) handleSelectAppointment(matchApt);
+
+            if (matchApt) {
+                // Statusni in_progress ga o'zgartirish
+                if (matchApt.status !== 'in_progress') {
+                    await http.patch(`/appointments/${matchApt._id}/update-status`, { status: 'in_progress' }).catch(() => { });
+                    matchApt = { ...matchApt, status: 'in_progress' };
+                    setAppointments(prev => prev.map(a => a._id === matchApt._id ? matchApt : a));
+                }
+                // O'ng panelni va visit tab ni ochish
+                handleSelectAppointment(matchApt);
+                setActiveTab('visit');
+            } else {
+                // Appointment yo'q bo'lsa — yangilangan ma'lumotlarni yuklash
+                await fetchAppointments(selectedDoctorId || null);
+                const refreshedApt = appointments.find(a =>
+                    (a.patientId?._id || a.patientId) === pat &&
+                    ['scheduled', 'waiting', 'in_progress'].includes(a.status)
+                );
+                if (refreshedApt) {
+                    handleSelectAppointment(refreshedApt);
+                    setActiveTab('visit');
+                } else {
+                    toast('Bemor qabulga yozilmagan. Qo\'lda qabul panel oching.', 'info');
+                }
+            }
         } catch (e) { toast(e?.response?.data?.message || 'Xatolik', 'error'); }
     };
 
@@ -221,6 +250,27 @@ export default function SimpleDoctorRoom() {
         } catch (e) { toast('Xatolik!', 'error'); console.error(e); }
         finally { setSaving(false); }
     };
+
+    // ─── Tarix modal ──────────────────────────────────────────────────────────────
+    const openHistoryModal = async () => {
+        setShowHistoryModal(true);
+        try {
+            // Director — hamma, Doctor — faqat o'ziniki
+            const params = { limit: 200, status: 'done' };
+            if (user?.role === 'doctor' && selectedDoctorId) params.doctorId = selectedDoctorId;
+            const res = await http.get('/appointments', { params }).catch(() => ({ items: [] }));
+            setAllHistory(res.items || res || []);
+        } catch { }
+    };
+
+    const filteredHistory = allHistory.filter(a => {
+        const d = historyFilter.date ? new Date(a.startsAt || a.scheduledAt).toISOString().split('T')[0] === historyFilter.date : true;
+        const dr = historyFilter.doctorId ? (a.doctorId?._id || a.doctorId) === historyFilter.doctorId : true;
+        const s = historyFilter.search
+            ? `${a.patientId?.firstName} ${a.patientId?.lastName} ${a.patientId?.phone}`.toLowerCase().includes(historyFilter.search.toLowerCase())
+            : true;
+        return d && dr && s && a.status === 'done';
+    });
 
     // ─── Computed ──────────────────────────────────────────────────────────────
     const scheduledAppts = appointments.filter(a => a.status === 'scheduled');
@@ -327,14 +377,15 @@ export default function SimpleDoctorRoom() {
             {/* ── Stats ── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                    { label: 'Jami qabul', val: stats.total, icon: Calendar, bg: 'bg-sky-50', iconBg: 'bg-sky-100', color: 'text-sky-600' },
-                    { label: 'Navbatda', val: stats.queueWaiting, icon: List, bg: 'bg-amber-50', iconBg: 'bg-amber-100', color: 'text-amber-600' },
-                    { label: 'Qabulda', val: stats.in_progress, icon: Activity, bg: 'bg-blue-50', iconBg: 'bg-blue-100', color: 'text-blue-600' },
-                    { label: 'Yakunlandi', val: stats.done, icon: CheckCircle, bg: 'bg-emerald-50', iconBg: 'bg-emerald-100', color: 'text-emerald-600' },
+                    { label: 'Jami qabul', val: stats.total, icon: Calendar, bg: 'bg-sky-50', iconBg: 'bg-sky-100', color: 'text-sky-600', onClick: null },
+                    { label: 'Navbatda', val: stats.queueWaiting, icon: List, bg: 'bg-amber-50', iconBg: 'bg-amber-100', color: 'text-amber-600', onClick: null },
+                    { label: 'Qabulda', val: stats.in_progress, icon: Activity, bg: 'bg-blue-50', iconBg: 'bg-blue-100', color: 'text-blue-600', onClick: null },
+                    { label: 'Yakunlandi', val: stats.done, icon: CheckCircle, bg: 'bg-emerald-50', iconBg: 'bg-emerald-100', color: 'text-emerald-600', onClick: openHistoryModal },
                 ].map((s, i) => {
                     const Icon = s.icon;
                     return (
-                        <Card key={i} className={cn('border-0', s.bg)}>
+                        <Card key={i} className={cn('border-0 transition-all', s.bg, s.onClick && 'cursor-pointer hover:shadow-md hover:scale-[1.02]')}
+                            onClick={s.onClick}>
                             <CardContent className="p-4 flex items-center gap-4">
                                 <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center', s.iconBg)}>
                                     <Icon className={cn('h-5 w-5', s.color)} />
@@ -342,6 +393,7 @@ export default function SimpleDoctorRoom() {
                                 <div>
                                     <div className="text-xs font-medium text-muted-foreground">{s.label}</div>
                                     <div className="text-2xl font-bold">{s.val}</div>
+                                    {s.onClick && <div className="text-xs text-emerald-600 font-semibold mt-0.5">Tarixni kʿring →</div>}
                                 </div>
                             </CardContent>
                         </Card>
@@ -793,6 +845,151 @@ export default function SimpleDoctorRoom() {
                     )}
                 </div>
             </div>
+
+            {/* ─── Tarix Modali ─── */}
+            {showHistoryModal && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 9990,
+                    background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+                    paddingTop: 32, paddingBottom: 32, overflow: 'auto',
+                }}>
+                    <div style={{
+                        background: '#fff', borderRadius: 20, width: '100%', maxWidth: 900,
+                        margin: '0 16px', boxShadow: '0 32px 64px rgba(0,0,0,0.2)',
+                        overflow: 'hidden',
+                    }}>
+                        {/* Header */}
+                        <div style={{
+                            background: 'linear-gradient(135deg,#10b981,#059669)',
+                            padding: '20px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        }}>
+                            <div>
+                                <div style={{ color: '#fff', fontWeight: 900, fontSize: 22 }}>📋 Qabullar Tarixi</div>
+                                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 }}>
+                                    {filteredHistory.length} ta yakunlangan qabul
+                                    {user?.role === 'doctor' ? ' (faqat sizniki)' : ' (barcha shifokorlar)'}
+                                </div>
+                            </div>
+                            <button onClick={() => setShowHistoryModal(false)} style={{
+                                background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 10,
+                                padding: '8px 16px', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 14,
+                            }}>✕ Yopish</button>
+                        </div>
+
+                        {/* Filterlar */}
+                        <div style={{ padding: '16px 28px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                            <input
+                                type="text"
+                                placeholder="🔍 Bemor ismi yoki telefon..."
+                                value={historyFilter.search}
+                                onChange={e => setHistoryFilter(f => ({ ...f, search: e.target.value }))}
+                                style={{ flex: 1, minWidth: 200, padding: '8px 14px', borderRadius: 10, border: '1.5px solid #cbd5e1', fontSize: 14, outline: 'none' }}
+                            />
+                            <input
+                                type="date"
+                                value={historyFilter.date}
+                                onChange={e => setHistoryFilter(f => ({ ...f, date: e.target.value }))}
+                                style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid #cbd5e1', fontSize: 14, outline: 'none' }}
+                            />
+                            {user?.role !== 'doctor' && (
+                                <select
+                                    value={historyFilter.doctorId}
+                                    onChange={e => setHistoryFilter(f => ({ ...f, doctorId: e.target.value }))}
+                                    style={{ padding: '8px 14px', borderRadius: 10, border: '1.5px solid #cbd5e1', fontSize: 14, outline: 'none', background: '#fff' }}
+                                >
+                                    <option value="">Barcha Shifokorlar</option>
+                                    {doctors.map(d => (
+                                        <option key={d._id} value={d._id}>
+                                            {d.firstName || ''} {d.lastName || ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                            {(historyFilter.date || historyFilter.doctorId || historyFilter.search) && (
+                                <button onClick={() => setHistoryFilter({ date: '', doctorId: '', search: '' })}
+                                    style={{ padding: '8px 16px', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: 13, color: '#64748b', fontWeight: 600 }}>
+                                    ✕ Filterni tozalash
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Jadval */}
+                        <div style={{ maxHeight: '55vh', overflowY: 'auto' }}>
+                            {filteredHistory.length === 0 ? (
+                                <div style={{ padding: '60px 0', textAlign: 'center', color: '#94a3b8' }}>
+                                    <div style={{ fontSize: 48 }}>📭</div>
+                                    <div style={{ fontSize: 16, fontWeight: 700, marginTop: 12 }}>Tarix topilmadi</div>
+                                    <div style={{ fontSize: 13, marginTop: 4 }}>Filter shartlarini o'zgartiring</div>
+                                </div>
+                            ) : (
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #e2e8f0' }}>
+                                            {['Sana & Vaqt', 'Bemor', 'Shifokor', 'Xizmatlar', 'Holat'].map(h => (
+                                                <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredHistory.map((a, i) => (
+                                            <tr key={a._id} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
+                                                <td style={{ padding: '12px 16px', fontSize: 13 }}>
+                                                    <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                                                        {new Date(a.startsAt || a.scheduledAt || a.createdAt).toLocaleDateString('uz-UZ')}
+                                                    </div>
+                                                    <div style={{ color: '#64748b', fontSize: 12, marginTop: 2 }}>
+                                                        {new Date(a.startsAt || a.scheduledAt || a.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '12px 16px' }}>
+                                                    <div style={{ fontWeight: 700, fontSize: 14, color: '#1e293b' }}>
+                                                        {a.patientId?.firstName} {a.patientId?.lastName}
+                                                    </div>
+                                                    <div style={{ color: '#64748b', fontSize: 12, marginTop: 1 }}>
+                                                        📞 {a.patientId?.phone || '—'}
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '12px 16px', fontSize: 13, color: '#334155' }}>
+                                                    Dr. {a.doctorId?.name || a.doctorId?.firstName || '—'}
+                                                </td>
+                                                <td style={{ padding: '12px 16px', fontSize: 13 }}>
+                                                    <span style={{
+                                                        background: '#f0fdf4', color: '#059669', borderRadius: 8,
+                                                        padding: '3px 10px', fontSize: 12, fontWeight: 700,
+                                                    }}>
+                                                        {a.price ? `${Number(a.price).toLocaleString()} so'm` : '—'}
+                                                    </span>
+                                                </td>
+                                                <td style={{ padding: '12px 16px' }}>
+                                                    <span style={{
+                                                        background: '#dcfce7', color: '#15803d', borderRadius: 8,
+                                                        padding: '4px 12px', fontSize: 12, fontWeight: 700,
+                                                    }}>✅ Yakunlandi</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ padding: '14px 28px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ fontSize: 13, color: '#64748b' }}>
+                                Jami: <strong>{filteredHistory.length}</strong> ta qabul ·
+                                Jami summa: <strong style={{ color: '#059669' }}>
+                                    {filteredHistory.reduce((s, a) => s + (Number(a.price) || 0), 0).toLocaleString()} so'm
+                                </strong>
+                            </div>
+                            <button onClick={() => setShowHistoryModal(false)} style={{
+                                padding: '9px 24px', borderRadius: 10, border: 'none',
+                                background: '#1e293b', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14,
+                            }}>Yopish</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <style>{`
                 @keyframes slideDown { from{transform:translateY(-100%)} to{transform:translateY(0)} }
