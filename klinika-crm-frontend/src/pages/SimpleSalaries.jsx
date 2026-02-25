@@ -341,17 +341,33 @@ export default function SimpleSalaries() {
                                                 <TableCell className="text-right">
                                                     {isDoctor ? (
                                                         emp.commissionRate > 0 ? (
-                                                            <div className="flex flex-col items-end">
-                                                                <span className="text-xs text-blue-500 font-medium">{emp.commissionRate}%</span>
-                                                                {emp.commission > 0 && (
-                                                                    <span className="font-semibold text-blue-700">+{fmt(emp.commission)} <span className="text-xs font-normal text-gray-400">so'm</span></span>
+                                                            <div className="flex flex-col items-end gap-0.5">
+                                                                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{emp.commissionRate}%</span>
+                                                                {emp.commission > 0 ? (
+                                                                    <div className="flex flex-col items-end">
+                                                                        <span className="font-bold text-blue-700">+{fmt(emp.commission)} <span className="text-xs font-normal text-gray-400">so'm</span></span>
+                                                                        {emp.commissionPending > 0 && (
+                                                                            <span className="text-xs text-amber-500">⏳ {fmt(emp.commissionPending)} kutilmoqda</span>
+                                                                        )}
+                                                                        {emp.commissionPaid > 0 && (
+                                                                            <span className="text-xs text-emerald-500">✓ {fmt(emp.commissionPaid)} to'langan</span>
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-xs text-gray-400">Bu oyda qabul yo'q</span>
                                                                 )}
                                                             </div>
                                                         ) : (
-                                                            <span className="text-gray-300">—</span>
+                                                            <div className="flex flex-col items-end gap-1">
+                                                                <span className="text-gray-300 text-xs">Foiz belgilanmagan</span>
+                                                                <button
+                                                                    className="text-xs text-blue-500 hover:text-blue-700 underline"
+                                                                    onClick={() => openEdit(emp)}
+                                                                >Belgilash</button>
+                                                            </div>
                                                         )
                                                     ) : (
-                                                        <span className="text-gray-200 text-xs">Mavjud emas</span>
+                                                        <span className="text-gray-200 text-xs">—</span>
                                                     )}
                                                 </TableCell>
 
@@ -472,7 +488,7 @@ export default function SimpleSalaries() {
                                     </Label>
                                     <button
                                         type="button"
-                                        onClick={() => setEditForm(f => ({ ...f, commissionEnabled: !f.commissionEnabled }))}
+                                        onClick={() => setEditForm(f => ({ ...f, commissionEnabled: !f.commissionEnabled, commissionRate: f.commissionEnabled ? 0 : (f.commissionRate || 0) }))}
                                         className={cn(
                                             'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none',
                                             editForm.commissionEnabled ? 'bg-blue-600' : 'bg-gray-200'
@@ -484,9 +500,15 @@ export default function SimpleSalaries() {
                                         )} />
                                     </button>
                                 </div>
+                                {editEmp?.commission > 0 && (
+                                    <div className="text-xs text-blue-600 bg-blue-100 rounded-lg p-2">
+                                        Bu oy: <strong>+{fmt(editEmp.commission)} so'm</strong> komissiya hisoblangan
+                                        {editEmp.commissionPending > 0 && <span className="ml-1 text-amber-600">(⏳ {fmt(editEmp.commissionPending)} kutilmoqda)</span>}
+                                    </div>
+                                )}
                                 {editForm.commissionEnabled && (
                                     <div className="space-y-1">
-                                        <Label className="text-sm text-blue-600">Foiz miqdori (%)</Label>
+                                        <Label className="text-sm text-blue-600">Har bir xizmatdan foiz (%)</Label>
                                         <div className="flex items-center gap-2">
                                             <Input
                                                 type="number"
@@ -495,12 +517,12 @@ export default function SimpleSalaries() {
                                                 value={editForm.commissionRate}
                                                 onChange={e => setEditForm(f => ({ ...f, commissionRate: e.target.value }))}
                                                 placeholder="Masalan: 20"
-                                                className="text-right font-mono bg-white"
+                                                className="text-right font-mono bg-white text-lg font-bold"
                                             />
-                                            <span className="text-lg font-bold text-blue-600">%</span>
+                                            <span className="text-2xl font-bold text-blue-600">%</span>
                                         </div>
                                         <p className="text-xs text-blue-500 mt-1">
-                                            Shifokor har bir xizmatdan ushbu foiz miqdorida daromad oladi
+                                            Har bir xizmat to'lovidan ushbu foiz shifokor maoshiga qo'shiladi
                                         </p>
                                     </div>
                                 )}
