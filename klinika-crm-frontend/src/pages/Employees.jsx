@@ -26,11 +26,11 @@ import { cn } from '@/lib/utils';
 // Static Data
 const roles = [
     { value: 'owner', label: 'Direktor', icon: Shield, color: 'text-purple-600 bg-purple-50 border-purple-200' },
-    { value: 'admin', label: 'Admin', icon: Shield, color: 'text-indigo-600 bg-indigo-50 border-indigo-200' },
     { value: 'reception', label: 'Qabulxona', icon: Briefcase, color: 'text-blue-600 bg-blue-50 border-blue-200' },
     { value: 'doctor', label: 'Shifokor', icon: Stethoscope, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
     { value: 'accountant', label: 'Buxgalter', icon: Briefcase, color: 'text-amber-600 bg-amber-50 border-amber-200' },
     { value: 'nurse', label: 'Hamshira', icon: Stethoscope, color: 'text-pink-600 bg-pink-50 border-pink-200' },
+    // 'admin' role is hidden from UI - managed only via backend
 ];
 
 export default function Employees() {

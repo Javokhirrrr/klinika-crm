@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/shimmer_loading.dart';
 
 class PatientsScreen extends StatefulWidget {
   const PatientsScreen({super.key});
@@ -10,6 +12,7 @@ class PatientsScreen extends StatefulWidget {
 
 class _PatientsScreenState extends State<PatientsScreen> {
   String selectedFilter = 'Barchasi';
+  bool _isLoading = false; 
 
   @override
   Widget build(BuildContext context) {
@@ -18,33 +21,42 @@ class _PatientsScreenState extends State<PatientsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             _buildHeader(),
-            
-            // Search & Filter
             _buildSearchBar(),
-            
-            // Filter Chips
             _buildFilterChips(),
-            
-            // Patient List
             Expanded(
-              child: _buildPatientList(),
+              child: _isLoading 
+                ? _buildLoadingList() 
+                : _buildPatientList(),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: AppTheme.primary,
-        child: const Icon(Icons.person_add, color: Colors.white),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 24.0),
+        child: FloatingActionButton(
+          onPressed: () {
+            // TODO: Add Patient Modal
+          },
+          backgroundColor: AppTheme.primary,
+          elevation: 4,
+          child: Container(
+            width: 60,
+            height: 60,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: AppTheme.primaryGradient,
+            ),
+            child: const Icon(Icons.person_add_rounded, color: Colors.white, size: 28),
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(20.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -54,21 +66,22 @@ class _PatientsScreenState extends State<PatientsScreen> {
               const Text(
                 'Bemorlar',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textPrimary,
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 4),
               RichText(
                 text: const TextSpan(
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     color: AppTheme.textSecondary,
                     fontWeight: FontWeight.w500,
                   ),
                   children: [
-                    TextSpan(text: 'Jami ro\'yxat: '),
+                    TextSpan(text: "Jami ro'yxat: "),
                     TextSpan(
                       text: '1,248',
                       style: TextStyle(
@@ -82,35 +95,18 @@ class _PatientsScreenState extends State<PatientsScreen> {
               ),
             ],
           ),
-          Stack(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppTheme.cardColor,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppTheme.border.withOpacity(0.5)),
-                ),
-                child: const Icon(
-                  Icons.notifications_outlined,
-                  size: 22,
-                  color: AppTheme.textSecondary,
-                ),
-              ),
-              Positioned(
-                top: 10,
-                right: 10,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: AppTheme.error,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppTheme.cardColor, width: 2),
-                  ),
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.cardColor,
+              shape: BoxShape.circle,
+              boxShadow: AppTheme.softShadow,
+            ),
+            child: const Icon(
+              Icons.notifications_none_rounded,
+              size: 24,
+              color: AppTheme.textPrimary,
+            ),
           ),
         ],
       ),
@@ -119,36 +115,46 @@ class _PatientsScreenState extends State<PatientsScreen> {
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: Row(
         children: [
           Expanded(
             child: Container(
-              height: 44,
+              height: 52,
               decoration: BoxDecoration(
                 color: AppTheme.cardColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.border.withOpacity(0.5)),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.textPrimary.withOpacity(0.03),
+                    spreadRadius: 0,
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  )
+                ],
               ),
               child: Row(
                 children: [
                   const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 14),
+                    padding: EdgeInsets.symmetric(horizontal: 16),
                     child: Icon(
-                      Icons.search,
-                      size: 18,
+                      Icons.search_rounded,
+                      size: 20,
                       color: AppTheme.textSecondary,
                     ),
                   ),
-                  const Expanded(
+                  Expanded(
                     child: TextField(
                       decoration: InputDecoration(
-                        hintText: 'Ism, ID yoki telefon raqam...',
+                        hintText: 'Ism, ID yoki telefon...',
                         hintStyle: TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.textSecondary,
+                          fontSize: 15,
+                          color: AppTheme.textSecondary.withOpacity(0.7),
+                          fontWeight: FontWeight.w400,
                         ),
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
                         contentPadding: EdgeInsets.zero,
                       ),
                     ),
@@ -159,17 +165,17 @@ class _PatientsScreenState extends State<PatientsScreen> {
           ),
           const SizedBox(width: 12),
           Container(
-            width: 44,
-            height: 44,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
-              color: AppTheme.cardColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.border.withOpacity(0.5)),
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: AppTheme.softShadow,
             ),
             child: const Icon(
-              Icons.tune,
-              size: 20,
-              color: AppTheme.textSecondary,
+              Icons.tune_rounded,
+              color: Colors.white,
+              size: 22,
             ),
           ),
         ],
@@ -178,68 +184,42 @@ class _PatientsScreenState extends State<PatientsScreen> {
   }
 
   Widget _buildFilterChips() {
-    final filters = [
-      {'name': 'Barchasi', 'count': null},
-      {'name': 'Qarzdorlar', 'count': 3},
-      {'name': 'VIP Mijozlar', 'count': null},
-      {'name': 'Yangilar', 'count': null},
-    ];
-
+    final filters = ['Barchasi', 'Yangi', 'Faol', 'Qarzdor'];
     return SizedBox(
-      height: 60,
+      height: 70,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         itemCount: filters.length,
         itemBuilder: (context, index) {
-          final filter = filters[index];
-          final isSelected = selectedFilter == filter['name'];
-          
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                selectedFilter = filter['name'] as String;
-              });
-            },
-            child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primary : AppTheme.cardColor,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? AppTheme.primary : AppTheme.border.withOpacity(0.5),
+          final isSelected = selectedFilter == filters[index];
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: InkWell(
+              onTap: () => setState(() => selectedFilter = filters[index]),
+              borderRadius: BorderRadius.circular(20),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: isSelected ? AppTheme.primaryGradient : null,
+                  color: isSelected ? null : AppTheme.cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: isSelected ? null : Border.all(color: AppTheme.border.withOpacity(0.5)),
+                  boxShadow: isSelected 
+                      ? [BoxShadow(color: AppTheme.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] 
+                      : null,
                 ),
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    filter['name'] as String,
+                child: Center(
+                  child: Text(
+                    filters[index],
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
                       color: isSelected ? Colors.white : AppTheme.textSecondary,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      fontSize: 13,
                     ),
                   ),
-                  if (filter['count'] != null) ...[
-                    const SizedBox(width: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppTheme.error.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        filter['count'].toString(),
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: AppTheme.error,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
             ),
           );
@@ -248,351 +228,101 @@ class _PatientsScreenState extends State<PatientsScreen> {
     );
   }
 
-  Widget _buildPatientList() {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      children: [
-        // Section: Bugungi tashriflar
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'BUGUNGI TASHRIFLAR',
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textSecondary.withOpacity(0.7),
-                letterSpacing: 1.2,
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              child: const Text(
-                'Tarixni ko\'rish',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppTheme.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        
-        // Patient Card 1 (Active)
-        _buildPatientCard(
-          name: 'Azizbek Tursunov',
-          gender: 'Erkak',
-          age: 34,
-          phone: '+998 90 123 45 67',
-          avatar: 'https://i.pravatar.cc/150?u=pat1',
-          status: 'Faol',
-          statusColor: AppTheme.success,
-        ),
-        
-        const SizedBox(height: 12),
-        
-        // Patient Card 2 (Pending)
-        _buildPatientCard(
-          name: 'Laylo Karimova',
-          gender: 'Ayol',
-          age: 28,
-          phone: '+998 93 444 55 66',
-          avatar: 'https://i.pravatar.cc/150?u=pat2',
-          status: 'Kutmoqda',
-          statusColor: AppTheme.warning,
-          debt: '-120,000 UZS',
-        ),
-        
-        const SizedBox(height: 24),
-        
-        // Section: Barcha bemorlar
-        Text(
-          'BARCHA BEMORLAR (A-Z)',
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textSecondary.withOpacity(0.7),
-            letterSpacing: 1.2,
-          ),
-        ),
-        const SizedBox(height: 8),
-        
-        // Patient Card 3 (VIP)
-        _buildPatientCard(
-          name: 'Jamshid Aliyev',
-          gender: 'Erkak',
-          age: 45,
-          phone: '+998 97 777 00 11',
-          avatar: 'https://i.pravatar.cc/150?u=pat3',
-          isVip: true,
-          patientId: '#9923',
-        ),
-        
-        const SizedBox(height: 12),
-        
-        // Patient Card 4 (No avatar)
-        _buildPatientCard(
-          name: 'Nodira Mirzayeva',
-          gender: 'Ayol',
-          age: 52,
-          phone: '+998 90 111 22 33',
-          initials: 'NM',
-          patientId: '#9924',
-        ),
-        
-        const SizedBox(height: 12),
-        
-        // Patient Card 5
-        _buildPatientCard(
-          name: 'Otabek Sobirov',
-          gender: 'Erkak',
-          age: 22,
-          phone: '+998 99 555 66 77',
-          avatar: 'https://i.pravatar.cc/150?u=pat5',
-          patientId: '#9925',
-        ),
-        
-        const SizedBox(height: 24),
-      ],
+  Widget _buildLoadingList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: 6,
+      itemBuilder: (context, index) => const Padding(
+        padding: EdgeInsets.only(bottom: 16),
+        child: ShimmerLoading(width: double.infinity, height: 90, borderRadius: 20),
+      ),
     );
   }
 
-  Widget _buildPatientCard({
-    required String name,
-    required String gender,
-    required int age,
-    required String phone,
-    String? avatar,
-    String? initials,
-    String? status,
-    Color? statusColor,
-    String? debt,
-    bool isVip = false,
-    String? patientId,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border.withOpacity(0.6)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Avatar
-          Stack(
+  Widget _buildPatientList() {
+    return ListView.builder(
+      padding: const EdgeInsets.only(left: 20, right: 20, top: 4, bottom: 90),
+      itemCount: 15,
+      itemBuilder: (context, index) {
+        // Dummy data for presentation
+        final isDebtor = index == 2 || index == 5;
+        
+        return GlassCard(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          borderRadius: 20,
+          child: Row(
             children: [
-              if (avatar != null)
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: isDebtor 
+                    ? const LinearGradient(colors: [Color(0xFFF87171), Color(0xFFDC2626)])
+                    : AppTheme.primaryGradient,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    'B\${index + 1}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bemor Ismi \${index + 1}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      '+998 90 123 45 67',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isDebtor)
                 Container(
-                  width: 48,
-                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppTheme.background, width: 2),
-                    image: DecorationImage(
-                      image: NetworkImage(avatar),
-                      fit: BoxFit.cover,
+                    color: AppTheme.error.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'Qarzdor',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.error,
                     ),
                   ),
                 )
               else
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE0F2FE),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFF0284C7).withOpacity(0.1),
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      initials ?? '',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0284C7),
-                      ),
-                    ),
-                  ),
-                ),
-              
-              // Status badge
-              if (status != null)
-                Positioned(
-                  bottom: -2,
-                  right: -2,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.cardColor, width: 2),
-                    ),
-                    child: const Icon(
-                      Icons.check,
-                      size: 8,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              
-              // VIP badge
-              if (isVip)
-                Positioned(
-                  top: -4,
-                  left: -4,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF6366F1), Color(0xFF9333EA)],
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppTheme.cardColor, width: 2),
-                    ),
-                    child: const Text(
-                      'VIP',
-                      style: TextStyle(
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: AppTheme.textSecondary,
                 ),
             ],
           ),
-          
-          const SizedBox(width: 16),
-          
-          // Patient Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                    ),
-                    if (status != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: statusColor!.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: statusColor.withOpacity(0.2)),
-                        ),
-                        child: Text(
-                          status,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: statusColor,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.person_outline, size: 12, color: AppTheme.textSecondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$gender, $age yosh',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                    if (patientId != null) ...[
-                      const Text(
-                        ' • ',
-                        style: TextStyle(color: AppTheme.textSecondary),
-                      ),
-                      Text(
-                        'ID: $patientId',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.phone, size: 12, color: AppTheme.primary),
-                    const SizedBox(width: 4),
-                    Text(
-                      phone,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    if (debt != null) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppTheme.error.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          debt,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: AppTheme.error,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-          
-          // Action button
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: AppTheme.background.withOpacity(0.5),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.chevron_right,
-              size: 18,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

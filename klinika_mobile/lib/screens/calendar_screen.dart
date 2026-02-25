@@ -1,5 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../models/appointment_model.dart';
+import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/shimmer_loading.dart';
+import 'doctor_room_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -11,6 +19,33 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   DateTime selectedDate = DateTime.now();
   String selectedDoctor = 'Barchasi';
+  List<Appointment> _appointments = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAppointments();
+  }
+
+  Future<void> _fetchAppointments() async {
+    setState(() => _isLoading = true);
+    try {
+      final formattedDate = "\${selectedDate.year}-\${selectedDate.month.toString().padLeft(2, '0')}-\${selectedDate.day.toString().padLeft(2, '0')}";
+      final response = await ApiService.get('/appointments?date=\$formattedDate&limit=100');
+      final data = jsonDecode(response.body);
+
+      if (data['items'] != null) {
+        setState(() {
+          _appointments = (data['items'] as List).map((json) => Appointment.fromJson(json)).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint("Klinika Mobile Appointments xatolik: \$e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   String _getMonthName(int month) {
     const months = [
@@ -27,84 +62,98 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<AuthProvider>().user;
+    List<Appointment> displayAppointments = _appointments;
+    if (user?.role == 'doctor') {
+      displayAppointments = _appointments.where((a) => a.doctorId == user?.id).toList();
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(),
-            
-            // Date Strip
-            _buildDateStrip(),
-            
-            // Doctor Filter
-            _buildDoctorFilter(),
-            
-            // Timeline
-            Expanded(
-              child: _buildTimeline(),
-            ),
-          ],
+        child: RefreshIndicator(
+          onRefresh: _fetchAppointments,
+          color: AppTheme.primary,
+          child: Column(
+            children: [
+              _buildHeader(),
+              _buildDateStrip(),
+              if (user?.role != 'doctor') _buildDoctorFilter(),
+              Expanded(
+                child: _isLoading 
+                  ? _buildLoadingList()
+                  : _buildAppointmentsList(displayAppointments, user),
+              ),
+            ],
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: AppTheme.primary,
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 70.0, right: 8.0), // Above floating bottom nav
+        child: FloatingActionButton(
+          onPressed: () {
+            // TODO: Navigate to Add Appointment Screen/Modal
+          },
+          backgroundColor: AppTheme.primary,
+          elevation: 4,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          child: Container(
+            width: 60,
+            height: 60,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: AppTheme.primaryGradient,
+            ),
+            child: const Icon(Icons.add, color: Colors.white, size: 28),
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(20.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Text(
-                _getMonthName(selectedDate.month) + ' ' + selectedDate.year.toString(),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.keyboard_arrow_down, color: AppTheme.textSecondary),
-            ],
-          ),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'Bugun',
-                  style: TextStyle(
-                    color: AppTheme.primary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+          Expanded(
+            child: Row(
+              children: [
+                const Icon(Icons.calendar_month_rounded, color: AppTheme.primary, size: 28),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '\${_getMonthName(selectedDate.month)} \${selectedDate.year}',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                      letterSpacing: -0.5,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+              ],
+            ),
+          ),
+          InkWell(
+            onTap: () {
+              setState(() {
+                selectedDate = DateTime.now();
+                _fetchAppointments();
+              });
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryLight.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
               ),
-              const SizedBox(width: 12),
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppTheme.cardColor,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppTheme.border.withOpacity(0.5)),
-                ),
-                child: const Icon(Icons.search, size: 18, color: AppTheme.textPrimary),
-              ),
-            ],
+              child: const Text('Bugun', style: TextStyle(color: AppTheme.primary, fontSize: 13, fontWeight: FontWeight.bold)),
+            ),
           ),
         ],
       ),
@@ -113,71 +162,47 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildDateStrip() {
     return SizedBox(
-      height: 90,
+      height: 100,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: 7,
+        itemCount: 30, // Show a month of days basically
         itemBuilder: (context, index) {
-          final date = DateTime.now().add(Duration(days: index - 1));
-          final isSelected = index == 1;
+          // Centering around today roughly
+          final date = DateTime.now().subtract(const Duration(days: 3)).add(Duration(days: index));
+          final isSelected = date.year == selectedDate.year && date.month == selectedDate.month && date.day == selectedDate.day;
           
           return GestureDetector(
             onTap: () {
               setState(() {
                 selectedDate = date;
+                _fetchAppointments();
               });
             },
-            child: Container(
-              width: 60,
-              margin: const EdgeInsets.only(right: 12),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              width: 64,
+              margin: const EdgeInsets.only(right: 12, bottom: 8, top: 4),
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primary : AppTheme.cardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isSelected ? AppTheme.primary : AppTheme.border.withOpacity(0.5),
-                ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: AppTheme.primary.withOpacity(0.25),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : [],
+                gradient: isSelected ? AppTheme.primaryGradient : null,
+                color: isSelected ? null : AppTheme.cardColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: isSelected ? Colors.transparent : AppTheme.border.withOpacity(0.3)),
+                boxShadow: isSelected 
+                    ? [BoxShadow(color: AppTheme.primary.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))] 
+                    : AppTheme.softShadow,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    _getDayName(date.weekday).toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      color: isSelected ? Colors.white.withOpacity(0.9) : AppTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    date.day.toString(),
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? Colors.white : AppTheme.textPrimary,
-                    ),
-                  ),
+                  Text(_getDayName(date.weekday).toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isSelected ? Colors.white.withOpacity(0.9) : AppTheme.textSecondary)),
+                  const SizedBox(height: 6),
+                  Text(date.day.toString(), style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : AppTheme.textPrimary)),
                   if (isSelected) ...[
                     const SizedBox(height: 4),
-                    Container(
-                      width: 4,
-                      height: 4,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ],
+                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle))
+                  ]
                 ],
               ),
             ),
@@ -188,265 +213,166 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildDoctorFilter() {
-    final doctors = [
-      {'name': 'Barchasi', 'avatar': ''},
-      {'name': 'Dr. Aziza', 'avatar': 'https://i.pravatar.cc/150?u=dr1'},
-      {'name': 'Dr. Bekzod', 'avatar': 'https://i.pravatar.cc/150?u=dr2'},
-      {'name': 'Dr. Malika', 'avatar': 'https://i.pravatar.cc/150?u=dr3'},
-    ];
-
-    return SizedBox(
-      height: 60,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: doctors.length,
-        itemBuilder: (context, index) {
-          final doctor = doctors[index];
-          final isSelected = selectedDoctor == doctor['name'];
-          
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                selectedDoctor = doctor['name']!;
-              });
-            },
-            child: Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: EdgeInsets.symmetric(
-                horizontal: doctor['avatar']!.isEmpty ? 16 : 4,
-                vertical: 8,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected ? AppTheme.textPrimary : AppTheme.cardColor,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? AppTheme.textPrimary : AppTheme.border.withOpacity(0.5),
-                ),
-              ),
-              child: Row(
-                children: [
-                  if (doctor['avatar']!.isNotEmpty) ...[
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundImage: NetworkImage(doctor['avatar']!),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Text(
-                    doctor['name']!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? Colors.white : AppTheme.textPrimary,
-                    ),
-                  ),
-                  if (doctor['avatar']!.isNotEmpty) const SizedBox(width: 8),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildTimeline() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: [
-          // Timeline grid
-          for (int hour = 8; hour <= 15; hour++) ...[
-            _buildTimeSlot(hour),
-          ],
-          
-          // Appointments
-          Stack(
-            children: [
-              // Appointment 1: 08:30 - 09:15
-              Positioned(
-                top: 48,
-                left: 56,
-                right: 8,
-                child: _buildAppointmentCard(
-                  patientName: 'Sardor Rahimov',
-                  service: 'Birlamchi ko\'rik',
-                  time: '08:30',
-                  doctor: 'Dr. Aziza',
-                  doctorAvatar: 'https://i.pravatar.cc/150?u=dr1',
-                  color: const Color(0xFFF0F9FF),
-                  borderColor: AppTheme.primary,
-                  height: 72,
-                ),
-              ),
-              
-              // Appointment 2: 10:00 - 11:00
-              Positioned(
-                top: 192,
-                left: 56,
-                right: 8,
-                child: _buildAppointmentCard(
-                  patientName: 'Laylo Karimova',
-                  service: 'EKG Tahlili',
-                  time: '10:00',
-                  doctor: 'Dr. Bekzod',
-                  doctorAvatar: 'https://i.pravatar.cc/150?u=dr2',
-                  color: const Color(0xFFFFF7ED),
-                  borderColor: AppTheme.warning,
-                  height: 96,
-                  status: 'Kutilmoqda',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeSlot(int hour) {
-    return Container(
-      height: 96,
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: AppTheme.border.withOpacity(0.4)),
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 56,
-            child: Text(
-              '${hour.toString().padLeft(2, '0')}:00',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.textSecondary.withOpacity(0.7),
-              ),
-            ),
-          ),
-          Expanded(child: Container()),
+          const Icon(Icons.filter_list_rounded, color: AppTheme.textSecondary, size: 20),
+          const SizedBox(width: 8),
+          Text('Barcha shifokorlar', style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
         ],
       ),
     );
   }
 
-  Widget _buildAppointmentCard({
-    required String patientName,
-    required String service,
-    required String time,
-    required String doctor,
-    required String doctorAvatar,
-    required Color color,
-    required Color borderColor,
-    required double height,
-    String? status,
-  }) {
-    return Container(
-      height: height,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: const BorderRadius.only(
-          topRight: Radius.circular(12),
-          bottomRight: Radius.circular(12),
-        ),
-        border: Border(
-          left: BorderSide(color: borderColor, width: 3),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+  Widget _buildLoadingList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: 5,
+      itemBuilder: (context, index) => const Padding(
+        padding: EdgeInsets.only(bottom: 16),
+        child: ShimmerLoading(width: double.infinity, height: 120, borderRadius: 20),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      patientName,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: borderColor.withOpacity(0.9),
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      service,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: borderColor.withOpacity(0.7),
-                      ),
-                    ),
-                  ],
+    );
+  }
+
+  Widget _buildAppointmentsList(List<Appointment> items, dynamic user) {
+    if (items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.event_busy_rounded, size: 64, color: AppTheme.textSecondary.withOpacity(0.3)),
+            const SizedBox(height: 16),
+            const Text("Ushbu sanada qabullar yo'q", style: TextStyle(color: AppTheme.textSecondary, fontSize: 16, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.only(left: 20, right: 20, top: 12, bottom: 100), // padding for FAB
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final a = items[index];
+        final isDone = a.status == 'completed' || a.status == 'done';
+        final isProgress = a.status == 'in_progress';
+        
+        Color statusColor = AppTheme.primary;
+        String statusText = 'Kutmoqda';
+        
+        if (isDone) {
+          statusColor = AppTheme.success;
+          statusText = 'Tugallandi';
+        } else if (isProgress) {
+          statusColor = AppTheme.warning;
+          statusText = 'Jarayonda';
+        }
+
+        return GestureDetector(
+          onTap: () {
+            if (user?.role == 'doctor' && !isDone) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DoctorRoomScreen(appointment: a),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  time,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: borderColor.withOpacity(0.9),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 8,
-                backgroundImage: NetworkImage(doctorAvatar),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                doctor,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: borderColor.withOpacity(0.8),
-                ),
-              ),
-              if (status != null) ...[
-                const Spacer(),
+              ).then((value) => _fetchAppointments()); // Refresh after returning
+            }
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: AppTheme.cardColor,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: AppTheme.softShadow,
+              border: Border.all(color: AppTheme.border.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                // Minimal Status Indicator Line
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  width: 6,
+                  height: 110,
                   decoration: BoxDecoration(
-                    color: borderColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
+                    color: statusColor,
+                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), bottomLeft: Radius.circular(20)),
                   ),
-                  child: Text(
-                    status,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: borderColor.withOpacity(0.9),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              a.time,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                statusText,
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: statusColor),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: AppTheme.primary.withOpacity(0.1),
+                              child: Text(a.patientName[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primary, fontSize: 14)),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    a.patientName,
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    a.cause,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (user?.role != 'doctor') ...[
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              const Icon(Icons.medical_services_outlined, size: 14, color: AppTheme.textSecondary),
+                              const SizedBox(width: 6),
+                              Text('Dr. \${a.doctorName}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
+                            ],
+                          ),
+                        ]
+                      ],
                     ),
                   ),
                 ),
               ],
-            ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

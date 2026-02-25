@@ -1,17 +1,50 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Colors from design
-  static const Color primary = Color(0xFF0EA5E9); // Sky blue
-  static const Color background = Color(0xFFF8FAFC);
+  // Vibrant Premium Colors
+  static const Color primary = Color(0xFF2563EB); // Vibrant Blue
+  static const Color primaryLight = Color(0xFF60A5FA);
+  static const Color primaryDark = Color(0xFF1E3A8A);
+  
+  static const Color background = Color(0xFFF1F5F9); // Very light grayish blue
   static const Color cardColor = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF0F172A);
-  static const Color textSecondary = Color(0xFF64748B);
+  static const Color textSecondary = Color(0xFF475569);
   static const Color border = Color(0xFFE2E8F0);
-  static const Color accent = Color(0xFFF43F5E);
-  static const Color success = Color(0xFF10B981);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color error = Color(0xFFEF4444);
+  
+  static const Color accent = Color(0xFFF43F5E); // Vibrant Rose
+  static const Color success = Color(0xFF10B981); // Vibrant Emerald
+  static const Color warning = Color(0xFFF59E0B); // Vibrant Amber
+  static const Color error = Color(0xFFEF4444); // Vibrant Red
+
+  // Gradients
+  static const LinearGradient primaryGradient = LinearGradient(
+    colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)], // Blue-500 to Blue-700
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  
+  static const LinearGradient successGradient = LinearGradient(
+    colors: [Color(0xFF34D399), Color(0xFF059669)], // Emerald-400 to Emerald-600
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  // Soft Premium Shadows
+  static List<BoxShadow> softShadow = [
+    BoxShadow(
+      color: const Color(0xFF0F172A).withOpacity(0.04),
+      blurRadius: 16,
+      offset: const Offset(0, 4),
+      spreadRadius: 0,
+    ),
+    BoxShadow(
+      color: const Color(0xFF0F172A).withOpacity(0.02),
+      blurRadius: 4,
+      offset: const Offset(0, 2),
+      spreadRadius: 0,
+    ),
+  ];
 
   static ThemeData get lightTheme {
     return ThemeData(
