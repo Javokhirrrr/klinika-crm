@@ -388,9 +388,15 @@ export default function SimpleAppointments() {
             // 3. To'lov yaratish
             let newPaymentId = null;
             if (paymentData.amount > 0) {
+                // ✅ doctorId ni ham yuboramiz — komissiya yaratish uchun zarur!
+                const aptData = paymentContext.type === 'existing' ? paymentContext.data : null;
+                const doctorIdForPayment = aptData?.doctorId?._id || aptData?.doctorId
+                    || formData.doctorId || null;
+
                 const payRes = await http.post('/payments', {
                     appointmentId,
                     patientId,
+                    doctorId: doctorIdForPayment,
                     amount: Number(paymentData.amount),
                     method: paymentData.method,
                     note: paymentData.note || "Kassaga to'lov"
@@ -447,6 +453,7 @@ export default function SimpleAppointments() {
         waiting: { label: 'Kutmoqda', class: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
         in_progress: { label: 'Jarayonda', class: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: Activity },
         done: { label: 'Tugallangan', class: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: Check },
+        paid: { label: 'To\'langan', class: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: Check },
         cancelled: { label: 'Bekor qilingan', class: 'bg-rose-50 text-rose-700 border-rose-200', icon: X }
     };
 
@@ -561,6 +568,7 @@ export default function SimpleAppointments() {
                                         <TableHead className="font-bold text-gray-900">Bemor</TableHead>
                                         <TableHead className="font-bold text-gray-900 hidden md:table-cell">Shifokor</TableHead>
                                         <TableHead className="font-bold text-gray-900">Holat</TableHead>
+                                        <TableHead className="font-bold text-gray-900 hidden sm:table-cell">To'lov</TableHead>
                                         <TableHead className="font-bold text-gray-900 text-right pr-6">Amallar</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -597,6 +605,21 @@ export default function SimpleAppointments() {
                                                     <Badge variant="outline" className={cn("px-2.5 py-1 text-xs font-semibold gap-1.5 shadow-sm", status.class)}>
                                                         <StatusIcon className="h-3.5 w-3.5" /> {status.label}
                                                     </Badge>
+                                                </TableCell>
+                                                {/* To'lov holati */}
+                                                <TableCell className="hidden sm:table-cell">
+                                                    {apt.isPaid ? (
+                                                        <Badge variant="outline" className="px-2.5 py-1 text-xs font-semibold gap-1.5 bg-green-50 text-green-700 border-green-200">
+                                                            <DollarSign className="h-3 w-3" /> To'langan
+                                                        </Badge>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleOpenPayment(apt)}
+                                                            className="px-2.5 py-1 text-xs font-semibold gap-1.5 rounded-full border border-dashed border-amber-300 text-amber-600 bg-amber-50 hover:bg-amber-100 transition-colors flex items-center gap-1"
+                                                        >
+                                                            <DollarSign className="h-3 w-3" /> To'lanmagan
+                                                        </button>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-right pr-4">
                                                     <div className="flex items-center justify-end gap-1">
