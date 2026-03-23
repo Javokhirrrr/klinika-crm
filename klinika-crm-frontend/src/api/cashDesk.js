@@ -15,8 +15,8 @@ api.interceptors.request.use((cfg) => {
 
 export const cashDeskApi = {
   // Kassalar
-  getDesks: ()             => api.get('/').then(r => r.data),
-  createDesk: (data)       => api.post('/', data).then(r => r.data),
+  getDesks: ()             => api.get('').then(r => r.data),
+  createDesk: (data)       => api.post('', data).then(r => r.data),
   updateDesk: (id, data)   => api.put(`/${id}`, data).then(r => r.data),
   deleteDesk: (id)         => api.delete(`/${id}`).then(r => r.data),
 
