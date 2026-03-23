@@ -10,6 +10,7 @@ import {
   Radio, ClipboardList, Percent, Wallet, BarChart3, Building2, Activity,
   ChevronLeft, Menu, X
 } from "lucide-react";
+import ThemeToggle from "./ThemeToggle";
 
 const menuItems = [
   { to: "/", icon: Home, label: "Bosh Sahifa" },
@@ -93,7 +94,7 @@ export default function Sidebar({ isOpen = true, toggle }) {
             >
               <X className="h-5 w-5" />
             </button>
-
+            <ThemeToggle />
             {/* Desktop Toggle (Close/Open) */}
             <button
               onClick={toggle}

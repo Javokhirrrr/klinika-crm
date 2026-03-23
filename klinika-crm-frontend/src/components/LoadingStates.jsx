@@ -1,80 +1,54 @@
 // src/components/LoadingStates.jsx
 import React from 'react';
+import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
 
 // Simple Spinner
-export function LoadingSpinner({ size = 40, color = '#2563eb' }) {
+export function LoadingSpinner({ size = 40, className }) {
     return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
-            <div
-                style={{
-                    width: `${size}px`,
-                    height: `${size}px`,
-                    border: `3px solid #e5e7eb`,
-                    borderTop: `3px solid ${color}`,
-                    borderRadius: '50%',
-                    animation: 'spin 0.8s linear infinite',
-                }}
-            />
-            <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+        <div className={cn("flex justify-center items-center p-5", className)}>
+            <Loader2 className="animate-spin text-primary" style={{ width: size, height: size }} />
         </div>
     );
 }
 
 // Skeleton Line
-export function SkeletonLine({ width = '100%', height = '16px', style = {} }) {
+export function SkeletonLine({ className, width, height, style }) {
     return (
         <div
-            style={{
-                width,
-                height,
-                background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)',
-                backgroundSize: '200% 100%',
-                animation: 'shimmer 1.5s infinite',
-                borderRadius: '4px',
-                ...style,
-            }}
-        >
-            <style>{`
-        @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-      `}</style>
-        </div>
+            className={cn("animate-pulse bg-muted rounded-md", className)}
+            style={{ width, height, ...style }}
+        />
     );
 }
 
 // Skeleton Card
-export function SkeletonCard() {
+export function SkeletonCard({ className }) {
     return (
-        <div style={{ padding: '16px', background: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-            <SkeletonLine width="60%" height="20px" style={{ marginBottom: '12px' }} />
-            <SkeletonLine width="100%" height="14px" style={{ marginBottom: '8px' }} />
-            <SkeletonLine width="80%" height="14px" style={{ marginBottom: '8px' }} />
-            <SkeletonLine width="40%" height="14px" />
+        <div className={cn("p-4 bg-card rounded-xl border border-border shadow-sm", className)}>
+            <SkeletonLine className="w-3/5 h-5 mb-3" />
+            <SkeletonLine className="w-full h-3.5 mb-2" />
+            <SkeletonLine className="w-4/5 h-3.5 mb-2" />
+            <SkeletonLine className="w-2/5 h-3.5" />
         </div>
     );
 }
 
 // Skeleton Table
-export function SkeletonTable({ rows = 5, columns = 5 }) {
+export function SkeletonTable({ rows = 5, columns = 5, className }) {
     return (
-        <div style={{ width: '100%' }}>
+        <div className={cn("w-full border border-border rounded-xl overflow-hidden", className)}>
             {/* Header */}
-            <div style={{ display: 'flex', gap: '12px', padding: '12px', background: '#f9fafb', borderRadius: '8px 8px 0 0' }}>
+            <div className="flex gap-3 p-3 bg-muted/50 border-b border-border">
                 {Array.from({ length: columns }).map((_, i) => (
-                    <SkeletonLine key={i} width={`${100 / columns}%`} height="16px" />
+                    <SkeletonLine key={i} className="flex-1 h-4" />
                 ))}
             </div>
             {/* Rows */}
             {Array.from({ length: rows }).map((_, rowIdx) => (
-                <div key={rowIdx} style={{ display: 'flex', gap: '12px', padding: '12px', borderBottom: '1px solid #e5e7eb' }}>
+                <div key={rowIdx} className="flex gap-3 p-3 border-b border-border bg-card last:border-0">
                     {Array.from({ length: columns }).map((_, colIdx) => (
-                        <SkeletonLine key={colIdx} width={`${100 / columns}%`} height="14px" />
+                        <SkeletonLine key={colIdx} className="flex-1 h-3.5" />
                     ))}
                 </div>
             ))}
@@ -85,55 +59,39 @@ export function SkeletonTable({ rows = 5, columns = 5 }) {
 // Full Page Loading
 export function PageLoading({ message = 'Yuklanmoqda...' }) {
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            minHeight: '400px',
-            gap: '16px'
-        }}>
+        <div className="flex flex-col justify-center items-center min-h-[400px] gap-4">
             <LoadingSpinner size={48} />
-            <p style={{ color: '#6b7280', fontSize: '14px' }}>{message}</p>
+            <p className="text-muted-foreground text-sm font-medium">{message}</p>
         </div>
     );
 }
 
 // Button Loading State
-export function ButtonLoading({ children, loading, ...props }) {
+export function ButtonLoading({ children, loading, className, ...props }) {
     return (
-        <button {...props} disabled={loading || props.disabled}>
+        <button className={cn("inline-flex items-center justify-center gap-2", className)} {...props} disabled={loading || props.disabled}>
             {loading ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <LoadingSpinner size={16} color="#fff" />
+                <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Yuklanmoqda...
-                </span>
+                </>
             ) : children}
         </button>
     );
 }
 
 // Progress Bar
-export function ProgressBar({ progress = 0, showLabel = true }) {
+export function ProgressBar({ progress = 0, showLabel = true, className }) {
     return (
-        <div style={{ width: '100%' }}>
-            <div style={{
-                width: '100%',
-                height: '8px',
-                background: '#e5e7eb',
-                borderRadius: '4px',
-                overflow: 'hidden'
-            }}>
-                <div style={{
-                    width: `${Math.min(100, Math.max(0, progress))}%`,
-                    height: '100%',
-                    background: 'linear-gradient(90deg, #2563eb, #0ea5a4)',
-                    transition: 'width 0.3s ease',
-                    borderRadius: '4px'
-                }} />
+        <div className={cn("w-full", className)}>
+            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                    className="h-full bg-primary transition-all duration-300 ease-in-out rounded-full"
+                    style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+                />
             </div>
             {showLabel && (
-                <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px', textAlign: 'right' }}>
+                <p className="text-xs text-muted-foreground mt-1 text-right">
                     {Math.round(progress)}%
                 </p>
             )}
@@ -142,17 +100,13 @@ export function ProgressBar({ progress = 0, showLabel = true }) {
 }
 
 // Empty State
-export function EmptyState({ icon = '📭', title = 'Ma\'lumot topilmadi', message, action }) {
+export function EmptyState({ icon = '📭', title = 'Ma\'lumot topilmadi', message, action, className }) {
     return (
-        <div style={{
-            textAlign: 'center',
-            padding: '48px 24px',
-            color: '#6b7280'
-        }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>{icon}</div>
-            <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#111827', marginBottom: '8px' }}>{title}</h3>
-            {message && <p style={{ fontSize: '14px', marginBottom: '16px' }}>{message}</p>}
-            {action && <div style={{ marginTop: '24px' }}>{action}</div>}
+        <div className={cn("flex flex-col items-center justify-center text-center p-12 text-muted-foreground", className)}>
+            <div className="text-5xl mb-4">{icon}</div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
+            {message && <p className="text-sm mb-4 max-w-sm">{message}</p>}
+            {action && <div className="mt-2">{action}</div>}
         </div>
     );
 }

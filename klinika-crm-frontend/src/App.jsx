@@ -63,6 +63,7 @@ const AnalyticsDashboard = lazy(() => import("./pages/AnalyticsDashboard.jsx"));
 const OutstandingDebts = lazy(() => import("./pages/OutstandingDebts.jsx"));
 const VideoAppointments = lazy(() => import("./pages/VideoAppointments.jsx"));
 const KioskPage = lazy(() => import("./pages/KioskPage.jsx"));
+const CashDesk = lazy(() => import("./pages/CashDesk.jsx"));
 
 
 // Other pages (less visited)
@@ -157,6 +158,7 @@ export default function App() {
                   <Route path="/live-queue" element={<LiveQueue />} />
 
                   <Route path="/salaries" element={<SimpleSalaries />} />
+                  <Route path="/cash-desk" element={<CashDesk />} />
 
                   {/* Doctor features */}
                   <Route path="/doctors/:id/wallet" element={<DoctorWallet />} />

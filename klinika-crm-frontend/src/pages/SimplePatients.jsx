@@ -284,12 +284,12 @@ export default function SimplePatients() {
             {/* Header */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
-                    <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Bemorlar</h1>
-                    <p className="text-gray-500 mt-1 text-xs sm:text-sm font-medium">Jami: {patients.length} ta bemor</p>
+                    <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">Bemorlar</h1>
+                    <p className="text-muted-foreground mt-1 text-xs sm:text-sm font-medium">Jami: {patients.length} ta bemor</p>
                 </div>
                 <Button
                     onClick={() => setShowModal(true)}
-                    className="h-10 sm:h-11 bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 rounded-xl px-4 sm:px-5 font-semibold transition-all hover:-translate-y-0.5"
+                    className="h-10 sm:h-11 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 rounded-xl px-4 sm:px-5 font-semibold transition-all hover:-translate-y-0.5"
                 >
                     <UserPlus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                     <span className="hidden sm:inline">Yangi </span>Bemor
@@ -298,22 +298,22 @@ export default function SimplePatients() {
 
             {/* Search */}
             <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                     placeholder="Bemor qidirish (ism, telefon, karta raqami)..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="pl-12 h-12 bg-white border-2 border-gray-200 focus:border-slate-300 rounded-xl text-sm font-medium"
+                    className="pl-12 h-12 bg-card border-2 border-border focus:border-primary rounded-xl text-sm font-medium text-foreground"
                 />
             </div>
 
             {/* Patients Grid */}
             {loading ? (
-                <div className="text-center py-12 text-gray-500">Yuklanmoqda...</div>
+                <div className="text-center py-12 text-muted-foreground">Yuklanmoqda...</div>
             ) : filteredPatients.length === 0 ? (
-                <Card className="border-2 border-dashed border-gray-200 bg-gray-50">
+                <Card className="border-2 border-dashed border-border bg-muted/20">
                     <CardContent className="p-12 text-center">
-                        <p className="text-gray-500 font-medium">Bemorlar topilmadi</p>
+                        <p className="text-muted-foreground font-medium">Bemorlar topilmadi</p>
                     </CardContent>
                 </Card>
             ) : (
@@ -321,25 +321,25 @@ export default function SimplePatients() {
                     {filteredPatients.map((patient) => (
                         <Card
                             key={patient._id}
-                            className="border-2 border-gray-200 hover:border-gray-300 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden group cursor-pointer"
+                            className="bg-card border-2 border-border hover:border-primary/50 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden group cursor-pointer"
                             onClick={() => navigate(`/patients/${patient._id}`)}
                         >
                             <CardContent className="p-6">
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center gap-3">
-                                        <Avatar className="h-12 w-12 border-2 border-white shadow-md ring-2 ring-gray-100">
+                                        <Avatar className="h-12 w-12 border-2 border-background shadow-md ring-2 ring-primary/10">
                                             <AvatarFallback className={cn(
                                                 "text-sm font-bold",
-                                                patient.gender === 'female' ? "bg-pink-100 text-pink-700" : "bg-blue-100 text-blue-700"
+                                                patient.gender === 'female' ? "bg-pink-500/10 text-pink-600" : "bg-blue-500/10 text-blue-600"
                                             )}>
                                                 {patient.firstName?.[0]}{patient.lastName?.[0]}
                                             </AvatarFallback>
                                         </Avatar>
                                         <div>
-                                            <h3 className="font-bold text-slate-900 text-base leading-tight">
+                                            <h3 className="font-bold text-foreground text-base leading-tight">
                                                 {patient.firstName} {patient.lastName}
                                             </h3>
-                                            <p className="text-xs text-gray-500 font-medium mt-0.5">
+                                            <p className="text-xs text-muted-foreground font-medium mt-0.5">
                                                 {calculateAge(patient.birthDate)} yosh • {patient.gender === 'male' ? 'Erkak' : 'Ayol'}
                                             </p>
                                         </div>
@@ -348,8 +348,8 @@ export default function SimplePatients() {
                                     {/* 3 nuqta menyu */}
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-gray-100">
-                                                <MoreVertical className="h-4 w-4 text-gray-600" />
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground">
+                                                <MoreVertical className="h-4 w-4" />
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end" className="w-52">
@@ -363,11 +363,11 @@ export default function SimplePatients() {
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEdit(patient); }}>
                                                 <Pencil className="h-4 w-4 mr-2 text-blue-500" />
-                                                <span className="text-blue-600 font-medium">Tahrirlash</span>
+                                                <span className="text-blue-500 font-medium">Tahrirlash</span>
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setDeletePatient(patient); }}>
                                                 <Trash2 className="h-4 w-4 mr-2 text-red-500" />
-                                                <span className="text-red-600 font-medium">O'chirish</span>
+                                                <span className="text-red-500 font-medium">O'chirish</span>
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -375,23 +375,23 @@ export default function SimplePatients() {
 
                                 <div className="space-y-2.5">
                                     <div className="flex items-center gap-2 text-sm">
-                                        <Phone className="h-4 w-4 text-gray-400" />
-                                        <span className="font-medium text-gray-700">{patient.phone}</span>
+                                        <Phone className="h-4 w-4 text-muted-foreground" />
+                                        <span className="font-medium text-foreground">{patient.phone}</span>
                                     </div>
                                     {patient.cardNumber && (
                                         <div className="flex items-center gap-2 text-sm">
-                                            <Calendar className="h-4 w-4 text-gray-400" />
-                                            <span className="font-mono font-bold text-slate-900">{patient.cardNumber}</span>
+                                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                                            <span className="font-mono font-bold text-foreground">{patient.cardNumber}</span>
                                         </div>
                                     )}
                                     {patient.address && (
-                                        <p className="text-xs text-gray-500 line-clamp-1">{patient.address}</p>
+                                        <p className="text-xs text-muted-foreground line-clamp-1">{patient.address}</p>
                                     )}
                                 </div>
 
                                 {patient.debt > 0 && (
-                                    <div className="mt-4 pt-4 border-t-2 border-gray-100">
-                                        <Badge variant="destructive" className="font-semibold">
+                                    <div className="mt-4 pt-4 border-t-2 border-border">
+                                        <Badge variant="destructive" className="font-semibold bg-red-500/10 text-red-600 hover:bg-red-500/20 border-0">
                                             Qarz: {patient.debt?.toLocaleString()} so'm
                                         </Badge>
                                     </div>
@@ -404,71 +404,71 @@ export default function SimplePatients() {
 
             {/* Add Patient Modal */}
             <Dialog open={showModal} onOpenChange={setShowModal}>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="sm:max-w-[500px] bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-2xl font-bold">Yangi Bemor Qo'shish</DialogTitle>
+                        <DialogTitle className="text-2xl font-bold text-foreground">Yangi Bemor Qo'shish</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {/* Bemor Karta Raqami - Avtomatik */}
                         <div>
-                            <Label className="text-sm font-bold text-gray-700">Bemor Karta Raqami</Label>
+                            <Label className="text-sm font-bold text-foreground">Bemor Karta Raqami</Label>
                             <Input
                                 value={formData.cardNumber}
                                 readOnly
-                                className="mt-1.5 bg-gray-50 font-mono font-bold text-lg text-slate-900 border-2"
+                                className="mt-1.5 bg-muted/50 font-mono font-bold text-lg text-foreground border-2 border-border"
                             />
-                            <p className="text-xs text-gray-500 mt-1">Avtomatik generatsiya qilingan</p>
+                            <p className="text-xs text-muted-foreground mt-1">Avtomatik generatsiya qilingan</p>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label className="text-sm font-bold text-gray-700">Ism *</Label>
+                                <Label className="text-sm font-bold text-foreground">Ism *</Label>
                                 <Input
                                     required
                                     value={formData.firstName}
                                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                                    className="mt-1.5"
+                                    className="mt-1.5 bg-background border-border"
                                 />
                             </div>
                             <div>
-                                <Label className="text-sm font-bold text-gray-700">Familiya *</Label>
+                                <Label className="text-sm font-bold text-foreground">Familiya *</Label>
                                 <Input
                                     required
                                     value={formData.lastName}
                                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                                    className="mt-1.5"
+                                    className="mt-1.5 bg-background border-border"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <Label className="text-sm font-bold text-gray-700">Telefon *</Label>
+                            <Label className="text-sm font-bold text-foreground">Telefon *</Label>
                             <Input
                                 required
                                 type="tel"
                                 placeholder="+998 90 123 45 67"
                                 value={formData.phone}
                                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                className="mt-1.5"
+                                className="mt-1.5 bg-background border-border"
                             />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label className="text-sm font-bold text-gray-700">Tug'ilgan sana</Label>
+                                <Label className="text-sm font-bold text-foreground">Tug'ilgan sana</Label>
                                 <Input
                                     type="date"
                                     value={formData.birthDate}
                                     onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                                    className="mt-1.5"
+                                    className="mt-1.5 bg-background border-border text-foreground"
                                 />
                             </div>
                             <div>
-                                <Label className="text-sm font-bold text-gray-700">Jins</Label>
+                                <Label className="text-sm font-bold text-foreground">Jins</Label>
                                 <select
                                     value={formData.gender}
                                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                                    className="mt-1.5 w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm font-medium"
+                                    className="mt-1.5 w-full h-10 px-3 rounded-md border border-border bg-background text-sm font-medium text-foreground focus:ring-primary focus:border-primary"
                                 >
                                     <option value="male">Erkak</option>
                                     <option value="female">Ayol</option>
@@ -477,19 +477,19 @@ export default function SimplePatients() {
                         </div>
 
                         <div>
-                            <Label className="text-sm font-bold text-gray-700">Manzil</Label>
+                            <Label className="text-sm font-bold text-foreground">Manzil</Label>
                             <Input
                                 value={formData.address}
                                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                className="mt-1.5"
+                                className="mt-1.5 bg-background border-border"
                             />
                         </div>
 
                         <DialogFooter className="gap-2">
-                            <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
+                            <Button type="button" variant="outline" onClick={() => setShowModal(false)} className="border-border text-muted-foreground hover:text-foreground">
                                 Bekor qilish
                             </Button>
-                            <Button type="submit" className="bg-slate-900 hover:bg-slate-800">
+                            <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                                 Saqlash
                             </Button>
                         </DialogFooter>
@@ -499,9 +499,9 @@ export default function SimplePatients() {
 
             {/* Print Preview Modal */}
             <Dialog open={showPrintPreview} onOpenChange={setShowPrintPreview}>
-                <DialogContent className="sm:max-w-[360px] max-h-[90vh] overflow-y-auto p-0">
-                    <DialogHeader className="px-5 pt-5 pb-3 border-b">
-                        <DialogTitle className="text-base font-bold">📄 Karta ko'rinishi (80mm chek)</DialogTitle>
+                <DialogContent className="sm:max-w-[360px] max-h-[90vh] overflow-y-auto p-0 bg-card border-border">
+                    <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
+                        <DialogTitle className="text-base font-bold text-foreground">📄 Karta ko'rinishi (80mm chek)</DialogTitle>
                     </DialogHeader>
 
                     {selectedPatientForPrint && (() => {
@@ -572,13 +572,13 @@ export default function SimplePatients() {
                         );
                     })()}
 
-                    <DialogFooter className="gap-2 px-5 py-4">
-                        <Button type="button" variant="outline" onClick={() => setShowPrintPreview(false)}>
+                    <DialogFooter className="gap-2 px-5 py-4 border-t border-border">
+                        <Button type="button" variant="outline" onClick={() => setShowPrintPreview(false)} className="border-border text-muted-foreground hover:text-foreground">
                             Yopish
                         </Button>
                         <Button
                             onClick={handlePrint}
-                            className="bg-slate-900 hover:bg-slate-800"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground"
                         >
                             <Printer className="h-4 w-4 mr-2" />
                             Chop Etish
@@ -589,58 +589,58 @@ export default function SimplePatients() {
 
             {/* ─── Tahrirlash modali ─── */}
             <Dialog open={!!editPatient} onOpenChange={(open) => !open && setEditPatient(null)}>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="sm:max-w-[500px] bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-bold">✏️ Bemorni Tahrirlash</DialogTitle>
+                        <DialogTitle className="text-xl font-bold text-foreground">✏️ Bemorni Tahrirlash</DialogTitle>
                     </DialogHeader>
                     {editPatient && (
                         <form onSubmit={handleEditSubmit} className="space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <Label className="text-sm font-bold text-gray-700">Ism *</Label>
+                                    <Label className="text-sm font-bold text-foreground">Ism *</Label>
                                     <Input required value={editPatient.firstName}
                                         onChange={e => setEditPatient({ ...editPatient, firstName: e.target.value })}
-                                        className="mt-1.5" />
+                                        className="mt-1.5 bg-background border-border text-foreground" />
                                 </div>
                                 <div>
-                                    <Label className="text-sm font-bold text-gray-700">Familiya *</Label>
+                                    <Label className="text-sm font-bold text-foreground">Familiya *</Label>
                                     <Input required value={editPatient.lastName}
                                         onChange={e => setEditPatient({ ...editPatient, lastName: e.target.value })}
-                                        className="mt-1.5" />
+                                        className="mt-1.5 bg-background border-border text-foreground" />
                                 </div>
                             </div>
                             <div>
-                                <Label className="text-sm font-bold text-gray-700">Telefon *</Label>
+                                <Label className="text-sm font-bold text-foreground">Telefon *</Label>
                                 <Input required type="tel" value={editPatient.phone}
                                     onChange={e => setEditPatient({ ...editPatient, phone: e.target.value })}
-                                    className="mt-1.5" />
+                                    className="mt-1.5 bg-background border-border text-foreground" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <Label className="text-sm font-bold text-gray-700">Tug'ilgan sana</Label>
+                                    <Label className="text-sm font-bold text-foreground">Tug'ilgan sana</Label>
                                     <Input type="date" value={editPatient.birthDate}
                                         onChange={e => setEditPatient({ ...editPatient, birthDate: e.target.value })}
-                                        className="mt-1.5" />
+                                        className="mt-1.5 bg-background border-border text-foreground" />
                                 </div>
                                 <div>
-                                    <Label className="text-sm font-bold text-gray-700">Jins</Label>
+                                    <Label className="text-sm font-bold text-foreground">Jins</Label>
                                     <select value={editPatient.gender}
                                         onChange={e => setEditPatient({ ...editPatient, gender: e.target.value })}
-                                        className="mt-1.5 w-full h-10 px-3 rounded-md border border-gray-300 bg-white text-sm font-medium">
+                                        className="mt-1.5 w-full h-10 px-3 rounded-md border border-border bg-background text-sm font-medium text-foreground focus:ring-primary focus:border-primary">
                                         <option value="male">Erkak</option>
                                         <option value="female">Ayol</option>
                                     </select>
                                 </div>
                             </div>
                             <div>
-                                <Label className="text-sm font-bold text-gray-700">Manzil</Label>
+                                <Label className="text-sm font-bold text-foreground">Manzil</Label>
                                 <Input value={editPatient.address}
                                     onChange={e => setEditPatient({ ...editPatient, address: e.target.value })}
-                                    className="mt-1.5" />
+                                    className="mt-1.5 bg-background border-border text-foreground" />
                             </div>
                             <DialogFooter className="gap-2">
-                                <Button type="button" variant="outline" onClick={() => setEditPatient(null)}>Bekor qilish</Button>
-                                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Saqlash</Button>
+                                <Button type="button" variant="outline" onClick={() => setEditPatient(null)} className="border-border text-muted-foreground hover:text-foreground">Bekor qilish</Button>
+                                <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">Saqlash</Button>
                             </DialogFooter>
                         </form>
                     )}
@@ -649,28 +649,28 @@ export default function SimplePatients() {
 
             {/* ─── O'chirish tasdiqlash modali ─── */}
             <Dialog open={!!deletePatient} onOpenChange={(open) => !open && setDeletePatient(null)}>
-                <DialogContent className="sm:max-w-[420px]">
+                <DialogContent className="sm:max-w-[420px] bg-card border-border">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-bold text-red-600">🗑️ Bemorni O'chirish</DialogTitle>
+                        <DialogTitle className="text-xl font-bold text-red-500">🗑️ Bemorni O'chirish</DialogTitle>
                     </DialogHeader>
                     <div className="py-4">
-                        <div className="flex items-center gap-4 p-4 bg-red-50 rounded-xl border border-red-100">
-                            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-xl font-bold text-red-600">
+                        <div className="flex items-center gap-4 p-4 bg-red-500/10 rounded-xl border border-red-500/20">
+                            <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-xl font-bold text-red-500">
                                 {deletePatient?.firstName?.[0]}{deletePatient?.lastName?.[0]}
                             </div>
                             <div>
-                                <div className="font-bold text-gray-900">{deletePatient?.firstName} {deletePatient?.lastName}</div>
-                                <div className="text-sm text-gray-500">{deletePatient?.phone}</div>
+                                <div className="font-bold text-foreground">{deletePatient?.firstName} {deletePatient?.lastName}</div>
+                                <div className="text-sm text-muted-foreground">{deletePatient?.phone}</div>
                             </div>
                         </div>
-                        <p className="mt-4 text-sm text-gray-600 text-center">
+                        <p className="mt-4 text-sm text-muted-foreground text-center">
                             Bu bemorni o'chirishni tasdiqlaysizmi? <br />
                             <span className="text-red-500 font-semibold">Bu amal qaytarib bo'lmaydi!</span>
                         </p>
                     </div>
                     <DialogFooter className="gap-2">
-                        <Button type="button" variant="outline" onClick={() => setDeletePatient(null)}>Bekor qilish</Button>
-                        <Button onClick={handleDelete} className="bg-red-600 hover:bg-red-700 text-white">
+                        <Button type="button" variant="outline" onClick={() => setDeletePatient(null)} className="border-border text-muted-foreground hover:text-foreground">Bekor qilish</Button>
+                        <Button onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
                             <Trash2 className="h-4 w-4 mr-2" /> Ha, O'chirish
                         </Button>
                     </DialogFooter>

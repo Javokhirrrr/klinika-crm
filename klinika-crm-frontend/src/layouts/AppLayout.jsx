@@ -29,6 +29,7 @@ const PAGE_TITLES = {
     "/departments": "Bo'limlar",
     "/notifications": "Bildirishnomalar",
     "/calendar": "Kalendar",
+    "/cash-desk": "Kassa",
 };
 
 function getTitle(pathname) {
@@ -44,13 +45,13 @@ function getTitle(pathname) {
 // ─── Header — memo bilan ──────────────────────────────────────────────────────
 const Header = memo(function Header({ onMobileOpen, onCollapse, title, user, org }) {
     return (
-        <header className="h-14 flex items-center justify-between px-4 lg:px-6 bg-white border-b border-gray-100 z-20 shrink-0">
+        <header className="h-14 flex items-center justify-between px-4 lg:px-6 bg-card border-b border-border z-20 shrink-0">
             {/* Left */}
             <div className="flex items-center gap-3">
                 {/* Mobile toggle */}
                 <button
                     onClick={onMobileOpen}
-                    className="lg:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-xl transition-colors"
+                    className="lg:hidden p-2 text-muted-foreground hover:bg-hover rounded-xl transition-colors"
                     aria-label="Menu"
                 >
                     <Menu className="h-5 w-5" />
@@ -59,12 +60,12 @@ const Header = memo(function Header({ onMobileOpen, onCollapse, title, user, org
                 {/* Desktop collapse — 3 qatorli hamburger */}
                 <button
                     onClick={onCollapse}
-                    className="hidden lg:flex flex-col gap-1 p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                    className="hidden lg:flex flex-col gap-1 p-2 hover:bg-hover rounded-xl transition-colors"
                     aria-label="Menyuni yig'ish/yoyish"
                 >
-                    <span className="w-4 h-0.5 bg-gray-400 rounded-full" />
-                    <span className="w-4 h-0.5 bg-gray-400 rounded-full" />
-                    <span className="w-4 h-0.5 bg-gray-400 rounded-full" />
+                    <span className="w-4 h-0.5 bg-muted-foreground rounded-full" />
+                    <span className="w-4 h-0.5 bg-muted-foreground rounded-full" />
+                    <span className="w-4 h-0.5 bg-muted-foreground rounded-full" />
                 </button>
 
                 {/* Page title */}
@@ -83,8 +84,8 @@ const Header = memo(function Header({ onMobileOpen, onCollapse, title, user, org
                 {/* Org name */}
                 {org?.name && (
                     <div className="hidden md:flex items-center gap-2 mr-1">
-                        <span className="text-sm font-bold text-slate-700">{org.name}</span>
-                        {org.code && <span className="text-xs text-gray-400 font-medium">{org.code}</span>}
+                        <span className="text-sm font-bold text-foreground">{org.name}</span>
+                        {org.code && <span className="text-xs text-muted-foreground font-medium">{org.code}</span>}
                     </div>
                 )}
 
@@ -92,7 +93,7 @@ const Header = memo(function Header({ onMobileOpen, onCollapse, title, user, org
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="relative h-9 w-9 text-gray-400 hover:text-slate-700 hover:bg-gray-100 rounded-xl"
+                    className="relative h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-hover rounded-xl"
                 >
                     <Bell className="h-4 w-4" />
                     <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-red-500 ring-2 ring-white" />
@@ -123,7 +124,7 @@ export default function AppLayout() {
 
     return (
         <div className={cn(
-            "flex h-screen bg-gray-50 overflow-hidden",
+            "flex h-screen bg-background overflow-hidden",
             "font-['Inter','Outfit',system-ui,sans-serif]"
         )}>
             {/* Sidebar */}

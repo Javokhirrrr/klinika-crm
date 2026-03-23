@@ -28,16 +28,16 @@ const fmtDate = (d) => {
 // ─── Status Badge ────────────────────────────────────────────────────────────
 function StatusPill({ status }) {
     const map = {
-        done: { label: 'Yakunlandi', bg: '#E8F5E9', color: '#2E7D32', dot: '#4CAF50' },
-        completed: { label: 'Yakunlandi', bg: '#E8F5E9', color: '#2E7D32', dot: '#4CAF50' },
-        progress: { label: 'Qabulda', bg: '#E3F2FD', color: '#1565C0', dot: '#2196F3' },
-        in_progress: { label: 'Qabulda', bg: '#E3F2FD', color: '#1565C0', dot: '#2196F3' },
-        pending: { label: 'Kutilmoqda', bg: '#FFF8E1', color: '#F57F17', dot: '#FFC107' },
-        scheduled: { label: 'Kutilmoqda', bg: '#FFF8E1', color: '#F57F17', dot: '#FFC107' },
-        waiting: { label: 'Kutilmoqda', bg: '#FFF8E1', color: '#F57F17', dot: '#FFC107' },
-        cancelled: { label: 'Bekor qilindi', bg: '#FFEBEE', color: '#C62828', dot: '#F44336' },
+        done: { label: 'Yakunlandi', bg: 'var(--done-bg, #E8F5E9)', color: 'var(--done-fg, #2E7D32)', dot: 'var(--done-dot, #4CAF50)' },
+        completed: { label: 'Yakunlandi', bg: 'var(--done-bg, #E8F5E9)', color: 'var(--done-fg, #2E7D32)', dot: 'var(--done-dot, #4CAF50)' },
+        progress: { label: 'Qabulda', bg: 'var(--prog-bg, #E3F2FD)', color: 'var(--prog-fg, #1565C0)', dot: 'var(--prog-dot, #2196F3)' },
+        in_progress: { label: 'Qabulda', bg: 'var(--prog-bg, #E3F2FD)', color: 'var(--prog-fg, #1565C0)', dot: 'var(--prog-dot, #2196F3)' },
+        pending: { label: 'Kutilmoqda', bg: 'var(--pend-bg, #FFF8E1)', color: 'var(--pend-fg, #F57F17)', dot: 'var(--pend-dot, #FFC107)' },
+        scheduled: { label: 'Kutilmoqda', bg: 'var(--pend-bg, #FFF8E1)', color: 'var(--pend-fg, #F57F17)', dot: 'var(--pend-dot, #FFC107)' },
+        waiting: { label: 'Kutilmoqda', bg: 'var(--pend-bg, #FFF8E1)', color: 'var(--pend-fg, #F57F17)', dot: 'var(--pend-dot, #FFC107)' },
+        cancelled: { label: 'Bekor qilindi', bg: 'var(--canc-bg, #FFEBEE)', color: 'var(--canc-fg, #C62828)', dot: 'var(--canc-dot, #F44336)' },
     };
-    const cfg = map[status?.toLowerCase()] || { label: status || '---', bg: '#F5F5F5', color: '#616161', dot: '#9E9E9E' };
+    const cfg = map[status?.toLowerCase()] || { label: status || '---', bg: 'var(--hover-bg, #F5F5F5)', color: 'var(--muted, #616161)', dot: 'var(--muted, #9E9E9E)' };
     return (
         <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -52,14 +52,14 @@ function StatusPill({ status }) {
 }
 
 // ─── Avatar initials ─────────────────────────────────────────────────────────
-function AvatarInitials({ name, size = 36, bg = '#E3F2FD', color = '#1565C0' }) {
+function AvatarInitials({ name, size = 36, bg = 'var(--prog-bg, #E3F2FD)', color = 'var(--prog-fg, #1565C0)' }) {
     const initials = (name || 'N').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
     return (
         <div style={{
             width: size, height: size, borderRadius: '50%',
             background: bg, color, display: 'flex', alignItems: 'center',
             justifyContent: 'center', fontWeight: 800, fontSize: size * 0.35,
-            flexShrink: 0, border: '2px solid rgba(255,255,255,0.8)'
+            flexShrink: 0, border: '2px solid var(--card-bg, rgba(255,255,255,0.8))'
         }}>
             {initials}
         </div>
@@ -69,10 +69,10 @@ function AvatarInitials({ name, size = 36, bg = '#E3F2FD', color = '#1565C0' }) 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 function KpiCard({ icon, label, value, sub, trend, trendPositive, accent }) {
     const colors = {
-        blue: { bg: '#EFF6FF', icon: '#3B82F6', card: '#ffffff' },
-        green: { bg: '#F0FDF4', icon: '#22C55E', card: '#ffffff' },
-        amber: { bg: '#FFFBEB', icon: '#F59E0B', card: '#ffffff' },
-        purple: { bg: '#F5F3FF', icon: '#A855F7', card: '#ffffff' },
+        blue: { bg: 'var(--blue-light, #EFF6FF)', icon: 'var(--blue-dark, #3B82F6)', card: 'var(--card-bg, #ffffff)' },
+        green: { bg: 'var(--green-light, #F0FDF4)', icon: 'var(--green-dark, #22C55E)', card: 'var(--card-bg, #ffffff)' },
+        amber: { bg: 'var(--amber-light, #FFFBEB)', icon: 'var(--amber-dark, #F59E0B)', card: 'var(--card-bg, #ffffff)' },
+        purple: { bg: 'var(--purple-light, #F5F3FF)', icon: 'var(--purple-dark, #A855F7)', card: 'var(--card-bg, #ffffff)' },
     };
     const c = colors[accent] || colors.blue;
 
@@ -81,15 +81,15 @@ function KpiCard({ icon, label, value, sub, trend, trendPositive, accent }) {
             background: c.card,
             borderRadius: 20,
             padding: '24px 20px',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-            border: '1px solid rgba(0,0,0,0.04)',
+            boxShadow: 'var(--shadow-card, 0 2px 12px rgba(0,0,0,0.06))',
+            border: '1px solid var(--bd, rgba(0,0,0,0.04))',
             display: 'flex', flexDirection: 'column', alignItems: 'center',
             textAlign: 'center', gap: 8,
             transition: 'transform 0.2s, box-shadow 0.2s',
             cursor: 'default',
         }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.1)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)'; }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = 'var(--shadow-hover, 0 8px 28px rgba(0,0,0,0.1))'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-card, 0 2px 12px rgba(0,0,0,0.06))'; }}
         >
             <div style={{
                 width: 52, height: 52, borderRadius: '50%',
@@ -98,8 +98,8 @@ function KpiCard({ icon, label, value, sub, trend, trendPositive, accent }) {
             }}>
                 {React.cloneElement(icon, { size: 24, color: c.icon })}
             </div>
-            <div style={{ fontSize: 13, color: '#94A3B8', fontWeight: 600, letterSpacing: 0.2 }}>{label}</div>
-            <div style={{ fontSize: 36, fontWeight: 800, color: '#0F172A', lineHeight: 1.1, fontFamily: 'Outfit, sans-serif' }}>
+            <div style={{ fontSize: 13, color: 'var(--muted, #94A3B8)', fontWeight: 600, letterSpacing: 0.2 }}>{label}</div>
+            <div style={{ fontSize: 36, fontWeight: 800, color: 'var(--ink, #0F172A)', lineHeight: 1.1, fontFamily: 'Outfit, sans-serif' }}>
                 {value}
             </div>
             {sub && (
@@ -112,8 +112,8 @@ function KpiCard({ icon, label, value, sub, trend, trendPositive, accent }) {
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: 4,
                     fontSize: 12, fontWeight: 700,
-                    color: trendPositive ? '#16A34A' : '#DC2626',
-                    background: trendPositive ? '#F0FDF4' : '#FFF1F2',
+                    color: trendPositive ? 'var(--green-dark, #16A34A)' : 'var(--red-dark, #DC2626)',
+                    background: trendPositive ? 'var(--green-light, #F0FDF4)' : 'var(--red-light, #FFF1F2)',
                     padding: '3px 10px', borderRadius: 20
                 }}>
                     {trendPositive ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
@@ -127,22 +127,22 @@ function KpiCard({ icon, label, value, sub, trend, trendPositive, accent }) {
 // ─── Progress Bar (Doctor Busyness) ─────────────────────────────────────────
 function DoctorBar({ name, specialty, percent, count }) {
     const pct = Math.min(percent, 100);
-    const colorMap = pct >= 80 ? '#EF4444' : pct >= 50 ? '#3B82F6' : '#22C55E';
-    const bgMap = pct >= 80 ? '#FEF2F2' : pct >= 50 ? '#EFF6FF' : '#F0FDF4';
+    const colorMap = pct >= 80 ? 'var(--red-dark, #EF4444)' : pct >= 50 ? 'var(--blue-dark, #3B82F6)' : 'var(--green-dark, #22C55E)';
+    const bgMap = pct >= 80 ? 'var(--red-light, #FEF2F2)' : pct >= 50 ? 'var(--blue-light, #EFF6FF)' : 'var(--green-light, #F0FDF4)';
 
     return (
-        <div style={{ padding: '14px 16px', background: '#FAFBFC', borderRadius: 14, border: '1px solid #F1F5F9' }}>
+        <div style={{ padding: '14px 16px', background: 'var(--hover-bg, #FAFBFC)', borderRadius: 14, border: '1px solid var(--bd, #F1F5F9)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: '#1E293B' }}>Dr. {name}</div>
-                    {specialty && <div style={{ fontSize: 11, color: '#94A3B8', fontWeight: 500 }}>{specialty}</div>}
+                    <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--ink, #1E293B)' }}>Dr. {name}</div>
+                    {specialty && <div style={{ fontSize: 11, color: 'var(--muted, #94A3B8)', fontWeight: 500 }}>{specialty}</div>}
                 </div>
                 <div style={{
                     background: bgMap, color: colorMap,
                     fontSize: 12, fontWeight: 800, padding: '3px 10px', borderRadius: 20
                 }}>{count} ta / {pct}%</div>
             </div>
-            <div style={{ height: 7, background: '#E2E8F0', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ height: 7, background: 'var(--bd, #E2E8F0)', borderRadius: 4, overflow: 'hidden' }}>
                 <div style={{
                     height: '100%', width: `${pct}%`, background: colorMap,
                     borderRadius: 4, transition: 'width 1s ease'
@@ -157,12 +157,12 @@ function CustomTooltip({ active, payload, label }) {
     if (!active || !payload?.length) return null;
     return (
         <div style={{
-            background: '#fff', borderRadius: 12, padding: '10px 16px',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.12)', border: '1px solid #F1F5F9'
+            background: 'var(--card-bg, #fff)', borderRadius: 12, padding: '10px 16px',
+            boxShadow: 'var(--shadow-card, 0 8px 30px rgba(0,0,0,0.12))', border: '1px solid var(--bd, #F1F5F9)'
         }}>
-            <div style={{ fontSize: 12, color: '#64748B', marginBottom: 4, fontWeight: 600 }}>{label}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#0F172A' }}>
-                {payload[0].value} <span style={{ fontSize: 12, fontWeight: 500, color: '#94A3B8' }}>qabul</span>
+            <div style={{ fontSize: 12, color: 'var(--muted, #64748B)', marginBottom: 4, fontWeight: 600 }}>{label}</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--ink, #0F172A)' }}>
+                {payload[0].value} <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--muted, #94A3B8)' }}>qabul</span>
             </div>
         </div>
     );
@@ -170,11 +170,11 @@ function CustomTooltip({ active, payload, label }) {
 
 // ─── Avatar colors ────────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
-    { bg: '#DBEAFE', color: '#1D4ED8' },
-    { bg: '#FCE7F3', color: '#9D174D' },
-    { bg: '#D1FAE5', color: '#065F46' },
-    { bg: '#FEF3C7', color: '#92400E' },
-    { bg: '#EDE9FE', color: '#5B21B6' },
+    { bg: 'var(--blue-light, #DBEAFE)', color: 'var(--blue-dark, #1D4ED8)' },
+    { bg: 'var(--pink-light, #FCE7F3)', color: 'var(--pink-dark, #9D174D)' },
+    { bg: 'var(--green-light, #D1FAE5)', color: 'var(--green-dark, #065F46)' },
+    { bg: 'var(--amber-light, #FEF3C7)', color: 'var(--amber-dark, #92400E)' },
+    { bg: 'var(--purple-light, #EDE9FE)', color: 'var(--purple-dark, #5B21B6)' },
 ];
 
 // ─── Main Dashboard Component ────────────────────────────────────────────────
@@ -290,15 +290,15 @@ export default function Dashboard() {
     const displayChart = stats.chartData.slice(-7);
 
     return (
-        <div style={{ fontFamily: "'Outfit', 'Inter', sans-serif", color: '#0F172A', paddingBottom: 40 }} className="dash-root">
+        <div style={{ fontFamily: "'Outfit', 'Inter', sans-serif", color: 'var(--ink, #0F172A)', paddingBottom: 40 }} className="dash-root">
 
             {/* ── Page Header ──────────────────────────────────────────────────── */}
             <div className="dash-header">
                 <div>
-                    <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', margin: 0, letterSpacing: -0.5 }}>
+                    <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--ink, #0F172A)', margin: 0, letterSpacing: -0.5 }}>
                         Boshqaruv paneli
                     </h1>
-                    <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748B', fontWeight: 500 }} className="dash-date">
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--muted, #64748B)', fontWeight: 500 }} className="dash-date">
                         {new Date().toLocaleDateString('uz-UZ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
@@ -308,9 +308,9 @@ export default function Dashboard() {
                         disabled={refreshing}
                         style={{
                             display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '9px 14px', borderRadius: 12, border: '1.5px solid #E2E8F0',
-                            background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 13,
-                            color: '#64748B', transition: 'all 0.2s',
+                            padding: '9px 14px', borderRadius: 12, border: '1.5px solid var(--bd, #E2E8F0)',
+                            background: 'var(--card-bg, #fff)', cursor: 'pointer', fontWeight: 600, fontSize: 13,
+                            color: 'var(--muted, #64748B)', transition: 'all 0.2s',
                         }}
                     >
                         <RefreshCw size={15} style={{ animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }} />
@@ -373,15 +373,15 @@ export default function Dashboard() {
 
                     {/* Chart Card */}
                     <div style={{
-                        background: '#fff', borderRadius: 20, padding: '28px 28px 20px',
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)'
+                        background: 'var(--card-bg, #fff)', borderRadius: 20, padding: '28px 28px 20px',
+                        boxShadow: 'var(--shadow-card, 0 2px 12px rgba(0,0,0,0.06))', border: '1px solid var(--bd, rgba(0,0,0,0.04))'
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                             <div>
-                                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                                <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink, #0F172A)', margin: 0 }}>
                                     Tashriflar dinamikasi
                                 </h3>
-                                <p style={{ fontSize: 12, color: '#94A3B8', margin: '4px 0 0', fontWeight: 500 }}>
+                                <p style={{ fontSize: 12, color: 'var(--muted, #94A3B8)', margin: '4px 0 0', fontWeight: 500 }}>
                                     So'nggi 7 kun
                                 </p>
                             </div>
@@ -389,8 +389,8 @@ export default function Dashboard() {
                                 onClick={() => navigate('/reports')}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: 6,
-                                    fontSize: 13, fontWeight: 600, color: '#3B82F6',
-                                    background: '#EFF6FF', border: 'none', borderRadius: 10,
+                                    fontSize: 13, fontWeight: 600, color: 'var(--primary, #3B82F6)',
+                                    background: 'var(--primary-light, #EFF6FF)', border: 'none', borderRadius: 10,
                                     padding: '7px 14px', cursor: 'pointer'
                                 }}
                             >
@@ -432,15 +432,15 @@ export default function Dashboard() {
 
                     {/* Today Appointments Table */}
                     <div style={{
-                        background: '#fff', borderRadius: 20, padding: '24px 28px',
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)'
+                        background: 'var(--card-bg, #fff)', borderRadius: 20, padding: '24px 28px',
+                        boxShadow: 'var(--shadow-card, 0 2px 12px rgba(0,0,0,0.06))', border: '1px solid var(--bd, rgba(0,0,0,0.04))'
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                             <div>
-                                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                                <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink, #0F172A)', margin: 0 }}>
                                     Bugungi qabul ro'yxati
                                 </h3>
-                                <p style={{ fontSize: 12, color: '#94A3B8', margin: '4px 0 0', fontWeight: 500 }}>
+                                <p style={{ fontSize: 12, color: 'var(--muted, #94A3B8)', margin: '4px 0 0', fontWeight: 500 }}>
                                     Jami {stats.todayAppts} ta qabul
                                 </p>
                             </div>
@@ -490,19 +490,19 @@ export default function Dashboard() {
                                                 onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
                                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                             >
-                                                <td style={{ padding: '12px 12px', fontSize: 13, fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>
+                                                <td style={{ padding: '12px 12px', fontSize: 13, fontWeight: 700, color: 'var(--muted, #475569)', whiteSpace: 'nowrap' }}>
                                                     {fmtTime(appt.startsAt || appt.startAt || appt.appointmentDate || appt.createdAt)}
                                                 </td>
                                                 <td style={{ padding: '12px 12px' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                                         <AvatarInitials name={patientName} size={34} bg={ac.bg} color={ac.color} />
-                                                        <span style={{ fontWeight: 700, fontSize: 14, color: '#1E293B' }}>{patientName}</span>
+                                                        <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--ink, #1E293B)' }}>{patientName}</span>
                                                     </div>
                                                 </td>
-                                                <td style={{ padding: '12px 12px', fontSize: 13, color: '#64748B', fontWeight: 600 }}>
+                                                <td style={{ padding: '12px 12px', fontSize: 13, color: 'var(--muted, #64748B)', fontWeight: 600 }}>
                                                     {doctorName !== '---' ? `Dr. ${doctorName}` : '---'}
                                                 </td>
-                                                <td style={{ padding: '12px 12px', fontSize: 13, color: '#64748B', fontWeight: 500, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                <td style={{ padding: '12px 12px', fontSize: 13, color: 'var(--muted, #64748B)', fontWeight: 500, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                     {service}
                                                 </td>
                                                 <td style={{ padding: '12px 12px' }}>
@@ -522,15 +522,15 @@ export default function Dashboard() {
 
                     {/* Band doktorlar */}
                     <div style={{
-                        background: '#fff', borderRadius: 20, padding: '24px 20px',
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)'
+                        background: 'var(--card-bg, #fff)', borderRadius: 20, padding: '24px 20px',
+                        boxShadow: 'var(--shadow-card, 0 2px 12px rgba(0,0,0,0.06))', border: '1px solid var(--bd, rgba(0,0,0,0.04))'
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-                            <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0 }}>Band doktorlar</h3>
+                            <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink, #0F172A)', margin: 0 }}>Band doktorlar</h3>
                             <button
                                 onClick={() => navigate('/doctors')}
                                 style={{
-                                    fontSize: 12, color: '#3B82F6', background: 'none',
+                                    fontSize: 12, color: 'var(--primary, #3B82F6)', background: 'none',
                                     border: 'none', cursor: 'pointer', fontWeight: 700,
                                     display: 'flex', alignItems: 'center', gap: 4
                                 }}
@@ -557,10 +557,10 @@ export default function Dashboard() {
 
                     {/* Status Summary */}
                     <div style={{
-                        background: '#fff', borderRadius: 20, padding: '24px 20px',
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.04)'
+                        background: 'var(--card-bg, #fff)', borderRadius: 20, padding: '24px 20px',
+                        boxShadow: 'var(--shadow-card, 0 2px 12px rgba(0,0,0,0.06))', border: '1px solid var(--bd, rgba(0,0,0,0.04))'
                     }}>
-                        <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: '0 0 16px' }}>
+                        <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--ink, #0F172A)', margin: '0 0 16px' }}>
                             Holat xulosasi
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

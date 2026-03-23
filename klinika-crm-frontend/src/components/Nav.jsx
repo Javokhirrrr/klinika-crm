@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import ThemeToggle from "./ThemeToggle";
 
 const Item = ({ to, children, onClick }) => (
   <NavLink
@@ -67,6 +68,7 @@ export default function Nav() {
               {org.code && <div className="orgCode">Kod: {org.code}</div>}
             </div>
           )}
+          <ThemeToggle />
           <button
             onClick={() => {
               logout();
