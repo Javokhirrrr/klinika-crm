@@ -27,35 +27,55 @@ export default function GlobalTreatmentPlans() {
     }, [statusFilter]);
 
     return (
-        <div className="page">
-            <div className="row" style={{ alignItems: "center", marginBottom: 16 }}>
-                <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <FiClipboard /> Davolash Rejalari
+        <div className="flex flex-col gap-6 w-full animate-in fade-in duration-300 pb-8">
+            <div className="flex flex-col gap-1.5">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-800 flex items-center gap-2 m-0">
+                    <FiClipboard className="text-blue-600" /> Davolash Rejalari
                 </h2>
+                <p className="text-sm text-slate-500 m-0">Klinikadagi barcha bemorlarning davolash jarayonlari va holatlari</p>
             </div>
 
-            <div className="card" style={{ marginBottom: 16 }}>
-                <div className="row" style={{ gap: 12, alignItems: 'center' }}>
-                    <select className="input" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: 180 }}>
+            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row gap-4 items-center">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <label className="text-sm font-medium text-slate-700 whitespace-nowrap">Holat:</label>
+                    <select 
+                        className="flex h-10 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-colors sm:w-[200px]"
+                        value={statusFilter} 
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                    >
                         <option value="all">Barcha Holatlar</option>
                         <option value="active">Faol</option>
                         <option value="completed">Tugallangan</option>
                         <option value="cancelled">Bekor qilingan</option>
                     </select>
-                    <button className="btn" onClick={loadPlans}>Yangilash</button>
-                    <span className="muted" style={{ marginLeft: 'auto', fontSize: '0.9rem' }}>
-                        * Yangi davolash rejasi tuzish uchun mos bemor profiliga kiring.
-                    </span>
                 </div>
+                
+                <button 
+                    className="inline-flex h-10 items-center justify-center rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 w-full sm:w-auto"
+                    onClick={loadPlans}
+                >
+                    Yangilash
+                </button>
+                
+                <span className="text-sm text-slate-500 sm:ml-auto bg-slate-50 px-4 py-2 rounded-lg border border-slate-100 flex items-center gap-2">
+                    <FiUser className="text-slate-400" /> 
+                    Yangi davolash rejasi tuzish uchun bemor profiliga kiring.
+                </span>
             </div>
 
-            <div className="card" style={{ background: 'transparent', boxShadow: 'none', padding: 0 }}>
+            <div className="w-full">
                 {loading ? (
-                    <div style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: 8 }}>Yuklanmoqda...</div>
+                    <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl border border-slate-200">
+                        <div className="w-8 h-8 rounded-full border-4 border-blue-100 border-t-blue-600 animate-spin mb-4"></div>
+                        <p className="text-slate-500 font-medium">Yuklanmoqda...</p>
+                    </div>
                 ) : plans.length === 0 ? (
-                    <div className="empty-state" style={{ padding: '60px 0', background: 'white', borderRadius: 8, border: '1px dashed #e5e7eb' }}>
-                        <FiClipboard size={48} color="#9ca3af" />
-                        <h3 style={{ marginTop: 16, color: '#4b5563' }}>Rejalar topilmadi</h3>
+                    <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl border border-dashed border-slate-300">
+                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                            <FiClipboard size={28} className="text-slate-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-700 m-0">Rejalar topilmadi</h3>
+                        <p className="text-sm text-slate-500 mt-1">Tanlangan holat bo'yicha ma'lumot yo'q</p>
                     </div>
                 ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: 16 }}>
