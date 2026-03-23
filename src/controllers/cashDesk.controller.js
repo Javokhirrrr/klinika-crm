@@ -257,7 +257,7 @@ export async function getStats(req, res) {
 
       // Oylik kirim/chiqim jami
       CashTransaction.aggregate([
-        { $match: { orgId: desks?.[0]?.orgId || orgId, createdAt: { $gte: startDate, $lte: endDate } } },
+        { $match: { orgId, createdAt: { $gte: startDate, $lte: endDate } } },
         { $group: {
           _id: '$type',
           total: { $sum: '$amount' },
