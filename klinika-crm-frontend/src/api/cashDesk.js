@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE = import.meta.env.VITE_API_URL || '';
+const BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
 
 const api = axios.create({
   baseURL: `${BASE}/api/cash-desks`,
@@ -8,7 +8,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((cfg) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('accessToken');
   if (token) cfg.headers.Authorization = `Bearer ${token}`;
   return cfg;
 });
