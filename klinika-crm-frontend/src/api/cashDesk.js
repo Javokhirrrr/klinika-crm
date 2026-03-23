@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
+const RAW_URL = import.meta.env.VITE_API_URL || 'https://klinika-crm-production.up.railway.app';
+const BASE = RAW_URL.trim().replace(/\/+$/, '');
 
 const api = axios.create({
   baseURL: `${BASE}/api/cash-desks`,
