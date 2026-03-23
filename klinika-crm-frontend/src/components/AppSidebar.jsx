@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import {
     Home, Users, Calendar, Settings, LogOut,
     UserCheck, LayoutGrid, Stethoscope, CreditCard, ListOrdered,
-    TrendingUp, Activity, Banknote, Send, BarChart2, AlertCircle, ShieldCheck, Video, Landmark
+    TrendingUp, Activity, Banknote, Send, BarChart2, AlertCircle, ShieldCheck, Video, Landmark, ClipboardList
 } from "lucide-react";
 
 // ─── Rollar: kim qaysi sahifani ko'ra oladi ───────────────────────────────────
@@ -15,6 +15,7 @@ const ALL_MENU_ITEMS = [
     { to: "/", icon: Home, label: "Bosh sahifa" },
     { to: "/patients", icon: Users, label: "Bemorlar", roles: [...ADMIN_ROLES, "receptionist", "cashier"] },
     { to: "/appointments", icon: Calendar, label: "Qabullar", roles: [...ADMIN_ROLES, "receptionist", "cashier"] },
+    { to: "/treatment-plans", icon: ClipboardList, label: "Davolash rejalari", roles: [...ADMIN_ROLES, "doctor", "receptionist", "cashier"] },
     { to: "/doctor-room", icon: Stethoscope, label: "Shifokor xonasi", roles: [...ADMIN_ROLES, "doctor"] },
     { to: "/doctors", icon: UserCheck, label: "Shifokorlar", roles: ADMIN_ROLES },
     { to: "/payments", icon: CreditCard, label: "To'lovlar", roles: [...ADMIN_ROLES, "cashier"] },

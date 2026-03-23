@@ -64,6 +64,7 @@ const OutstandingDebts = lazy(() => import("./pages/OutstandingDebts.jsx"));
 const VideoAppointments = lazy(() => import("./pages/VideoAppointments.jsx"));
 const KioskPage = lazy(() => import("./pages/KioskPage.jsx"));
 const CashDesk = lazy(() => import("./pages/CashDesk.jsx"));
+const GlobalTreatmentPlans = lazy(() => import("./pages/GlobalTreatmentPlans.jsx"));
 
 
 // Other pages (less visited)
@@ -138,6 +139,7 @@ export default function App() {
                   <Route path="/doctor-room" element={<SimpleDoctorRoom />} />
                   <Route path="/doctors" element={<SimpleDoctors />} />
                   <Route path="/services" element={<SimpleServices />} />
+                  <Route path="/treatment-plans" element={<GlobalTreatmentPlans />} />
                   <Route path="/payments" element={<SimplePayments />} />
                   <Route path="/reports" element={<SimpleReports />} />
                   <Route path="/calendar" element={<SimpleCalendar />} />

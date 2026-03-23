@@ -1,0 +1,150 @@
+.treatment-plans-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.plan-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.plan-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.plan-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.plan-title {
+  margin: 0 0 4px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.plan-meta {
+  font-size: 0.85rem;
+  color: #6b7280;
+  display: flex;
+  gap: 16px;
+}
+
+.plan-status {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.plan-status.active { background: #e0f2fe; color: #0284c7; }
+.plan-status.completed { background: #dcfce7; color: #166534; }
+.plan-status.cancelled { background: #fee2e2; color: #991b1b; }
+
+.plan-progress-container {
+  margin-bottom: 16px;
+}
+.plan-progress-bar {
+  height: 8px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.plan-progress-fill {
+  height: 100%;
+  background: #10b981;
+  transition: width 0.3s ease;
+}
+.plan-progress-text {
+  font-size: 0.8rem;
+  color: #4b5563;
+  text-align: right;
+  font-weight: 500;
+}
+
+.plan-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+.plan-items-table th {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 2px solid #e5e7eb;
+  color: #374151;
+  font-weight: 600;
+}
+.plan-items-table td {
+  padding: 8px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #111827;
+}
+.item-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #10b981;
+}
+
+.plan-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+.plan-totals {
+  display: flex;
+  gap: 24px;
+}
+.plan-total-item {
+  display: flex;
+  flex-direction: column;
+}
+.plan-total-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.plan-total-val {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Modal specific */
+.service-items-wrapper {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 12px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+.service-item-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+  background: white;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+.service-item-row:last-child {
+  margin-bottom: 0;
+}

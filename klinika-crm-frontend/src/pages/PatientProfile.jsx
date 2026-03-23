@@ -4,9 +4,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     FiUser, FiPhone, FiMail, FiCalendar, FiMapPin, FiHeart,
     FiFileText, FiDollarSign, FiClock, FiActivity, FiAlertCircle,
-    FiPlus, FiEdit2, FiTrash2, FiDownload, FiUpload, FiX
+    FiPlus, FiEdit2, FiTrash2, FiDownload, FiUpload, FiX, FiClipboard
 } from 'react-icons/fi';
 import http from '../lib/http';
+import TreatmentPlansTab from '../components/TreatmentPlan/TreatmentPlansTab';
 import './PatientProfile.css';
 
 export default function PatientProfile() {
@@ -211,6 +212,12 @@ export default function PatientProfile() {
                 >
                     <FiCalendar /> Qabullar ({appointments.total || 0})
                 </button>
+                <button
+                    className={`tab ${activeTab === 'treatment-plans' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('treatment-plans')}
+                >
+                    <FiClipboard /> Davolash Rejalari
+                </button>
             </div>
 
             {/* Tab Content */}
@@ -237,6 +244,10 @@ export default function PatientProfile() {
 
                 {activeTab === 'appointments' && (
                     <AppointmentsTab appointments={appointments.items || []} />
+                )}
+
+                {activeTab === 'treatment-plans' && (
+                    <TreatmentPlansTab patient={patient} />
                 )}
             </div>
 
