@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const RAW_URL = import.meta.env.VITE_API_URL || 'https://klinika-crm-production.up.railway.app';
+const RAW_URL = import.meta.env.VITE_API_URL || '';
 const BASE = RAW_URL.trim().replace(/\/+$/, '');
 
 const api = axios.create({
