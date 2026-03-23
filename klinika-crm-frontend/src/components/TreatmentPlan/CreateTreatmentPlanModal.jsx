@@ -115,14 +115,16 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
     };
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-container" style={{ maxWidth: '800px', width: '95vw' }} onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h2>Yangi Davolash Rejasi</h2>
-                    <button className="modal-close" onClick={onClose}><FiX /></button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 sm:p-6 animate-in fade-in duration-200" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-2xl flex flex-col w-full max-w-4xl max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+                    <h2 className="text-xl font-bold text-slate-800 m-0">Yangi Davolash Rejasi</h2>
+                    <button type="button" className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors" onClick={onClose}>
+                        <FiX size={20} />
+                    </button>
                 </div>
                 
-                <form onSubmit={handleSubmit} className="modal-body">
+                <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1">
                     <div className="form-group" style={{ marginBottom: 12 }}>
                         <label>Bemor *</label>
                         {patient ? (
@@ -156,9 +158,9 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
                     </div>
 
                     <div className="form-group">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <label style={{ margin: 0 }}>Muolaja Bosqichlari (Xizmatlar) *</label>
-                            <button type="button" className="btn-secondary" onClick={handleAddItem} style={{ padding: '4px 8px', fontSize: '0.8rem' }}>
+                        <div className="flex justify-between items-center mb-4">
+                            <label className="m-0 font-medium tracking-tight text-slate-800">Muolaja Bosqichlari (Xizmatlar) *</label>
+                            <button type="button" className="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-medium text-sm hover:bg-blue-100 transition-colors" onClick={handleAddItem}>
                                 <FiPlus /> Xizmat qo'shish
                             </button>
                         </div>
@@ -205,14 +207,14 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
                         <textarea className="form-textarea" rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}></textarea>
                     </div>
 
-                    <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
-                        <div className="grand-total-display">
-                            <span className="grand-total-label">Jami:</span>
-                            <span className="grand-total-value">{grandTotal.toLocaleString()} so'm</span>
+                    <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-200">
+                        <div className="flex items-center gap-3 bg-slate-900 text-white px-6 py-3 rounded-xl shadow-lg">
+                            <span className="text-sm uppercase tracking-wider text-slate-400 font-medium">Jami:</span>
+                            <span className="text-xl font-bold">{grandTotal.toLocaleString()} so'm</span>
                         </div>
-                        <div style={{ display: 'flex', gap: 12 }}>
-                            <button type="button" className="btn-secondary" onClick={onClose} disabled={loading} style={{ padding: '10px 20px' }}>Bekor qilish</button>
-                            <button type="submit" className="btn-primary" disabled={loading} style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div className="flex items-center gap-3">
+                            <button type="button" className="px-6 py-2.5 rounded-lg border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 hover:text-slate-900 transition-colors bg-white shadow-sm" onClick={onClose} disabled={loading}>Bekor qilish</button>
+                            <button type="submit" className="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors shadow-md flex items-center gap-2 disabled:opacity-50" disabled={loading}>
                                 <FiSave /> {loading ? "Saqlanmoqda..." : "Rejani Saqlash"}
                             </button>
                         </div>
