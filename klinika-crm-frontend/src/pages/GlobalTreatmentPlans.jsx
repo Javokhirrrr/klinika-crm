@@ -76,11 +76,14 @@ export default function GlobalTreatmentPlans() {
                                     </div>
                                 </div>
 
-                                <div className="plan-progress-container" style={{ marginBottom: 12 }}>
-                                    <div className="plan-progress-bar">
-                                        <div className="plan-progress-fill" style={{ width: `${plan.progress || 0}%`, background: plan.progress === 100 ? '#10b981' : '#3b82f6' }}></div>
+                                <div className="plan-progress-container" style={{ marginBottom: 16 }}>
+                                    <div className="plan-progress-header">
+                                        <span className="plan-progress-label">Bajarilish holati</span>
+                                        <span className="plan-progress-text">{plan.progress || 0}% Bajarildi</span>
                                     </div>
-                                    <div className="plan-progress-text">{plan.progress || 0}% Bajarildi ({plan.items?.filter(i => i.status==='completed')?.length || 0} / {plan.items?.length || 0})</div>
+                                    <div className="plan-progress-bar">
+                                        <div className={`plan-progress-fill ${plan.progress === 100 ? 'completed' : ''}`} style={{ width: `${plan.progress || 0}%` }}></div>
+                                    </div>
                                 </div>
                                 
                                 <div className="plan-footer" style={{ borderTop: 'none', paddingTop: 0 }}>

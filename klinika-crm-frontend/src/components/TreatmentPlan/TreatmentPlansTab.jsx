@@ -32,10 +32,13 @@ function TreatmentPlanCard({ plan, onStatusChange }) {
             </div>
 
             <div className="plan-progress-container">
-                <div className="plan-progress-bar">
-                    <div className="plan-progress-fill" style={{ width: `${plan.progress || 0}%`, background: plan.progress === 100 ? '#10b981' : '#3b82f6' }}></div>
+                <div className="plan-progress-header">
+                    <span className="plan-progress-label">Bajarilish holati</span>
+                    <span className="plan-progress-text">{plan.progress || 0}% Bajarildi</span>
                 </div>
-                <div className="plan-progress-text">{plan.progress || 0}% Bajarildi</div>
+                <div className="plan-progress-bar">
+                    <div className={`plan-progress-fill ${plan.progress === 100 ? 'completed' : ''}`} style={{ width: `${plan.progress || 0}%` }}></div>
+                </div>
             </div>
 
             <table className="plan-items-table">
@@ -49,8 +52,8 @@ function TreatmentPlanCard({ plan, onStatusChange }) {
                 </thead>
                 <tbody>
                     {plan.items?.map(it => (
-                        <tr key={it._id} style={{ opacity: it.status === 'completed' ? 0.6 : 1 }}>
-                            <td>
+                        <tr key={it._id} className={it.status === 'completed' ? 'item-completed' : ''}>
+                            <td style={{ textAlign: 'center' }}>
                                 <input 
                                     type="checkbox" 
                                     className="item-checkbox" 
@@ -58,12 +61,12 @@ function TreatmentPlanCard({ plan, onStatusChange }) {
                                     onChange={() => handleCheck(it)}
                                 />
                             </td>
-                            <td style={{ textDecoration: it.status === 'completed' ? 'line-through' : 'none' }}>
+                            <td>
                                 <strong>{it.name}</strong>
-                                {it.quantity > 1 && <span style={{ fontSize: '0.8rem', color: '#6b7280', marginLeft: 6 }}>x{it.quantity}</span>}
+                                {it.quantity > 1 && <span className="item-quantity">x{it.quantity}</span>}
                             </td>
-                            <td>{it.tooth ? <span style={{ background: '#f3f4f6', padding: '2px 6px', borderRadius: 4, fontSize: '0.8rem' }}>{it.tooth}</span> : '—'}</td>
-                            <td style={{ textAlign: 'right', fontWeight: 500 }}>
+                            <td>{it.tooth ? <span className="tooth-badge">{it.tooth}</span> : '—'}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 600 }}>
                                 {it.totalAmount?.toLocaleString()} so'm
                             </td>
                         </tr>

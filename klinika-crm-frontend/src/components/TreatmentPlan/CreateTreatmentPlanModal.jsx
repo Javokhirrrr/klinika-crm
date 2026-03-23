@@ -156,22 +156,22 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
                                 </div>
                                 {items.map((it, idx) => (
                                     <div key={idx} className="service-item-row">
-                                        <select className="form-select" style={{ padding: '6px' }}
+                                        <select className="form-select" 
                                             value={it.serviceId} onChange={e => handleItemChange(idx, 'serviceId', e.target.value)} required>
                                             <option value="">Tanlang</option>
                                             {services.map(s => (
                                                 <option key={s._id || s.id} value={s._id || s.id}>{s.name} ({s.price} so'm)</option>
                                             ))}
                                         </select>
-                                        <input type="text" className="form-input" placeholder="Misol: 11,12" style={{ padding: '6px' }}
+                                        <input type="text" className="form-input" placeholder="Misol: 11,12" 
                                             value={it.tooth} onChange={e => handleItemChange(idx, 'tooth', e.target.value)} />
-                                        <input type="number" className="form-input" min="0" style={{ padding: '6px' }}
+                                        <input type="number" className="form-input" min="0" 
                                             value={it.price} onChange={e => handleItemChange(idx, 'price', e.target.value)} required />
-                                        <input type="number" className="form-input" min="1" style={{ padding: '6px' }}
+                                        <input type="number" className="form-input" min="1" 
                                             value={it.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)} required />
-                                        <input type="number" className="form-input" min="0" style={{ padding: '6px' }}
+                                        <input type="number" className="form-input" min="0" 
                                             value={it.discount} onChange={e => handleItemChange(idx, 'discount', e.target.value)} />
-                                        <button type="button" onClick={() => handleRemoveItem(idx)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}>
+                                        <button type="button" className="remove-btn" onClick={() => handleRemoveItem(idx)}>
                                             <FiTrash2 />
                                         </button>
                                     </div>
@@ -186,13 +186,14 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
                         <textarea className="form-textarea" rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}></textarea>
                     </div>
 
-                    <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>
-                            Jami: {grandTotal.toLocaleString()} so'm
+                    <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 24 }}>
+                        <div className="grand-total-display">
+                            <span className="grand-total-label">Jami:</span>
+                            <span className="grand-total-value">{grandTotal.toLocaleString()} so'm</span>
                         </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>Bekor qilish</button>
-                            <button type="submit" className="btn-primary" disabled={loading}>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <button type="button" className="btn-secondary" onClick={onClose} disabled={loading} style={{ padding: '10px 20px' }}>Bekor qilish</button>
+                            <button type="submit" className="btn-primary" disabled={loading} style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <FiSave /> {loading ? "Saqlanmoqda..." : "Rejani Saqlash"}
                             </button>
                         </div>
