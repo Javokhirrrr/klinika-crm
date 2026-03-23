@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiClipboard, FiPlus, FiUser } from 'react-icons/fi';
 import { treatmentPlanApi } from '../api/treatmentPlan';
+import CreateTreatmentPlanModal from '../components/TreatmentPlan/CreateTreatmentPlanModal';
 import '../components/TreatmentPlan/TreatmentPlan.css';
-
 export default function GlobalTreatmentPlans() {
     const [plans, setPlans] = useState([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState('active'); // all, active, completed, cancelled
+    const [showModal, setShowModal] = useState(false);
     const navigate = useNavigate();
 
     const loadPlans = async () => {
@@ -28,14 +29,22 @@ export default function GlobalTreatmentPlans() {
 
     return (
         <div className="flex flex-col gap-6 w-full animate-in fade-in duration-300 pb-8">
-            <div className="flex flex-col gap-1.5">
-                <h2 className="text-2xl font-bold tracking-tight text-slate-800 flex items-center gap-2 m-0">
-                    <FiClipboard className="text-blue-600" /> Davolash Rejalari
-                </h2>
-                <p className="text-sm text-slate-500 m-0">Klinikadagi barcha bemorlarning davolash jarayonlari va holatlari</p>
+            <div className="flex flex-col sm:flex-row justify-between gap-4">
+                <div className="flex flex-col gap-1.5">
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-800 flex items-center gap-2 m-0">
+                        <FiClipboard className="text-blue-600" /> Davolash Rejalari
+                    </h2>
+                    <p className="text-sm text-slate-500 m-0">Klinikadagi barcha bemorlarning davolash jarayonlari va holatlari</p>
+                </div>
+                <button 
+                    className="inline-flex h-10 items-center justify-center rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 sm:w-auto w-full gap-2"
+                    onClick={() => setShowModal(true)}
+                >
+                    <FiPlus /> Yangi Davolash Rejasi
+                </button>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row gap-4 items-center">
+            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row justify-between gap-4 items-center">
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                     <label className="text-sm font-medium text-slate-700 whitespace-nowrap">Holat:</label>
                     <select 
@@ -51,16 +60,11 @@ export default function GlobalTreatmentPlans() {
                 </div>
                 
                 <button 
-                    className="inline-flex h-10 items-center justify-center rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 w-full sm:w-auto"
+                    className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 px-6 py-2 text-sm font-medium shadow-sm transition-colors w-full sm:w-auto"
                     onClick={loadPlans}
                 >
                     Yangilash
                 </button>
-                
-                <span className="text-sm text-slate-500 sm:ml-auto bg-slate-50 px-4 py-2 rounded-lg border border-slate-100 flex items-center gap-2">
-                    <FiUser className="text-slate-400" /> 
-                    Yangi davolash rejasi tuzish uchun bemor profiliga kiring.
-                </span>
             </div>
 
             <div className="w-full">
@@ -125,6 +129,17 @@ export default function GlobalTreatmentPlans() {
                     </div>
                 )}
             </div>
+
+            {showModal && (
+                <CreateTreatmentPlanModal 
+                    patient={null}
+                    onClose={() => setShowModal(false)}
+                    onSave={() => {
+                        setShowModal(false);
+                        loadPlans();
+                    }}
+                />
+            )}
         </div>
     );
 }

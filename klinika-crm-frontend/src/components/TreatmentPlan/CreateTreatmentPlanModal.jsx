@@ -8,6 +8,8 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
     const [loading, setLoading] = useState(false);
     const [doctors, setDoctors] = useState([]);
     const [services, setServices] = useState([]);
+    const [patients, setPatients] = useState([]);
+    const [selectedPatientId, setSelectedPatientId] = useState(patient?._id || patient?.id || '');
     
     const [form, setForm] = useState({
         diagnosis: '',
@@ -24,12 +26,18 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
     const loadDependencies = async () => {
         try {
             // Load Doctors
-            const docsRes = await http.get('/users?role=doctor');
+            const docsRes = await http.get('/doctors', { limit: 200 });
             setDoctors(Array.isArray(docsRes.items) ? docsRes.items : (Array.isArray(docsRes) ? docsRes : []));
             
             // Load Services
-            const srvRes = await http.get('/services');
+            const srvRes = await http.get('/services', { limit: 200 });
             setServices(Array.isArray(srvRes.items) ? srvRes.items : (Array.isArray(srvRes) ? srvRes : []));
+
+            // Load Patients if no patient provided
+            if (!patient) {
+                const patRes = await http.get('/patients', { limit: 500 });
+                setPatients(Array.isArray(patRes.items) ? patRes.items : (Array.isArray(patRes) ? patRes : []));
+            }
         } catch (err) {
             console.error(err);
         }
@@ -72,6 +80,8 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        const pId = patient?._id || patient?.id || selectedPatientId;
+        if (!pId) return alert("Bemorni tanlash majburiy!");
         if (!form.diagnosis.trim()) return alert("Diagnozni kiritish majburiy!");
         if (!form.doctorId) return alert("Mas'ul shifokorni tanlang!");
         if (items.length === 0) return alert("Kamida 1 ta xizmat qo'shing!");
@@ -90,7 +100,7 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
         setLoading(true);
         try {
             await treatmentPlanApi.createPlan({
-                patientId: patient._id || patient.id,
+                patientId: pId,
                 doctorId: form.doctorId,
                 diagnosis: form.diagnosis,
                 notes: form.notes,
@@ -114,8 +124,17 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
                 
                 <form onSubmit={handleSubmit} className="modal-body">
                     <div className="form-group" style={{ marginBottom: 12 }}>
-                        <label>Bemor</label>
-                        <input type="text" className="form-input" disabled value={`${patient.firstName} ${patient.lastName}`} />
+                        <label>Bemor *</label>
+                        {patient ? (
+                            <input type="text" className="form-input bg-slate-50 border-slate-200" disabled value={`${patient.firstName} ${patient.lastName}`} />
+                        ) : (
+                            <select className="form-select bg-white border-slate-200 p-2 rounded-md focus:ring-2 focus:ring-blue-500/50 w-full" required value={selectedPatientId} onChange={e => setSelectedPatientId(e.target.value)}>
+                                <option value="">Tanlang...</option>
+                                {patients.map(p => (
+                                    <option key={p._id} value={p._id}>{p.firstName} {p.lastName} {p.phone ? `(${p.phone})` : ''}</option>
+                                ))}
+                            </select>
+                        )}
                     </div>
 
                     <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
