@@ -128,9 +128,9 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
                     <div className="form-group" style={{ marginBottom: 12 }}>
                         <label>Bemor *</label>
                         {patient ? (
-                            <input type="text" className="form-input bg-slate-50 border-slate-200" disabled value={`${patient.firstName} ${patient.lastName}`} />
+                            <input type="text" className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 border-slate-200" disabled value={`${patient.firstName} ${patient.lastName}`} />
                         ) : (
-                            <select className="form-select bg-white border-slate-200 p-2 rounded-md focus:ring-2 focus:ring-blue-500/50 w-full" required value={selectedPatientId} onChange={e => setSelectedPatientId(e.target.value)}>
+                            <select className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white border-slate-200 p-2 rounded-md focus:ring-2 focus:ring-blue-500/50 w-full" required value={selectedPatientId} onChange={e => setSelectedPatientId(e.target.value)}>
                                 <option value="">Tanlang...</option>
                                 {patients.map(p => (
                                     <option key={p._id} value={p._id}>{p.firstName} {p.lastName} {p.phone ? `(${p.phone})` : ''}</option>
@@ -142,13 +142,13 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
                     <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                         <div className="form-group">
                             <label>Diagnoz / Reja Nomi *</label>
-                            <input type="text" className="form-input" required 
+                            <input type="text" className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required 
                                 value={form.diagnosis} onChange={e => setForm({...form, diagnosis: e.target.value})} 
                                 placeholder="Masalan: Yuqori jag' implantatsiyasi" />
                         </div>
                         <div className="form-group">
                             <label>Mas'ul Shifokor *</label>
-                            <select className="form-select" required value={form.doctorId} onChange={e => setForm({...form, doctorId: e.target.value})}>
+                            <select className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required value={form.doctorId} onChange={e => setForm({...form, doctorId: e.target.value})}>
                                 <option value="">Tanlang...</option>
                                 {doctors.map(d => (
                                     <option key={d._id} value={d._id}>{d.firstName} {d.lastName}</option>
@@ -177,20 +177,20 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
                                 </div>
                                 {items.map((it, idx) => (
                                     <div key={idx} className="service-item-row">
-                                        <select className="form-select" 
+                                        <select className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
                                             value={it.serviceId} onChange={e => handleItemChange(idx, 'serviceId', e.target.value)} required>
                                             <option value="">Tanlang</option>
                                             {services.map(s => (
                                                 <option key={s._id || s.id} value={s._id || s.id}>{s.name} ({s.price} so'm)</option>
                                             ))}
                                         </select>
-                                        <input type="text" className="form-input" placeholder="Misol: 11,12" 
+                                        <input type="text" className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Misol: 11,12" 
                                             value={it.tooth} onChange={e => handleItemChange(idx, 'tooth', e.target.value)} />
-                                        <input type="number" className="form-input" min="0" 
+                                        <input type="number" className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" min="0" 
                                             value={it.price} onChange={e => handleItemChange(idx, 'price', e.target.value)} required />
-                                        <input type="number" className="form-input" min="1" 
+                                        <input type="number" className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" min="1" 
                                             value={it.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)} required />
-                                        <input type="number" className="form-input" min="0" 
+                                        <input type="number" className="flex h-10 w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" min="0" 
                                             value={it.discount} onChange={e => handleItemChange(idx, 'discount', e.target.value)} />
                                         <button type="button" className="remove-btn" onClick={() => handleRemoveItem(idx)}>
                                             <FiTrash2 />
@@ -204,7 +204,7 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
 
                     <div className="form-group" style={{ marginTop: 12 }}>
                         <label>Umumiy Izoh (Ichki uchun)</label>
-                        <textarea className="form-textarea" rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}></textarea>
+                        <textarea className="flex w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px]" rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}></textarea>
                     </div>
 
                     <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-200">
@@ -224,3 +224,4 @@ export default function CreateTreatmentPlanModal({ patient, onClose, onSave }) {
         </div>
     );
 }
+

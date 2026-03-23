@@ -7,7 +7,7 @@ const treatmentItemSchema = new Schema({
   quantity: { type: Number, required: true, default: 1, min: 1 },
   price: { type: Number, required: true, min: 0 },
   discount: { type: Number, default: 0, min: 0 },
-  totalAmount: { type: Number, required: true, min: 0 },
+  totalAmount: { type: Number, default: 0, min: 0 },
   status: { 
     type: String, 
     enum: ['planned', 'in_progress', 'completed'], 
@@ -47,7 +47,7 @@ treatmentPlanSchema.index({ orgId: 1, patientId: 1 });
 treatmentPlanSchema.index({ orgId: 1, status: 1 });
 
 // Saqlashdan oldin avtomatik hisob-kitob qilish
-treatmentPlanSchema.pre('save', function (next) {
+treatmentPlanSchema.pre('validate', function (next) {
   // Jami summani hisoblash
   let totalCost = 0;
   let completedCount = 0;
@@ -85,3 +85,4 @@ treatmentPlanSchema.pre('save', function (next) {
 });
 
 export const TreatmentPlan = model('TreatmentPlan', treatmentPlanSchema);
+
