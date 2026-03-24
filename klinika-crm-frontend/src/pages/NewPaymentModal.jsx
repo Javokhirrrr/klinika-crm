@@ -61,8 +61,8 @@ export default function NewPaymentModal({ open, onClose, onSaved }) {
 
   const loadCashDesks = async () => {
     try {
-      const res = await http.get("/cash-desks", { limit: 50 });
-      const items = res.items || res || [];
+      const res = await http.get("/cash-desks");
+      const items = res.desks || res.items || (Array.isArray(res) ? res : []);
       setCashDesks(items);
       if (items.length > 0 && !cashDeskId) setCashDeskId(items[0]._id);
     } catch { }

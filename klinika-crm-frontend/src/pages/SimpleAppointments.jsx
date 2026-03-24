@@ -42,6 +42,7 @@ export default function SimpleAppointments() {
     const [patients, setPatients] = useState([]);
     const [doctors, setDoctors] = useState([]);
     const [services, setServices] = useState([]);
+    const [cashDesks, setCashDesks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
 
@@ -52,6 +53,7 @@ export default function SimpleAppointments() {
         totalAmount: 0,
         amount: 0,
         method: 'cash',
+        cashDeskId: '',
         received: 0,
         discount: 0,
         hasDiscount: false,
@@ -151,14 +153,21 @@ export default function SimpleAppointments() {
 
             // Patients, doctors, services — faqat birinchi marta yoki majburiy (tez)
             if (forceReloadAll || !patsLoaded[0]) {
-                const [pats, docs, svcs] = await Promise.all([
+                const [pats, docs, svcs, desks] = await Promise.all([
                     http.get('/patients').catch(() => ({ items: [] })),
                     http.get('/users', { role: 'doctor' }).catch(() => ({ items: [] })),
-                    http.get('/services').catch(() => ({ items: [] }))
+                    http.get('/services').catch(() => ({ items: [] })),
+                    http.get('/cash-desks').catch(() => ({ desks: [] }))
                 ]);
                 setPatients(pats.items || pats || []);
                 setDoctors(docs.items || docs || []);
                 setServices(svcs.items || svcs || []);
+                const deskList = desks.desks || desks.items || (Array.isArray(desks) ? desks : []);
+                setCashDesks(deskList);
+                // Birinchi kassani default qilib o'rnatamiz
+                if (deskList.length > 0) {
+                    setPaymentData(pd => pd.cashDeskId ? pd : { ...pd, cashDeskId: deskList[0]._id });
+                }
                 patsLoaded[1](true);
             }
         } catch (error) { console.error('Load error:', error); }
@@ -282,17 +291,19 @@ export default function SimpleAppointments() {
         const total = apt.price || apt.totalAmount || 0;
         const paid = apt.paidAmount || 0;
         const remaining = Math.max(0, total - paid);
+        const defaultDesk = cashDesks[0]?._id || '';
 
         setPaymentContext({ type: 'existing', data: apt });
-        setPaymentData({
+        setPaymentData(pd => ({
             totalAmount: total,
             amount: remaining,
             method: 'cash',
+            cashDeskId: pd.cashDeskId || defaultDesk,
             received: remaining,
             discount: 0,
             hasDiscount: false,
             note: ''
-        });
+        }));
         setShowPaymentModal(true);
     };
 
@@ -304,17 +315,19 @@ export default function SimpleAppointments() {
         }
 
         const price = Number(totalServicesPrice || formData.price || 0);
+        const defaultDesk = cashDesks[0]?._id || '';
 
         setPaymentContext({ type: 'new', data: formData });
-        setPaymentData({
+        setPaymentData(pd => ({
             totalAmount: price,
             amount: price,
             method: 'cash',
+            cashDeskId: pd.cashDeskId || defaultDesk,
             received: price,
             discount: 0,
             hasDiscount: false,
             note: ''
-        });
+        }));
         setShowPaymentModal(true);
     };
 
@@ -399,6 +412,7 @@ export default function SimpleAppointments() {
                     doctorId: doctorIdForPayment,
                     amount: Number(paymentData.amount),
                     method: paymentData.method,
+                    cashDeskId: paymentData.cashDeskId || undefined,
                     note: paymentData.note || "Kassaga to'lov"
                 });
                 const newPayment = payRes.data || payRes;
@@ -879,20 +893,39 @@ export default function SimpleAppointments() {
 
                             {/* Payment Method */}
                             <div className="flex gap-2">
-                                {[{ v: 'cash', l: 'Naqd' }, { v: 'card', l: 'Karta' }, { v: 'transfer', l: 'Kutilmoxda' }].map(m => (
+                                {[{ v: 'cash', l: '💵 Naqd' }, { v: 'card', l: '💳 Karta' }, { v: 'transfer', l: '🏦 O\'tkazma' }].map(m => (
                                     <button key={m.v} type="button"
                                         onClick={() => setPaymentData(pd => ({ ...pd, method: m.v }))}
                                         className={cn(
                                             "h-9 px-3 rounded-lg text-xs font-bold border-2 transition-all",
                                             paymentData.method === m.v
-                                                ? m.v === 'cash' ? "bg-card border-muted-foreground text-foreground shadow-sm"
-                                                    : m.v === 'card' ? "bg-card border-muted-foreground text-foreground shadow-sm"
-                                                        : "bg-orange-100 border-orange-400 text-orange-700 shadow-sm"
+                                                ? m.v === 'cash' ? "bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm"
+                                                    : m.v === 'card' ? "bg-blue-50 border-blue-500 text-blue-700 shadow-sm"
+                                                        : "bg-purple-50 border-purple-500 text-purple-700 shadow-sm"
                                                 : "bg-muted/50 border-border text-muted-foreground hover:border-muted-foreground/50"
                                         )}
                                     >{m.l}</button>
                                 ))}
                             </div>
+
+                            {/* Kassa tanlash */}
+                            {cashDesks.length > 0 && (
+                                <div className="flex items-center gap-2">
+                                    <Label className="text-xs font-semibold text-muted-foreground whitespace-nowrap">🏦 Kassa:</Label>
+                                    <select
+                                        value={paymentData.cashDeskId}
+                                        onChange={(e) => setPaymentData(pd => ({ ...pd, cashDeskId: e.target.value }))}
+                                        className="h-9 px-2 rounded-lg border border-border text-xs font-semibold bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
+                                        <option value="">— Tanlang —</option>
+                                        {cashDesks.map(d => (
+                                            <option key={d._id} value={d._id}>
+                                                {d.name} ({d.type === 'cash' ? 'Naqd' : d.type === 'card' ? 'Karta' : d.type === 'bank' ? 'Bank' : 'Sug\'urta'})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
 
                             {/* Chegirma */}
                             <div className="flex items-center gap-2">
@@ -986,10 +1019,33 @@ export default function SimpleAppointments() {
                             <div className="space-y-2">
                                 <Label className="text-sm font-semibold text-muted-foreground uppercase">To'lov Turi</Label>
                                 <div className="flex gap-2">
-                                    <Button variant={paymentData.method === 'cash' ? 'default' : 'outline'} onClick={() => setPaymentData({ ...paymentData, method: 'cash' })} className={cn("flex-1 h-11", paymentData.method === 'cash' ? "bg-emerald-600 hover:bg-emerald-700" : "")}>Naqd</Button>
-                                    <Button variant={paymentData.method === 'card' ? 'default' : 'outline'} onClick={() => setPaymentData({ ...paymentData, method: 'card' })} className={cn("flex-1 h-11", paymentData.method === 'card' ? "bg-blue-600 hover:bg-blue-700" : "")}>Karta</Button>
-                                    <Button variant={paymentData.method === 'transfer' ? 'default' : 'outline'} onClick={() => setPaymentData({ ...paymentData, method: 'transfer' })} className={cn("flex-1 h-11", paymentData.method === 'transfer' ? "bg-purple-600 hover:bg-purple-700" : "")}>O'tkazma</Button>
+                                    <Button variant={paymentData.method === 'cash' ? 'default' : 'outline'} onClick={() => setPaymentData({ ...paymentData, method: 'cash' })} className={cn("flex-1 h-11", paymentData.method === 'cash' ? "bg-emerald-600 hover:bg-emerald-700" : "")}>💵 Naqd</Button>
+                                    <Button variant={paymentData.method === 'card' ? 'default' : 'outline'} onClick={() => setPaymentData({ ...paymentData, method: 'card' })} className={cn("flex-1 h-11", paymentData.method === 'card' ? "bg-blue-600 hover:bg-blue-700" : "")}>💳 Karta</Button>
+                                    <Button variant={paymentData.method === 'transfer' ? 'default' : 'outline'} onClick={() => setPaymentData({ ...paymentData, method: 'transfer' })} className={cn("flex-1 h-11", paymentData.method === 'transfer' ? "bg-purple-600 hover:bg-purple-700" : "")}>🏦 O'tkazma</Button>
                                 </div>
+                            </div>
+
+                            {/* Kassa tanlash */}
+                            <div className="space-y-2">
+                                <Label className="text-sm font-semibold text-muted-foreground uppercase">🏦 Kassa</Label>
+                                {cashDesks.length > 0 ? (
+                                    <select
+                                        value={paymentData.cashDeskId}
+                                        onChange={(e) => setPaymentData({ ...paymentData, cashDeskId: e.target.value })}
+                                        className="w-full h-11 px-3 rounded-lg border-2 border-border text-sm font-semibold bg-muted/50 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                                    >
+                                        <option value="">— Kassani tanlang —</option>
+                                        {cashDesks.map(d => (
+                                            <option key={d._id} value={d._id}>
+                                                {d.name} ({d.type === 'cash' ? '💵 Naqd' : d.type === 'card' ? '💳 Karta' : d.type === 'bank' ? '🏦 Bank' : '🛡️ Sug\'urta'}) — {(d.balance || 0).toLocaleString()} so'm
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 font-medium">
+                                        ⚠️ Kassa topilmadi. "Kassa" bo'limidan kassa yarating.
+                                    </div>
+                                )}
                             </div>
 
                             <div className="space-y-2">
