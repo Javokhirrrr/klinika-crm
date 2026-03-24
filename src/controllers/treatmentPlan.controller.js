@@ -138,3 +138,57 @@ export async function deletePlan(req, res) {
     res.status(500).json({ message: err.message });
   }
 }
+
+// ─── POST: Davolash rejasiga to'lov qabul qilish ──────────────────────────
+export async function addPayment(req, res) {
+  try {
+    const orgId = getOrgId(req);
+    const userId = getUserId(req);
+    const { amount, method = 'cash', note } = req.body;
+
+    if (!amount || Number(amount) <= 0) {
+      return res.status(400).json({ message: 'Summa noldan katta bo\'lishi kerak' });
+    }
+
+    const plan = await TreatmentPlan.findOne({ _id: req.params.id, orgId });
+    if (!plan) return res.status(404).json({ message: 'Davolash rejasi topilmadi' });
+
+    const remaining = (plan.totalCost || 0) - (plan.paidAmount || 0);
+    if (Number(amount) > remaining + 0.01) {
+      return res.status(400).json({ message: `Omborda ${remaining.toLocaleString()} so'm qoldiq bor. Ko'p kiritildi.` });
+    }
+
+    plan.paidAmount = (plan.paidAmount || 0) + Number(amount);
+
+    await plan.save();
+
+    // Umumiy to'lov tizimiga ham yozish (Payment model orqali)
+    try {
+      const { default: Payment } = await import('../models/Payment.js');
+      await Payment.create({
+        orgId,
+        patientId: plan.patientId,
+        amount: Number(amount),
+        method,
+        note: note || `Davolash rejasi to'lovi: ${plan.diagnosis}`,
+        createdBy: userId,
+        status: 'completed',
+        type: 'treatment_plan',
+        referenceId: plan._id,
+      });
+    } catch (payErr) {
+      console.warn('Payment record create warning:', payErr.message);
+      // To'lov yozilmasa ham asosiy jarayon bajariladi
+    }
+
+    res.status(201).json({
+      message: 'To\'lov muvaffaqiyatli qabul qilindi',
+      paidAmount: plan.paidAmount,
+      totalCost: plan.totalCost,
+      remaining: (plan.totalCost || 0) - plan.paidAmount,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+

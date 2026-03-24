@@ -210,7 +210,6 @@ export async function printAppointment(req, res) {
             date: appointment.startAt || appointment.createdAt
         }, settings);
 
-        // Allow inline scripts for this response (for window.print())
         res.set('Content-Security-Policy', "script-src 'self' 'unsafe-inline'");
         res.send(html);
     } catch (error) {
@@ -218,3 +217,105 @@ export async function printAppointment(req, res) {
         res.status(500).send('Error generating receipt');
     }
 }
+
+// ─── Davolash rejasi to'lovi cheki ────────────────────────────────────────
+export async function printTreatmentPayment(req, res) {
+    try {
+        const { id } = req.params; // treatment plan ID
+        const { amount, method = 'cash', note } = req.query;
+
+        const { TreatmentPlan } = await import('../models/TreatmentPlan.js');
+        const plan = await TreatmentPlan.findById(id)
+            .populate('patientId', 'firstName lastName _id balance')
+            .populate('doctorId', 'firstName lastName');
+
+        if (!plan) return res.status(404).send('Davolash rejasi topilmadi');
+
+        const settings = await getSettings();
+        const patient = plan.patientId;
+        const paid = Number(amount) || plan.paidAmount || 0;
+        const remaining = (plan.totalCost || 0) - (plan.paidAmount || 0);
+
+        // Davolash rejasi xizmatlar ro'yxatini chek uchun tayyorlash
+        const serviceLines = plan.items && plan.items.length > 0
+            ? plan.items.map(it => `${it.name} (${Number(it.price).toLocaleString()} x${it.quantity})`).join(', ')
+            : plan.diagnosis;
+
+        const methodLabel = method === 'card' ? 'Karta' : method === 'transfer' ? "O'tkazma" : 'Naqd';
+
+        const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Chek - Davolash Rejasi</title>
+  <style>
+    body { margin: 0; padding: 0; font-family: 'Courier New', Courier, monospace; font-size: 12px; color: #000; background: #fff; }
+    .wrap { width: 78mm; padding: 5px; margin: 0 auto; box-sizing: border-box; }
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .bold { font-weight: bold; }
+    .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+    .line { text-align: center; margin: 6px 0; color: #999; letter-spacing: -2px; overflow: hidden; white-space: nowrap; }
+    .big { font-size: 14px; font-weight: bold; }
+    .small { font-size: 10px; color: #666; }
+    .green { color: #15803d; }
+    .red { color: #dc2626; }
+    @media print { body { margin: 0; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="center bold" style="font-size:16px; margin-bottom:2px;">${settings.title}</div>
+    <div class="center small">${settings.address}</div>
+    <div class="center small">Tel: ${settings.phone}</div>
+
+    <div class="line">----------------------------------------</div>
+
+    <div class="center bold" style="font-size:13px; margin: 4px 0;">DAVOLASH REJASI CHEKi</div>
+
+    <div class="row"><span>Sana:</span><span>${formatDate(new Date())}</span></div>
+    <div class="row"><span>Bemor:</span><span class="bold">${patient.firstName} ${patient.lastName}</span></div>
+    <div class="row"><span>Shifokor:</span><span>${plan.doctorId?.firstName || ''} ${plan.doctorId?.lastName || ''}</span></div>
+    <div class="row"><span>Diagnoz:</span><span class="bold right" style="max-width:55%; word-break:break-word;">${plan.diagnosis}</span></div>
+
+    <div class="line">----------------------------------------</div>
+
+    <div style="margin-bottom:6px;">
+      <div class="bold" style="margin-bottom:3px;">Xizmatlar:</div>
+      <div class="small" style="word-break:break-word;">${serviceLines}</div>
+    </div>
+
+    <div class="line">----------------------------------------</div>
+
+    <div class="row"><span>Jami qiymat:</span><span class="bold">${Number(plan.totalCost || 0).toLocaleString()} UZS</span></div>
+    <div class="row"><span>Oldingi to'lov:</span><span>${Number((plan.paidAmount || 0) - paid).toLocaleString()} UZS</span></div>
+
+    <div class="line">----------------------------------------</div>
+
+    <div class="row big"><span>BU TO'LOV:</span><span class="green">${Number(paid).toLocaleString()} UZS</span></div>
+    <div class="row"><span>Usul:</span><span>${methodLabel}</span></div>
+
+    <div class="line">----------------------------------------</div>
+
+    <div class="row"><span>Jami to'langan:</span><span class="bold">${Number(plan.paidAmount || 0).toLocaleString()} UZS</span></div>
+    <div class="row">
+      <span>Qoldiq qarz:</span>
+      <span class="${remaining > 0 ? 'red bold' : 'green bold'}">${remaining > 0 ? remaining.toLocaleString() + ' UZS' : "To'liq to'langan ✓"}</span>
+    </div>
+
+    <div class="line">----------------------------------------</div>
+
+    <div class="center" style="margin-top:8px; white-space:pre-wrap;">${settings.footer || 'Xizmatlar uchun rahmat!'}</div>
+    <div class="center small" style="margin-top:4px;">System by SoftMasters</div>
+  </div>
+</body>
+</html>`;
+
+        res.set('Content-Security-Policy', "script-src 'self' 'unsafe-inline'");
+        res.send(html);
+    } catch (error) {
+        console.error('printTreatmentPayment error:', error);
+        res.status(500).send('Chek yaratishda xatolik');
+    }
+}
+

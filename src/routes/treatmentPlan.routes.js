@@ -21,5 +21,6 @@ r.post('/',                               allow(ALLOWED), ctrl.createPlan);
 r.put('/:id',                             allow(ALLOWED), ctrl.updatePlan);
 r.patch('/:id/items/:itemId/status',      allow(ALLOWED), ctrl.updateItemStatus);
 r.delete('/:id',                          allow(['owner', 'admin']), ctrl.deletePlan);
+r.post('/:id/payments',                   allow(ALLOWED), ctrl.addPayment);
 
 export default r;

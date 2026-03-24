@@ -16,5 +16,6 @@ const router = Router();
 
 router.get('/payments/:id/print', receiptController.printPayment);
 router.get('/appointments/:id/print', receiptController.printAppointment);
+router.get('/treatment-plans/:id/print', receiptController.printTreatmentPayment);
 
 export default router;
