@@ -163,9 +163,9 @@ function PaymentModal({ plan, onClose, onSuccess }) {
                                     <option value="transfer">🏦 O'tkazma</option>
                                 </select>
                             </div>
-                            {cashDesks.length > 0 && (
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">🏦 Kassa (qaysi kassaga tushsin?)</label>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1.5">🏦 Kassa (qaysi kassaga tushsin?)</label>
+                                {cashDesks.length > 0 ? (
                                     <select
                                         className="flex h-10 w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         value={cashDeskId}
@@ -178,8 +178,12 @@ function PaymentModal({ plan, onClose, onSuccess }) {
                                             </option>
                                         ))}
                                     </select>
-                                </div>
-                            )}
+                                ) : (
+                                    <div className="text-sm font-semibold text-red-600 bg-red-50 p-2.5 rounded-md border border-red-200">
+                                        ⚠️ Sizda hali Kassa yaratilmagan. To'lov qabul qilish uchun chap menyudan "Kassa" bo'limiga o'tib kassa yarating.
+                                    </div>
+                                )}
+                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Izoh (ixtiyoriy)</label>
                                 <input

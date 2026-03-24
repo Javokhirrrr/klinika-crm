@@ -319,9 +319,9 @@ export default function NewPaymentModal({ open, onClose, onSaved }) {
           </div>
 
           {/* ─ Kassa tanlash ─ */}
-          {cashDesks.length > 0 && (
-            <div style={S.group}>
-              <label style={S.label}>🏦 Kassa (qaysi kassaga tushsin?)</label>
+          <div style={S.group}>
+            <label style={S.label}>🏦 Kassa (qaysi kassaga tushsin?)</label>
+            {cashDesks.length > 0 ? (
               <select
                 value={cashDeskId}
                 onChange={e => setCashDeskId(e.target.value)}
@@ -334,8 +334,12 @@ export default function NewPaymentModal({ open, onClose, onSaved }) {
                   </option>
                 ))}
               </select>
-            </div>
-          )}
+            ) : (
+              <div style={{ color: "#dc2626", fontSize: 13, background: "#fee2e2", padding: "10px", borderRadius: 8, fontWeight: 600 }}>
+                ⚠️ Sizda hali Kassa yaratilmagan. To'lov qabul qilish uchun chap menyudan "Kassa" bo'limiga o'tib, kamida bitta kassa yarating.
+              </div>
+            )}
+          </div>
           {/* ─ Bemor qancha berdi ─ */}
           {method === "cash" && toPay > 0 && (
             <div style={S.group}>
