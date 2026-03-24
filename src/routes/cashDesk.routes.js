@@ -7,6 +7,7 @@ const r = Router();
 r.use(authJwt, requireOrg); // 🔐 JWT + orgId
 
 const ALLOWED = ['owner', 'admin', 'accountant', 'cashier'];
+const ALL_STAFF = ['owner', 'admin', 'accountant', 'cashier', 'doctor', 'receptionist'];
 
 const allow = (roles) => (req, res, next) => {
   const role = req.user?.role;
@@ -16,7 +17,7 @@ const allow = (roles) => (req, res, next) => {
 };
 
 // ─── Kassalar ─────────────────────────────────────────────────────────────────
-r.get('/',      allow(ALLOWED), ctrl.listDesks);
+r.get('/',      allow(ALL_STAFF), ctrl.listDesks);
 r.post('/',     allow(['owner', 'admin', 'accountant']), ctrl.createDesk);
 r.put('/:id',   allow(['owner', 'admin', 'accountant']), ctrl.updateDesk);
 r.delete('/:id',allow(['owner', 'admin']), ctrl.deleteDesk);

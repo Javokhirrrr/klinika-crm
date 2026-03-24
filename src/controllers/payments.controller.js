@@ -15,6 +15,7 @@ const createPaymentSchema = Joi.object({
   patientId: Joi.string().required(),
   appointmentId: Joi.string().allow(null, ''),
   doctorId: Joi.string().allow(null, ''), // NEW: for Doctor Room payments
+  cashDeskId: Joi.string().allow(null, ''), // Qaysi kassaga tushdi
   amount: Joi.number().min(0).required(),
   method: Joi.string().valid('cash', 'card', 'transfer', 'online').required(),
   status: Joi.string().valid('completed', 'pending', 'failed', 'refunded'),
@@ -97,11 +98,39 @@ export async function createPayment(req, res) {
   const created = await Payment.create(withOrgFields(req, {
     patientId: value.patientId,
     appointmentId: value.appointmentId || undefined,
+    cashDeskId: value.cashDeskId || undefined,
     amount: value.amount,
     method: value.method,
     status: value.status || 'completed',
     note: value.note,
   }));
+
+  // 💰 Kassaga kirim yozish (agar cashDeskId bo'lsa va to'lov yakunlangan bo'lsa)
+  if (value.cashDeskId && (value.status || 'completed') === 'completed') {
+    try {
+      const { CashDesk } = await import('../models/CashDesk.js');
+      const { CashTransaction } = await import('../models/CashTransaction.js');
+      const desk = await CashDesk.findOne({ _id: value.cashDeskId, orgId: req.user.orgId });
+      if (desk) {
+        desk.balance = (desk.balance || 0) + Number(value.amount);
+        await desk.save();
+        await CashTransaction.create({
+          orgId: req.user.orgId,
+          cashDeskId: desk._id,
+          type: 'income',
+          category: 'payment',
+          amount: Number(value.amount),
+          description: `Bemor to'lovi — ${value.note || ''}`,
+          paymentId: created._id,
+          patientId: value.patientId,
+          balanceAfter: desk.balance,
+          createdBy: req.user._id,
+        });
+      }
+    } catch (cashErr) {
+      console.warn('CashDesk update warning:', cashErr.message);
+    }
+  }
 
   // Update appointment payment status
   if (value.appointmentId) {

@@ -5,6 +5,7 @@ const paymentSchema = new Schema({
 
   patientId: { type: Schema.Types.ObjectId, ref: 'Patient', required: true, index: true },
   appointmentId: { type: Schema.Types.ObjectId, ref: 'Appointment' },
+  cashDeskId: { type: Schema.Types.ObjectId, ref: 'CashDesk', index: true }, // Qaysi kassaga tushdi
 
   amount: { type: Number, required: true, min: 0 },
   method: {

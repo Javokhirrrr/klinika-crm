@@ -36,6 +36,8 @@ export default function NewPaymentModal({ open, onClose, onSaved }) {
   const [debt, setDebt] = useState(false);
   const [given, setGiven] = useState(""); // Bemor qancha berdi
   const [loading, setLoading] = useState(false);
+  const [cashDesks, setCashDesks] = useState([]);
+  const [cashDeskId, setCashDeskId] = useState("");
 
   const [query, setQuery] = useState("");
   const [patients, setPatients] = useState([]);
@@ -54,7 +56,17 @@ export default function NewPaymentModal({ open, onClose, onSaved }) {
     setAmount(""); setMethod("cash"); setNote(""); setDiscount({ enabled: false, pct: 0, abs: 0 });
     setDebt(false); setGiven(""); setQuery(""); setSelected(null); setLoading(false);
     loadRecent();
+    loadCashDesks();
   }, [open]);
+
+  const loadCashDesks = async () => {
+    try {
+      const res = await http.get("/cash-desks", { limit: 50 });
+      const items = res.items || res || [];
+      setCashDesks(items);
+      if (items.length > 0 && !cashDeskId) setCashDeskId(items[0]._id);
+    } catch { }
+  };
 
   const loadRecent = async () => {
     try {
@@ -110,6 +122,7 @@ export default function NewPaymentModal({ open, onClose, onSaved }) {
         patientId: selected._id,
         amount: toPay,
         method,
+        cashDeskId: cashDeskId || undefined,
         note,
         status: debt ? "pending" : "completed",
         discount: discAmt,
@@ -305,6 +318,24 @@ export default function NewPaymentModal({ open, onClose, onSaved }) {
             </div>
           </div>
 
+          {/* ─ Kassa tanlash ─ */}
+          {cashDesks.length > 0 && (
+            <div style={S.group}>
+              <label style={S.label}>🏦 Kassa (qaysi kassaga tushsin?)</label>
+              <select
+                value={cashDeskId}
+                onChange={e => setCashDeskId(e.target.value)}
+                style={{ ...S.input, cursor: "pointer", background: "#f8fafc", fontWeight: 600 }}
+              >
+                <option value="">— Kassani tanlang —</option>
+                {cashDesks.map(d => (
+                  <option key={d._id} value={d._id}>
+                    {d.name} ({d.type === 'cash' ? '💵 Naqd' : d.type === 'card' ? '💳 Karta' : d.type === 'bank' ? '🏦 Bank' : '🛡️ Sug\'urta'}) — {(d.balance || 0).toLocaleString()} so'm
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           {/* ─ Bemor qancha berdi ─ */}
           {method === "cash" && toPay > 0 && (
             <div style={S.group}>

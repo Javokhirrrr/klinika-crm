@@ -144,7 +144,7 @@ export async function addPayment(req, res) {
   try {
     const orgId = getOrgId(req);
     const userId = getUserId(req);
-    const { amount, method = 'cash', note } = req.body;
+    const { amount, method = 'cash', note, cashDeskId } = req.body;
 
     if (!amount || Number(amount) <= 0) {
       return res.status(400).json({ message: 'Summa noldan katta bo\'lishi kerak' });
@@ -159,26 +159,51 @@ export async function addPayment(req, res) {
     }
 
     plan.paidAmount = (plan.paidAmount || 0) + Number(amount);
-
     await plan.save();
 
     // Umumiy to'lov tizimiga ham yozish (Payment model orqali)
+    let createdPayment = null;
     try {
-      const { default: Payment } = await import('../models/Payment.js');
-      await Payment.create({
+      const { Payment } = await import('../models/Payment.js');
+      createdPayment = await Payment.create({
         orgId,
         patientId: plan.patientId,
         amount: Number(amount),
         method,
+        cashDeskId: cashDeskId || undefined,
         note: note || `Davolash rejasi to'lovi: ${plan.diagnosis}`,
         createdBy: userId,
         status: 'completed',
-        type: 'treatment_plan',
-        referenceId: plan._id,
       });
     } catch (payErr) {
       console.warn('Payment record create warning:', payErr.message);
-      // To'lov yozilmasa ham asosiy jarayon bajariladi
+    }
+
+    // 💰 Kassaga kirim yozish
+    if (cashDeskId && createdPayment) {
+      try {
+        const { CashDesk } = await import('../models/CashDesk.js');
+        const { CashTransaction } = await import('../models/CashTransaction.js');
+        const desk = await CashDesk.findOne({ _id: cashDeskId, orgId });
+        if (desk) {
+          desk.balance = (desk.balance || 0) + Number(amount);
+          await desk.save();
+          await CashTransaction.create({
+            orgId,
+            cashDeskId: desk._id,
+            type: 'income',
+            category: 'payment',
+            amount: Number(amount),
+            description: `Davolash rejasi to'lovi — ${plan.diagnosis || ''}`,
+            paymentId: createdPayment._id,
+            patientId: plan.patientId,
+            balanceAfter: desk.balance,
+            createdBy: userId,
+          });
+        }
+      } catch (cashErr) {
+        console.warn('CashDesk update warning (treatment plan):', cashErr.message);
+      }
     }
 
     res.status(201).json({

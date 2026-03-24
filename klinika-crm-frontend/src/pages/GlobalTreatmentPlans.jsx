@@ -10,11 +10,21 @@ import '../components/TreatmentPlan/TreatmentPlan.css';
 // ─── To'lov Modal ────────────────────────────────────────────────────────────
 function PaymentModal({ plan, onClose, onSuccess }) {
     const [amount, setAmount] = useState('');
-    const [lastPayment, setLastPayment] = useState(null); // {amount, method} stored after success
-    const [receiptUrl, setReceiptUrl] = useState(null); // open receipt after success
+    const [lastPayment, setLastPayment] = useState(null);
+    const [receiptUrl, setReceiptUrl] = useState(null);
     const [method, setMethod] = useState('cash');
     const [note, setNote] = useState('');
     const [loading, setLoading] = useState(false);
+    const [cashDesks, setCashDesks] = useState([]);
+    const [cashDeskId, setCashDeskId] = useState('');
+
+    useEffect(() => {
+        http.get('/cash-desks', { limit: 50 }).then(res => {
+            const items = res.items || res || [];
+            setCashDesks(items);
+            if (items.length > 0) setCashDeskId(items[0]._id);
+        }).catch(() => {});
+    }, []);
 
     const remaining = (plan.totalCost || 0) - (plan.paidAmount || 0);
 
@@ -26,6 +36,7 @@ function PaymentModal({ plan, onClose, onSuccess }) {
             await http.post(`/treatment-plans/${plan._id}/payments`, {
                 amount: Number(amount),
                 method,
+                cashDeskId: cashDeskId || undefined,
                 note,
             });
             // To'lov muvaffaqiyatli — chek taklif qilamiz
@@ -152,6 +163,23 @@ function PaymentModal({ plan, onClose, onSuccess }) {
                                     <option value="transfer">🏦 O'tkazma</option>
                                 </select>
                             </div>
+                            {cashDesks.length > 0 && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">🏦 Kassa (qaysi kassaga tushsin?)</label>
+                                    <select
+                                        className="flex h-10 w-full rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={cashDeskId}
+                                        onChange={e => setCashDeskId(e.target.value)}
+                                    >
+                                        <option value="">— Kassani tanlang —</option>
+                                        {cashDesks.map(d => (
+                                            <option key={d._id} value={d._id}>
+                                                {d.name} ({d.type === 'cash' ? '💵 Naqd' : d.type === 'card' ? '💳 Karta' : d.type === 'bank' ? '🏦 Bank' : '🛡️ Sug\'urta'}) — {(d.balance || 0).toLocaleString()} so'm
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Izoh (ixtiyoriy)</label>
                                 <input
