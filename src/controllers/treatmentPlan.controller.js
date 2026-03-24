@@ -149,6 +149,9 @@ export async function addPayment(req, res) {
     if (!amount || Number(amount) <= 0) {
       return res.status(400).json({ message: 'Summa noldan katta bo\'lishi kerak' });
     }
+    if (!cashDeskId) {
+      return res.status(400).json({ message: 'To\'lov qabul qilish uchun Kassa tanlash majburiy' });
+    }
 
     const plan = await TreatmentPlan.findOne({ _id: req.params.id, orgId });
     if (!plan) return res.status(404).json({ message: 'Davolash rejasi topilmadi' });

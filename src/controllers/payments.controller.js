@@ -15,7 +15,10 @@ const createPaymentSchema = Joi.object({
   patientId: Joi.string().required(),
   appointmentId: Joi.string().allow(null, ''),
   doctorId: Joi.string().allow(null, ''), // NEW: for Doctor Room payments
-  cashDeskId: Joi.string().allow(null, ''), // Qaysi kassaga tushdi
+  cashDeskId: Joi.string().required().messages({
+    'any.required': 'To\'lov qabul qilish uchun Kassa tanlash majburiy',
+    'string.empty': 'Kassa tanlanmagan'
+  }),
   amount: Joi.number().min(0).required(),
   method: Joi.string().valid('cash', 'card', 'transfer', 'online').required(),
   status: Joi.string().valid('completed', 'pending', 'failed', 'refunded'),

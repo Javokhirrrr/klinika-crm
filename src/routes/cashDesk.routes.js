@@ -7,7 +7,7 @@ const r = Router();
 r.use(authJwt, requireOrg); // 🔐 JWT + orgId
 
 const ALLOWED = ['owner', 'admin', 'accountant', 'cashier'];
-const ALL_STAFF = ['owner', 'admin', 'accountant', 'cashier', 'doctor', 'receptionist'];
+const ALL_STAFF = ['owner', 'admin', 'accountant', 'cashier', 'doctor', 'reception'];
 
 const allow = (roles) => (req, res, next) => {
   const role = req.user?.role;
