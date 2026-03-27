@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { FiX, FiPlus, FiTrash2, FiSave, FiSearch } from 'react-icons/fi';
+import { FiX, FiPlus, FiTrash2, FiSave, FiSearch, FiDollarSign } from 'react-icons/fi';
 import { treatmentPlanApi } from '../../api/treatmentPlan';
 import http from '../../lib/http';
+import PaymentModal from './PaymentModal';
 import './TreatmentPlan.css';
 
 export default function CreateTreatmentPlanModal({ 
@@ -21,10 +22,7 @@ export default function CreateTreatmentPlanModal({
     const [selectedPatient, setSelectedPatient] = useState(patient || null);
     const [selectedPatientId, setSelectedPatientId] = useState(patient?._id || patient?.id || '');
     
-    const [advanceAmount, setAdvanceAmount] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState('cash');
-    const [cashDeskId, setCashDeskId] = useState('');
-    const [cashDesks, setCashDesks] = useState([]);
+    const [createdPlan, setCreatedPlan] = useState(null);
 
     const [form, setForm] = useState({ 
         diagnosis: defaultDiagnosis || '', 
@@ -39,16 +37,12 @@ export default function CreateTreatmentPlanModal({
 
     const loadDependencies = async () => {
         try {
-            const [docsRes, srvRes, desksRes] = await Promise.all([
+            const [docsRes, srvRes] = await Promise.all([
                 http.get('/doctors', { limit: 200 }),
                 http.get('/services', { limit: 200 }),
-                http.get('/cash-desks', { limit: 200 }).catch(() => []) 
             ]);
             setDoctors(Array.isArray(docsRes?.items) ? docsRes.items : (Array.isArray(docsRes) ? docsRes : []));
             setServices(Array.isArray(srvRes?.items) ? srvRes.items : (Array.isArray(srvRes) ? srvRes : []));
-            const dData = Array.isArray(desksRes?.items) ? desksRes.items : (Array.isArray(desksRes?.data) ? desksRes.data : (Array.isArray(desksRes) ? desksRes : []));
-            setCashDesks(dData);
-            if (dData.length > 0) setCashDeskId(dData[0]._id || dData[0].id);
 
             if (!patient) {
                 const patRes = await http.get('/patients', { limit: 500 });
@@ -106,8 +100,8 @@ export default function CreateTreatmentPlanModal({
 
     const grandTotal = items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleSubmit = async (e, payNow = false) => {
+        if (e && e.preventDefault) e.preventDefault();
         const pId = patient?._id || patient?.id || selectedPatientId;
         if (!pId) return alert("Bemorni tanlash majburiy!");
         if (!form.diagnosis.trim()) return alert("Diagnozni kiritish majburiy!");
@@ -132,27 +126,21 @@ export default function CreateTreatmentPlanModal({
                 items: validItems
             });
             
-            if (advanceAmount && Number(advanceAmount) > 0) {
-                if (!cashDeskId) {
-                    alert("To'lov uchun kassa tanlanmagan! Reja saqlandi, lekin to'lov qo'shilmadi.");
-                } else {
-                    const planId = planRes._id || planRes.id;
-                    await treatmentPlanApi.addPayment(planId, {
-                        amount: Number(advanceAmount),
-                        method: paymentMethod,
-                        cashDeskId: cashDeskId,
-                        note: `Oldindan to'lov (Davolash rejasi)`
-                    });
-                }
+            if (payNow) {
+                setCreatedPlan(planRes);
+            } else {
+                onSave();
             }
-            
-            onSave();
         } catch (err) {
             alert(err?.response?.data?.message || err?.message || "Xatolik yuz berdi");
         } finally {
             setLoading(false);
         }
     };
+
+    if (createdPlan) {
+        return <PaymentModal plan={createdPlan} onClose={onSave} onSuccess={onSave} />;
+    }
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 sm:p-6" onClick={onClose}>
@@ -292,57 +280,20 @@ export default function CreateTreatmentPlanModal({
                         <textarea className="flex w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px]" rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}></textarea>
                     </div>
 
-                    <div className="form-group" style={{ marginTop: 16, padding: 16, border: '1px solid #e2e8f0', borderRadius: 8, background: '#f8fafc' }}>
-                        <label className="flex items-center gap-2 mb-2 cursor-pointer font-medium text-slate-800">
-                            <input type="checkbox" className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500" 
-                                checked={advanceAmount !== ''} 
-                                onChange={e => {
-                                    if(e.target.checked) setAdvanceAmount(grandTotal > 0 ? grandTotal.toString() : '');
-                                    else setAdvanceAmount('');
-                                }} 
-                            />
-                            Bemor to'lovini ham shu yerning o'zida qabul qilish
-                        </label>
-                        
-                        {advanceAmount !== '' && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 12 }}>
-                                <div>
-                                    <label className="text-xs font-semibold text-slate-500 mb-1 block uppercase tracking-wider">To'lov summasi</label>
-                                    <input type="number" className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
-                                        value={advanceAmount} onChange={e => setAdvanceAmount(e.target.value)} min="0" placeholder="0" />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-semibold text-slate-500 mb-1 block uppercase tracking-wider">To'lov usuli</label>
-                                    <select className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
-                                        <option value="cash">Naqd pul</option>
-                                        <option value="card">Plastik karta</option>
-                                        <option value="transfer">Pul o'tkazma</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-semibold text-slate-500 mb-1 block uppercase tracking-wider">Kassa</label>
-                                    <select className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        value={cashDeskId} onChange={e => setCashDeskId(e.target.value)}>
-                                        <option value="">Tanlang...</option>
-                                        {cashDesks.map(d => (
-                                            <option key={d._id} value={d._id}>{d.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
                     <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-200">
                         <div className="flex items-center gap-3 bg-slate-900 text-white px-6 py-3 rounded-xl shadow-lg">
                             <span className="text-sm uppercase tracking-wider text-slate-400 font-medium">Jami:</span>
                             <span className="text-xl font-bold">{grandTotal.toLocaleString()} so'm</span>
                         </div>
                         <div className="flex items-center gap-3">
-                            <button type="button" className="px-6 py-2.5 rounded-lg border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 transition-colors bg-white shadow-sm" onClick={onClose} disabled={loading}>Bekor qilish</button>
-                            <button type="submit" className="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors shadow-md flex items-center gap-2 disabled:opacity-50" disabled={loading}>
-                                <FiSave /> {loading ? "Saqlanmoqda..." : "Rejani Saqlash"}
+                            <button type="button" className="px-6 py-2.5 rounded-lg border border-slate-200 text-slate-700 font-medium hover:bg-slate-50 transition-colors bg-white shadow-sm hidden sm:inline-flex" onClick={onClose} disabled={loading}>
+                                Bekor qilish
+                            </button>
+                            <button type="button" onClick={(e) => handleSubmit(e, false)} className="px-6 py-2.5 rounded-lg border border-emerald-600 text-emerald-600 font-medium hover:bg-emerald-50 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50" disabled={loading}>
+                                <FiSave /> {loading ? "Kuting..." : "Saqlash"}
+                            </button>
+                            <button type="button" onClick={(e) => handleSubmit(e, true)} className="px-6 py-2.5 rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors shadow-md flex items-center gap-2 disabled:opacity-50" disabled={loading}>
+                                <FiDollarSign /> {loading ? "Kuting..." : "To'lov bilan saqlash"}
                             </button>
                         </div>
                     </div>
