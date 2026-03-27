@@ -13,6 +13,12 @@ export default function PaymentModal({ plan, onClose, onSuccess }) {
     const [cashDesks, setCashDesks] = useState([]);
     const [cashDeskId, setCashDeskId] = useState('');
 
+    // Qoldiq summani avtomatik to'ldirish (foydalanuvchi qo'lda yozib o'tirmasin)
+    useEffect(() => {
+        const rem = (plan.totalCost || 0) - (plan.paidAmount || 0);
+        if (rem > 0) setAmount(String(rem));
+    }, [plan]);
+
     useEffect(() => {
         http.get('/cash-desks', { limit: 50 }).then(res => {
             const items = res.desks || res.items || (Array.isArray(res) ? res : []);
@@ -37,13 +43,25 @@ export default function PaymentModal({ plan, onClose, onSuccess }) {
         if (!amount || Number(amount) <= 0) return alert("Summa kiritilishi shart");
         setLoading(true);
         try {
-            await http.post(`/treatment-plans/${plan._id || plan.id}/payments`, {
-                amount: Number(amount),
-                method,
-                cashDeskId: cashDeskId || undefined,
-                note,
-            });
-            // To'lov muvaffaqiyatli — chek taklif qilamiz
+            if (plan._isAppointment) {
+                // Qabul to'lovi — oddiy /payments endpointi
+                await http.post('/payments', {
+                    appointmentId: plan._id,
+                    patientId: plan.patientId?._id || plan.patientId,
+                    amount: Number(amount),
+                    method,
+                    cashDeskId: cashDeskId || undefined,
+                    note: note || 'Kassaga to\'lov',
+                });
+            } else {
+                // Davolash rejasi to'lovi
+                await http.post(`/treatment-plans/${plan._id || plan.id}/payments`, {
+                    amount: Number(amount),
+                    method,
+                    cashDeskId: cashDeskId || undefined,
+                    note,
+                });
+            }
             setLastPayment({ amount: Number(amount), method });
         } catch (err) {
             alert(err?.response?.data?.message || err?.message || "Xatolik yuz berdi");

@@ -20,6 +20,7 @@ import {
 import http from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import CreateTreatmentPlanModal from '../components/TreatmentPlan/CreateTreatmentPlanModal';
+import PaymentModal from '../components/TreatmentPlan/PaymentModal';
 
 // ─── Ovozli xabar ─────────────────────────────────────────────────────────────
 function speak(text) {
@@ -65,6 +66,7 @@ export default function SimpleDoctorRoom() {
     const [activePlans, setActivePlans] = useState([]);
     const [loadingPlans, setLoadingPlans] = useState(false);
     const [showTreatmentModal, setShowTreatmentModal] = useState(false);
+    const [paymentPlan, setPaymentPlan] = useState(null); // to'lov oynasi uchun
 
     // ─── Toast ─────────────────────────────────────────────────────────────────
     const toast = useCallback((msg, type = 'success') => {
@@ -367,11 +369,10 @@ export default function SimpleDoctorRoom() {
     };
     const calcTotal = () => addedServices.reduce((sum, s) => sum + (s.price || 0), 0);
 
+    // ─── Saqlash va Yakunlash (to'lovsiz) ────────────────────────────────────────
     const handleFinalize = async () => {
         if (!selectedApt) return;
         setSaving(true);
-
-        // Barcha state qiymatlarini darhol snapshot qilib olamiz (closure bug oldini olish)
         const isReal = !selectedApt._isQueueOnly && !selectedApt._id?.startsWith('queue-');
         const aptId = selectedApt._id;
         const patId = selectedApt.patientId?._id || selectedApt.patientId;
@@ -379,15 +380,12 @@ export default function SimpleDoctorRoom() {
         const prescriptionText = prescription || '';
         const snapServices = [...addedServices];
         const snapTotal = snapServices.reduce((s, sv) => s + (sv.price || 0), 0);
-        const snapApt = { ...selectedApt }; // tarix uchun
+        const snapApt = { ...selectedApt };
 
-        // 1. DARHOL panel yopish — store tozalash (faqat bu yerda yopiladi!)
+        // 1. DARHOL UI yangilash
         clearSession();
-
-        // 2. Stats DARHOL yangilash
         if (isReal) {
             setAppointments(prev => prev.map(a => a._id === aptId ? { ...a, status: 'done' } : a));
-            // allHistory ga DARHOL qo'shish
             setAllHistory(prev => {
                 const exists = prev.find(a => String(a._id) === String(aptId));
                 if (exists) return prev.map(a => String(a._id) === String(aptId) ? { ...a, status: 'done', price: snapTotal || a.price } : a);
@@ -397,42 +395,117 @@ export default function SimpleDoctorRoom() {
         toast('Qabul yakunlandi! ✅');
         setSaving(false);
 
-        // 3. Fon da server bilan sinxronlash (snapshot data ishlatiladi)
+        // 2. Fonda server bilan sinxronlash
         try {
             if (isReal) {
-                await http.patch(`/appointments/${aptId}/update-status`, { status: 'done' }).catch(() => { });
-
+                http.patch(`/appointments/${aptId}/update-status`, { status: 'done' }).catch(() => {});
                 if (snapServices.length > 0) {
-                    await http.put(`/appointments/${aptId}`, {
+                    http.put(`/appointments/${aptId}`, {
                         serviceIds: snapServices.map(s => s._id || s),
                         price: snapTotal,
                         notes: prescriptionText
-                    }).catch(() => { });
+                    }).catch(() => {});
                 }
-
-                await http.post('/doctor-room/complete', {
+                http.post('/doctor-room/complete', {
                     appointmentId: aptId,
                     diagnosis: diagnosisText,
                     prescription: prescriptionText,
                     services: snapServices.map(s => s._id || s),
-                }).catch(async () => {
-                    await http.put(`/appointments/${aptId}`, {
+                }).catch(() => {
+                    http.put(`/appointments/${aptId}`, {
                         notes: `Tashxis: ${diagnosisText}\nRetsept: ${prescriptionText}`
-                    }).catch(() => { });
+                    }).catch(() => {});
                 });
             } else {
-                await http.post('/doctor-room/complete', {
+                http.post('/doctor-room/complete', {
                     diagnosis: diagnosisText,
                     prescription: prescriptionText,
                     patientId: patId,
                     services: snapServices.map(s => s._id || s),
-                }).catch(() => { });
+                }).catch(() => {});
             }
         } catch (e) {
             console.error('Finalize error:', e);
         } finally {
-            fetchAppointments(selectedDoctorId || null);
-            fetchQueue(selectedDoctorId || null);
+            // Orqa fonda refresh (UI bloklamasdan)
+            setTimeout(() => {
+                fetchAppointments(selectedDoctorId || null);
+                fetchQueue(selectedDoctorId || null);
+            }, 0);
+        }
+    };
+
+    // ─── Saqlash va Yakunlash + To'lov oynasini ochish ────────────────────────────
+    const handleFinalizeWithPayment = async () => {
+        if (!selectedApt) return;
+        setSaving(true);
+        const isReal = !selectedApt._isQueueOnly && !selectedApt._id?.startsWith('queue-');
+        const aptId = selectedApt._id;
+        const patId = selectedApt.patientId?._id || selectedApt.patientId;
+        const diagnosisText = diagnosis || '—';
+        const prescriptionText = prescription || '';
+        const snapServices = [...addedServices];
+        const snapTotal = snapServices.reduce((s, sv) => s + (sv.price || 0), 0);
+        const snapApt = { ...selectedApt };
+
+        // 1. DARHOL UI yangilash — panel yopish
+        clearSession();
+        if (isReal) {
+            setAppointments(prev => prev.map(a => a._id === aptId ? { ...a, status: 'done' } : a));
+            setAllHistory(prev => {
+                const exists = prev.find(a => String(a._id) === String(aptId));
+                if (exists) return prev.map(a => String(a._id) === String(aptId) ? { ...a, status: 'done', price: snapTotal || a.price } : a);
+                return [{ ...snapApt, status: 'done', price: snapTotal || snapApt.price || 0 }, ...prev];
+            });
+        }
+        setSaving(false);
+
+        // 2. To'lov oynasi uchun virtual plan ob'ekti yaratamiz (treatment plan shart emas)
+        setPaymentPlan({
+            _id: aptId,               // appointment ID ishlatamiz
+            _isAppointment: true,     // bu treatment plan emas, qabul
+            diagnosis: diagnosisText,
+            totalCost: snapTotal || snapApt.price || 0,
+            paidAmount: snapApt.paidAmount || 0,
+            patientId: snapApt.patientId,
+        });
+
+        // 3. Fonda server bilan sinxronlash (bloklamasdan)
+        try {
+            if (isReal) {
+                http.patch(`/appointments/${aptId}/update-status`, { status: 'done' }).catch(() => {});
+                if (snapServices.length > 0) {
+                    http.put(`/appointments/${aptId}`, {
+                        serviceIds: snapServices.map(s => s._id || s),
+                        price: snapTotal,
+                        notes: prescriptionText
+                    }).catch(() => {});
+                }
+                http.post('/doctor-room/complete', {
+                    appointmentId: aptId,
+                    diagnosis: diagnosisText,
+                    prescription: prescriptionText,
+                    services: snapServices.map(s => s._id || s),
+                }).catch(() => {
+                    http.put(`/appointments/${aptId}`, {
+                        notes: `Tashxis: ${diagnosisText}\nRetsept: ${prescriptionText}`
+                    }).catch(() => {});
+                });
+            } else {
+                http.post('/doctor-room/complete', {
+                    diagnosis: diagnosisText,
+                    prescription: prescriptionText,
+                    patientId: patId,
+                    services: snapServices.map(s => s._id || s),
+                }).catch(() => {});
+            }
+        } catch (e) {
+            console.error('Finalize error:', e);
+        } finally {
+            setTimeout(() => {
+                fetchAppointments(selectedDoctorId || null);
+                fetchQueue(selectedDoctorId || null);
+            }, 0);
         }
     };
 
@@ -992,9 +1065,9 @@ export default function SimpleDoctorRoom() {
                                                         <Activity className="h-4 w-4 mr-2" /> Davolash Rejasi
                                                     </Button>
                                                     <Button variant="outline" size="icon"><Printer className="h-4 w-4" /></Button>
-                                                    <Button onClick={handleFinalize} disabled={saving}
+                                                    <Button onClick={handleFinalizeWithPayment} disabled={saving}
                                                         className="min-w-[200px] bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-                                                        <Save className="h-4 w-4 mr-2" />
+                                                        <DollarSign className="h-4 w-4 mr-2" />
                                                         {saving ? 'Saqlanmoqda...' : 'Saqlash va Yakunlash'}
                                                     </Button>
                                                 </div>
@@ -1286,6 +1359,18 @@ export default function SimpleDoctorRoom() {
                                 .then(res => setActivePlans(res.items || res || []))
                                 .catch(e => console.error(e));
                         }
+                    }}
+                />
+            )}
+
+            {/* ─── Qabul to'lov oynasi ─── */}
+            {paymentPlan && (
+                <PaymentModal
+                    plan={paymentPlan}
+                    onClose={() => setPaymentPlan(null)}
+                    onSuccess={() => {
+                        setPaymentPlan(null);
+                        toast('To\'lov qabul qilindi! 💰');
                     }}
                 />
             )}
