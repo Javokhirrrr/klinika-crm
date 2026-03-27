@@ -25,4 +25,8 @@ export const treatmentPlanApi = {
   // Xizmatlar maqomini o'zgartirish
   updateItemStatus: (planId, itemId, status) => 
     api.patch(`/${planId}/items/${itemId}/status`, { status }).then(r => r.data),
+
+  // To'lov qo'shish
+  addPayment: (id, data) => 
+    api.post(`/${id}/payments`, data).then(r => r.data),
 };

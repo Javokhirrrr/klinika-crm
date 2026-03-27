@@ -21,6 +21,11 @@ export default function CreateTreatmentPlanModal({
     const [selectedPatient, setSelectedPatient] = useState(patient || null);
     const [selectedPatientId, setSelectedPatientId] = useState(patient?._id || patient?.id || '');
     
+    const [advanceAmount, setAdvanceAmount] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState('cash');
+    const [cashDeskId, setCashDeskId] = useState('');
+    const [cashDesks, setCashDesks] = useState([]);
+
     const [form, setForm] = useState({ 
         diagnosis: defaultDiagnosis || '', 
         doctorId: defaultDoctorId || '', 
@@ -34,12 +39,16 @@ export default function CreateTreatmentPlanModal({
 
     const loadDependencies = async () => {
         try {
-            const [docsRes, srvRes] = await Promise.all([
+            const [docsRes, srvRes, desksRes] = await Promise.all([
                 http.get('/doctors', { limit: 200 }),
                 http.get('/services', { limit: 200 }),
+                http.get('/cash-desks', { limit: 200 }).catch(() => []) 
             ]);
             setDoctors(Array.isArray(docsRes?.items) ? docsRes.items : (Array.isArray(docsRes) ? docsRes : []));
             setServices(Array.isArray(srvRes?.items) ? srvRes.items : (Array.isArray(srvRes) ? srvRes : []));
+            const dData = Array.isArray(desksRes?.items) ? desksRes.items : (Array.isArray(desksRes?.data) ? desksRes.data : (Array.isArray(desksRes) ? desksRes : []));
+            setCashDesks(dData);
+            if (dData.length > 0) setCashDeskId(dData[0]._id || dData[0].id);
 
             if (!patient) {
                 const patRes = await http.get('/patients', { limit: 500 });
@@ -115,13 +124,28 @@ export default function CreateTreatmentPlanModal({
         if (validItems.length === 0) return alert("Xizmatlarni to'g'ri tanlang!");
         setLoading(true);
         try {
-            await treatmentPlanApi.createPlan({
+            const planRes = await treatmentPlanApi.createPlan({
                 patientId: pId,
                 doctorId: form.doctorId,
                 diagnosis: form.diagnosis,
                 notes: form.notes,
                 items: validItems
             });
+            
+            if (advanceAmount && Number(advanceAmount) > 0) {
+                if (!cashDeskId) {
+                    alert("To'lov uchun kassa tanlanmagan! Reja saqlandi, lekin to'lov qo'shilmadi.");
+                } else {
+                    const planId = planRes._id || planRes.id;
+                    await treatmentPlanApi.addPayment(planId, {
+                        amount: Number(advanceAmount),
+                        method: paymentMethod,
+                        cashDeskId: cashDeskId,
+                        note: `Oldindan to'lov (Davolash rejasi)`
+                    });
+                }
+            }
+            
             onSave();
         } catch (err) {
             alert(err?.response?.data?.message || err?.message || "Xatolik yuz berdi");
@@ -266,6 +290,48 @@ export default function CreateTreatmentPlanModal({
                     <div className="form-group" style={{ marginTop: 12 }}>
                         <label>Umumiy Izoh</label>
                         <textarea className="flex w-full rounded-md border border-slate-300 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px]" rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})}></textarea>
+                    </div>
+
+                    <div className="form-group" style={{ marginTop: 16, padding: 16, border: '1px solid #e2e8f0', borderRadius: 8, background: '#f8fafc' }}>
+                        <label className="flex items-center gap-2 mb-2 cursor-pointer font-medium text-slate-800">
+                            <input type="checkbox" className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500" 
+                                checked={advanceAmount !== ''} 
+                                onChange={e => {
+                                    if(e.target.checked) setAdvanceAmount(grandTotal > 0 ? grandTotal.toString() : '');
+                                    else setAdvanceAmount('');
+                                }} 
+                            />
+                            Bemor to'lovini ham shu yerning o'zida qabul qilish
+                        </label>
+                        
+                        {advanceAmount !== '' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 12 }}>
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 mb-1 block uppercase tracking-wider">To'lov summasi</label>
+                                    <input type="number" className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                        value={advanceAmount} onChange={e => setAdvanceAmount(e.target.value)} min="0" placeholder="0" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 mb-1 block uppercase tracking-wider">To'lov usuli</label>
+                                    <select className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
+                                        <option value="cash">Naqd pul</option>
+                                        <option value="card">Plastik karta</option>
+                                        <option value="transfer">Pul o'tkazma</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 mb-1 block uppercase tracking-wider">Kassa</label>
+                                    <select className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={cashDeskId} onChange={e => setCashDeskId(e.target.value)}>
+                                        <option value="">Tanlang...</option>
+                                        {cashDesks.map(d => (
+                                            <option key={d._id} value={d._id}>{d.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="mt-8 flex items-center justify-between pt-6 border-t border-slate-200">
