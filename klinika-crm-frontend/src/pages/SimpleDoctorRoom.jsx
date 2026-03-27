@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSocket } from '../hooks/useSocket';
 import { useDoctorRoomStore } from '../store/index';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import http from '../lib/http';
 import { useAuth } from '../context/AuthContext';
+import CreateTreatmentPlanModal from '../components/TreatmentPlan/CreateTreatmentPlanModal';
 
 // ─── Ovozli xabar ─────────────────────────────────────────────────────────────
 function speak(text) {
@@ -60,6 +61,7 @@ export default function SimpleDoctorRoom() {
     const [allHistory, setAllHistory] = useState([]);
     const [activePlans, setActivePlans] = useState([]);
     const [loadingPlans, setLoadingPlans] = useState(false);
+    const [showTreatmentModal, setShowTreatmentModal] = useState(false);
 
     // ─── Toast ─────────────────────────────────────────────────────────────────
     const toast = useCallback((msg, type = 'success') => {
@@ -173,9 +175,7 @@ export default function SimpleDoctorRoom() {
         const docId = selectedDoctorId || null;
         fetchAppointments(docId);
         fetchQueue(docId);
-        // 3 soniyada bir yangilash (socket + polling = ikki qatlam kafolat)
-        const iv = setInterval(() => { fetchAppointments(docId); fetchQueue(docId); }, 3000);
-        return () => clearInterval(iv);
+        // Socket.io ensures real-time updates. Polling interval removed to fix extreme UI lags.
     }, [selectedDoctorId, fetchAppointments, fetchQueue]);
 
     // 🔌 Socket.IO — DARHOL real-time yangilash
@@ -451,23 +451,27 @@ export default function SimpleDoctorRoom() {
     });
 
     // ─── Computed ──────────────────────────────────────────────────────────────
-    const scheduledAppts = appointments.filter(a => a.status === 'scheduled');
-    const waitingAppts = appointments.filter(a => a.status === 'waiting');
-    const inProgressAppts = appointments.filter(a => a.status === 'in_progress');
-    const doneAppts = appointments.filter(a => a.status === 'done');
-    const pendingAppts = [...inProgressAppts, ...waitingAppts, ...scheduledAppts];
+    const { scheduledAppts, waitingAppts, inProgressAppts, doneAppts, pendingAppts } = useMemo(() => ({
+        scheduledAppts: appointments.filter(a => a.status === 'scheduled'),
+        waitingAppts: appointments.filter(a => a.status === 'waiting'),
+        inProgressAppts: appointments.filter(a => a.status === 'in_progress'),
+        doneAppts: appointments.filter(a => a.status === 'done'),
+        pendingAppts: appointments.filter(a => ['scheduled', 'waiting', 'in_progress'].includes(a.status))
+    }), [appointments]);
 
-    const queueWaiting = queueEntries.filter(e => e.status === 'waiting');
-    const queueCalled = queueEntries.filter(e => e.status === 'called');
-    const queueInService = queueEntries.filter(e => e.status === 'in_service');
+    const { queueWaiting, queueCalled, queueInService } = useMemo(() => ({
+        queueWaiting: queueEntries.filter(e => e.status === 'waiting'),
+        queueCalled: queueEntries.filter(e => e.status === 'called'),
+        queueInService: queueEntries.filter(e => e.status === 'in_service')
+    }), [queueEntries]);
 
-    const stats = {
+    const stats = useMemo(() => ({
         total: appointments.length,
         waiting: waitingAppts.length + scheduledAppts.length,
         queueWaiting: queueWaiting.length,
         in_progress: inProgressAppts.length,
         done: doneAppts.length,
-    };
+    }), [appointments.length, waitingAppts.length, scheduledAppts.length, queueWaiting.length, inProgressAppts.length, doneAppts.length]);
 
     const PRIORITY = {
         emergency: { label: 'Favqulodda', color: '#ef4444' },
@@ -976,6 +980,9 @@ export default function SimpleDoctorRoom() {
                                                     <div className="text-xl font-bold text-indigo-600">{calcTotal().toLocaleString()} so'm</div>
                                                 </div>
                                                 <div className="flex gap-3">
+                                                    <Button variant="secondary" onClick={() => setShowTreatmentModal(true)} className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 shadow-sm border-0 font-bold min-w-[200px]">
+                                                        <Activity className="h-4 w-4 mr-2" /> Davolash Rejasi
+                                                    </Button>
                                                     <Button variant="outline" size="icon"><Printer className="h-4 w-4" /></Button>
                                                     <Button onClick={handleFinalize} disabled={saving}
                                                         className="min-w-[200px] bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
@@ -1257,6 +1264,22 @@ export default function SimpleDoctorRoom() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {showTreatmentModal && (
+                <CreateTreatmentPlanModal
+                    patient={selectedApt?.patientId || null}
+                    onClose={() => setShowTreatmentModal(false)}
+                    onSave={() => {
+                        setShowTreatmentModal(false);
+                        const patId = selectedApt?.patientId?._id || selectedApt?.patientId;
+                        if (patId) {
+                            http.get('/treatment-plans', { params: { patientId: patId, status: 'active' } })
+                                .then(res => setActivePlans(res.items || res || []))
+                                .catch(e => console.error(e));
+                        }
+                    }}
+                />
             )}
 
             <style>{`

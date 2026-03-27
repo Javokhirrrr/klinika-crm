@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cn, printFromUrl } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -91,9 +91,7 @@ export default function SimpleAppointments() {
             .then(res => setReceiptSettings(res?.value))
             .catch(console.error);
 
-        // ⚡ Tez polling zaxira (socket ishlamasa ham ishlaydi)
-        const iv = setInterval(() => refreshAppointments(), 5000);
-        return () => clearInterval(iv);
+        // Sockets handle real-time updates natively. Removed aggressive 5s polling to improve performance.
     }, [filterDate, filterDoctor]);
 
     // 🔌 Socket.IO real-time yangilash
@@ -471,12 +469,12 @@ export default function SimpleAppointments() {
         cancelled: { label: 'Bekor qilingan', class: 'bg-rose-50 text-rose-700 border-rose-200', icon: X }
     };
 
-    const statCards = [
+    const statCards = useMemo(() => [
         { label: 'Jami Qabullar', value: stats.total, icon: Calendar, bg: 'bg-blue-50', text: 'text-blue-600' },
         { label: 'Kutmoqda', value: stats.waiting, icon: Clock, bg: 'bg-amber-50', text: 'text-amber-600' },
         { label: 'Jarayonda', value: stats.in_progress, icon: Activity, bg: 'bg-indigo-50', text: 'text-indigo-600' },
         { label: 'Tugallangan', value: stats.done, icon: Check, bg: 'bg-emerald-50', text: 'text-emerald-600' },
-    ];
+    ], [stats]);
 
     const { finalTotal, debt, change } = calculateTotals();
 
