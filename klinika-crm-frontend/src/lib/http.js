@@ -8,7 +8,7 @@ let onAuthChange = () => { };
 // ─── Simple in-memory cache ───────────────────────────────────────────────────
 const cache = new Map();
 const CACHE_TTL = 30_000; // 30 soniya (shu muddat ichida qayta so'rov bo'lmaydi)
-const CACHE_SKIP = ['/auth', '/payments', '/appointments', '/salaries']; // bu URL'lar cache bo'lmaydi
+const CACHE_SKIP = ['/auth', '/payments', '/appointments', '/salaries', '/queue']; // bu URL'lar cache bo'lmaydi
 
 function shouldCache(path) {
   return !CACHE_SKIP.some(skip => path.includes(skip));
@@ -30,9 +30,15 @@ function setCache(key, data) {
 
 // Cache ni tozalash (POST/PUT/PATCH/DELETE dan keyin)
 function invalidateCache(basePath) {
-  // /patients ga POST bo'lsa, /patients bilan boshlanadigan cache'larni o'chirish
+  // Extract root resource (e.g. from "/patients/123/status", get "/patients")
+  const parts = basePath.split('/').filter(Boolean);
+  const rootResource = parts[0] ? `/${parts[0]}` : '';
+  
+  if (!rootResource) return;
+
   for (const key of cache.keys()) {
-    if (key.includes(basePath.split('?')[0].split('/').slice(0, 3).join('/'))) {
+    // If the cached URL contains "/api/patients" (or whatever root), delete it
+    if (key.includes(`/api${rootResource}`) || key.includes(rootResource)) {
       cache.delete(key);
     }
   }
@@ -137,8 +143,8 @@ async function request(path, opts = {}) {
 
   // Mutable so'rovlarda cache invalidate qil
   if (!isGet) {
-    const base = '/' + path.split('/').filter(Boolean).slice(0, 2).join('/');
-    invalidateCache(base);
+    // Use the raw path before filtering for invalidation
+    invalidateCache(path);
   }
 
   return fetchPromise;
