@@ -21,6 +21,15 @@ export default function PaymentModal({ plan, onClose, onSuccess }) {
         }).catch(() => {});
     }, []);
 
+    useEffect(() => {
+        if (lastPayment && !receiptUrl) {
+            const timer = setTimeout(() => {
+                onSuccess();
+            }, 1200); // Darhol yopiladi (tezkor UI uchun)
+            return () => clearTimeout(timer);
+        }
+    }, [lastPayment, receiptUrl, onSuccess]);
+
     const remaining = (plan.totalCost || 0) - (plan.paidAmount || 0);
 
     const handleSubmit = async (e) => {
@@ -56,10 +65,11 @@ export default function PaymentModal({ plan, onClose, onSuccess }) {
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
                         <div className="p-8 text-center">
-                            <div className="text-5xl mb-4">✅</div>
+                            <div className="text-5xl mb-4 animate-bounce">✅</div>
                             <h3 className="text-xl font-bold text-slate-800 mb-1">To'lov qabul qilindi!</h3>
                             <p className="text-slate-500 text-sm mb-2">{plan.diagnosis}</p>
                             <p className="text-2xl font-black text-emerald-600 mb-6">{lastPayment.amount.toLocaleString()} so'm</p>
+                            <p className="text-xs text-slate-400 mb-4">Oyna avtomat yopiladi...</p>
                             <div className="flex gap-3">
                                 <button
                                     onClick={openReceipt}

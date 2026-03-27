@@ -17,15 +17,15 @@ export default function GlobalTreatmentPlans() {
     const [paymentPlan, setPaymentPlan] = useState(null);
     const navigate = useNavigate();
 
-    const loadPlans = async () => {
-        setLoading(true);
+    const loadPlans = async (showSpinner = true) => {
+        if (showSpinner) setLoading(true);
         try {
             const data = await treatmentPlanApi.getPlans(statusFilter === 'all' ? {} : { status: statusFilter });
             setPlans(data);
         } catch (err) {
             console.error(err);
         } finally {
-            setLoading(false);
+            if (showSpinner) setLoading(false);
         }
     };
 
@@ -179,7 +179,7 @@ export default function GlobalTreatmentPlans() {
                     onClose={() => setShowModal(false)}
                     onSave={() => {
                         setShowModal(false);
-                        loadPlans();
+                        loadPlans(false);
                     }}
                 />
             )}

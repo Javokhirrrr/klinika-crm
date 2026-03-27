@@ -91,15 +91,15 @@ export default function TreatmentPlansTab({ patient }) {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
 
-    const loadPlans = async () => {
-        setLoading(true);
+    const loadPlans = async (showSpinner = true) => {
+        if (showSpinner) setLoading(true);
         try {
             const data = await treatmentPlanApi.getPlans({ patientId: patient._id || patient.id });
             setPlans(data);
         } catch (err) {
             console.error(err);
         } finally {
-            setLoading(false);
+            if (showSpinner) setLoading(false);
         }
     };
 
@@ -135,7 +135,7 @@ export default function TreatmentPlansTab({ patient }) {
                     onClose={() => setShowModal(false)}
                     onSave={() => {
                         setShowModal(false);
-                        loadPlans();
+                        loadPlans(false);
                     }}
                 />
             )}
