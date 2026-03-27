@@ -82,11 +82,11 @@ export const useDoctorRoomStore = create(
                 addedServices: [],
                 activeTab: 'queue',
 
-                setSelectedApt: (apt) => set({ selectedApt: apt }),
-                setDiagnosis: (v) => set({ diagnosis: v }),
-                setPrescription: (v) => set({ prescription: v }),
-                setAddedServices: (v) => set({ addedServices: v }),
-                setActiveTab: (v) => set({ activeTab: v }),
+                setSelectedApt: (apt) => set((state) => ({ selectedApt: typeof apt === 'function' ? apt(state.selectedApt) : apt })),
+                setDiagnosis: (v) => set((state) => ({ diagnosis: typeof v === 'function' ? v(state.diagnosis) : v })),
+                setPrescription: (v) => set((state) => ({ prescription: typeof v === 'function' ? v(state.prescription) : v })),
+                setAddedServices: (v) => set((state) => ({ addedServices: typeof v === 'function' ? v(state.addedServices) : v })),
+                setActiveTab: (v) => set((state) => ({ activeTab: typeof v === 'function' ? v(state.activeTab) : v })),
 
                 toggleService: (service) => set((state) => {
                     const id = service._id || service;

@@ -340,11 +340,16 @@ export default function SimpleDoctorRoom() {
     };
 
     const updateStatus = async (id, status) => {
+        // Darhol UI yangilash (Optimistik)
+        setAppointments(prev => prev.map(a => a._id === id ? { ...a, status } : a));
+        if (selectedApt?._id === id) setSelectedApt(prev => ({ ...prev, status }));
+
         try {
             await http.patch(`/appointments/${id}/update-status`, { status });
-            setAppointments(prev => prev.map(a => a._id === id ? { ...a, status } : a));
-            if (selectedApt?._id === id) setSelectedApt(prev => ({ ...prev, status }));
-        } catch (e) { toast(e?.response?.data?.message || 'Statusni yangilashda xatolik', 'error'); }
+        } catch (e) {
+            fetchAppointments(selectedDoctorId || null);
+            toast(e?.response?.data?.message || 'Statusni yangilashda xatolik', 'error');
+        }
     };
 
     // Xizmat qo'shish/olib tashlash — store orqali
