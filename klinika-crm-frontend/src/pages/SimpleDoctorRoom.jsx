@@ -24,10 +24,13 @@ import CreateTreatmentPlanModal from '../components/TreatmentPlan/CreateTreatmen
 // ─── Ovozli xabar ─────────────────────────────────────────────────────────────
 function speak(text) {
     if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'uz-UZ'; u.rate = 0.9;
-    window.speechSynthesis.speak(u);
+    // UI qotib qolmasligi (freeze) uchun setTimeout orqali asinxron ishga tushiramiz
+    setTimeout(() => {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'uz-UZ'; u.rate = 0.9;
+        window.speechSynthesis.speak(u);
+    }, 10);
 }
 
 export default function SimpleDoctorRoom() {

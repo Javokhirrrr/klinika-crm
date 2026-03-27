@@ -74,34 +74,37 @@ export default function Appointments() {
   const [receiptSettings, setReceiptSettings] = useState(null);
 
   useEffect(() => {
-    loadData();
+    fetchDeps();
     http.get('/settings/receipt_template')
       .then(res => setReceiptSettings(res?.value))
       .catch(console.error);
-  }, [filterDate, filterDoctor]);
+  }, []);
 
   useEffect(() => {
-    if (formData.doctorId && formData.date) fetchSlots();
-    else setAvailableSlots([]);
-  }, [formData.doctorId, formData.date]);
+    loadData();
+  }, [filterDate, filterDoctor]);
 
-  const loadData = async () => {
+  const fetchDeps = async () => {
     try {
-      setLoading(true);
+      const [pats, docs] = await Promise.all([
+        http.get('/patients', { limit: 2000 }).catch(() => ({ items: [] })),
+        http.get('/users', { role: 'doctor' }).catch(() => ({ items: [] }))
+      ]);
+      setPatients(pats.items || pats || []);
+      setDoctors(docs.items || docs || []);
+    } catch (e) { console.error(e); }
+  };
+
+  const loadData = async (showSpinner = true) => {
+    try {
+      if (showSpinner) setLoading(true);
       const params = { date: filterDate };
       if (filterDoctor && filterDoctor !== 'all') params.doctorId = filterDoctor;
 
-      const [appts, pats, docs] = await Promise.all([
-        http.get('/appointments', { params }).catch(() => ({ items: [] })),
-        http.get('/patients').catch(() => ({ items: [] })),
-        http.get('/users', { role: 'doctor' }).catch(() => ({ items: [] }))
-      ]);
-
+      const appts = await http.get('/appointments', { params }).catch(() => ({ items: [] }));
       const items = appts.items || appts || [];
+      
       setAppointments(items);
-      setPatients(pats.items || pats || []);
-      setDoctors(docs.items || docs || []);
-
       setStats({
         total: items.length,
         waiting: items.filter(a => a.status === 'waiting' || a.status === 'scheduled').length,
@@ -109,7 +112,7 @@ export default function Appointments() {
         done: items.filter(a => a.status === 'done').length
       });
     } catch (error) { console.error('Load error:', error); }
-    finally { setLoading(false); }
+    finally { if (showSpinner) setLoading(false); }
   };
 
   const fetchSlots = async () => {
@@ -145,13 +148,13 @@ export default function Appointments() {
       });
       setShowModal(false);
       setFormData({ patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '', price: 50000 });
-      loadData();
+      loadData(false);
     } catch (error) { console.error('Create error:', error); alert('Xatolik!'); }
   };
 
   const handleCheckIn = async (id) => {
     if (!window.confirm("Bemor klinikaga keldimi?")) return;
-    try { await http.patch(`/appointments/${id}/check-in`); loadData(); }
+    try { await http.patch(`/appointments/${id}/check-in`); loadData(false); }
     catch (error) { alert(error?.response?.data?.message || "Xatolik"); }
   };
 
@@ -261,7 +264,7 @@ export default function Appointments() {
 
       // 4. Close Payment Modal
       setShowPaymentModal(false);
-      loadData();
+      loadData(false);
 
     } catch (error) {
       console.error('Payment Processing Error:', error);
