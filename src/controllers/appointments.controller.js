@@ -187,48 +187,57 @@ export async function createAppointment(req, res) {
     const isToday = appointmentDate.toDateString() === today.toDateString();
 
     if (isToday && okId(b.doctorId)) {
-      // Shifokor uchun navbat raqamini olish
-      const lastQueueEntry = await QueueEntry.findOne({
-        orgId: req.orgId,
-        createdAt: {
-          $gte: new Date(today.setHours(0, 0, 0, 0)),
-          $lt: new Date(today.setHours(23, 59, 59, 999))
-        }
-      }).sort({ queueNumber: -1 }).lean();
-
-      const queueNumber = (lastQueueEntry?.queueNumber || 0) + 1;
-
-      // Kutish vaqtini hisoblash
-      const queueAhead = await QueueEntry.countDocuments({
-        orgId: req.orgId,
-        doctorId: OID(b.doctorId),
-        status: { $in: ['waiting', 'called', 'in_service'] }
-      });
-
-      const avgServiceTime = 15; // daqiqa
-      const estimatedWaitTime = queueAhead * avgServiceTime;
-
-      // Queue entry yaratish
-      const queueEntry = await QueueEntry.create({
+      // ✅ Avval mavjud navbat bor-yo'qligini tekshiramiz (double-queue oldini olish)
+      const alreadyInQueue = await QueueEntry.findOne({
         orgId: req.orgId,
         patientId: OID(b.patientId),
         doctorId: OID(b.doctorId),
-        appointmentId: doc._id,
-        queueNumber,
-        priority: 'normal',
-        status: 'waiting',
-        estimatedWaitTime,
-        joinedAt: new Date()
-      });
+        status: { $in: ['waiting', 'called', 'in_service'] }
+      }).lean();
 
-      // WebSocket orqali yangilanish yuborish
-      try {
-        emitNewPatient(req.orgId, queueEntry);
-      } catch (err) {
-        console.error('WebSocket emit error:', err);
+      if (alreadyInQueue) {
+        console.log(`ℹ️ Bemor allaqachon navbatda: №${alreadyInQueue.queueNumber} — yangi navbat qo'shilmadi`);
+      } else {
+        // Shifokor uchun navbat raqamini olish
+        const today2 = new Date();
+        const lastQueueEntry = await QueueEntry.findOne({
+          orgId: req.orgId,
+          createdAt: {
+            $gte: new Date(today2.setHours(0, 0, 0, 0)),
+            $lt: new Date(today2.setHours(23, 59, 59, 999))
+          }
+        }).sort({ queueNumber: -1 }).lean();
+
+        const queueNumber = (lastQueueEntry?.queueNumber || 0) + 1;
+
+        const queueAhead = await QueueEntry.countDocuments({
+          orgId: req.orgId,
+          doctorId: OID(b.doctorId),
+          status: { $in: ['waiting', 'called', 'in_service'] }
+        });
+
+        const estimatedWaitTime = queueAhead * 15;
+
+        const queueEntry = await QueueEntry.create({
+          orgId: req.orgId,
+          patientId: OID(b.patientId),
+          doctorId: OID(b.doctorId),
+          appointmentId: doc._id,
+          queueNumber,
+          priority: 'normal',
+          status: 'waiting',
+          estimatedWaitTime,
+          joinedAt: new Date()
+        });
+
+        try {
+          emitNewPatient(req.orgId, queueEntry);
+        } catch (err) {
+          console.error('WebSocket emit error:', err);
+        }
+
+        console.log(`✅ Bemor avtomatik navbatga qo'shildi: №${queueNumber}, kutish: ${estimatedWaitTime} daq`);
       }
-
-      console.log(`✅ Bemor avtomatik navbatga qo'shildi: №${queueNumber}, kutish: ${estimatedWaitTime} daq`);
     }
   } catch (err) {
     console.error('❌ Avtomatik navbatga qo\'shishda xatolik:', err);
@@ -282,8 +291,12 @@ export async function updateAppointment(req, res) {
   if (okId(b.patientId)) payload.patientId = OID(b.patientId);
   if (okId(b.doctorId)) payload.doctorId = OID(b.doctorId);
 
-  const serviceId = b.serviceId || (Array.isArray(b.serviceIds) && b.serviceIds[0]);
-  if (serviceId) payload.serviceIds = [OID(serviceId)];
+  // ✅ To'liq serviceIds saqlash (oldin faqat birinchisi saqlanardi — xato)
+  if (Array.isArray(b.serviceIds) && b.serviceIds.length > 0) {
+    payload.serviceIds = b.serviceIds.filter(okId).map(OID);
+  } else if (b.serviceId && okId(b.serviceId)) {
+    payload.serviceIds = [OID(b.serviceId)];
+  }
 
   const scheduledAt = b.scheduledAt || b.startsAt || b.startAt;
   if (scheduledAt) {
@@ -341,16 +354,17 @@ export async function deleteAppointment(req, res) {
 /** PATCH /api/appointments/:id/status  { status } */
 export async function setAppointmentStatus(req, res) {
   const { id } = req.params;
+  // check-in ham shu yerda handle qilinadi
   const { status } = req.body || {};
   if (!okId(id)) return res.status(400).json({ message: "Invalid id" });
 
-  // Map frontend status to backend
   const statusMap = {
     'scheduled': 'scheduled',
     'waiting': 'waiting',
     'in_progress': 'in_progress',
     'done': 'done',
     'completed': 'done',
+    'paid': 'done',       // ✅ 'paid' kelsa 'done' ga map qilamiz
     'cancelled': 'cancelled',
   };
 
@@ -368,10 +382,23 @@ export async function setAppointmentStatus(req, res) {
   );
 
   if (!updated) return res.status(404).json({ message: "Not found" });
-
-  // 🔴 Real-time
   emitAptStatus(req.orgId, updated);
+  res.json(updated);
+}
 
+/** PATCH /api/appointments/:id/check-in — bemor klinikaga keldi */
+export async function checkInAppointment(req, res) {
+  const { id } = req.params;
+  if (!okId(id)) return res.status(400).json({ message: "Invalid id" });
+
+  const updated = await Appointment.findOneAndUpdate(
+    { _id: OID(id), orgId: req.orgId, isDeleted: { $ne: true } },
+    { $set: { status: 'waiting', checkedInAt: new Date() } },
+    { new: true, lean: true }
+  );
+
+  if (!updated) return res.status(404).json({ message: "Not found" });
+  emitAptStatus(req.orgId, updated);
   res.json(updated);
 }
 

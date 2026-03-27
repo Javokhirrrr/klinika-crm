@@ -10,8 +10,10 @@ export default function PaymentModal({ plan, onClose, onSuccess }) {
     const [method, setMethod] = useState('cash');
     const [note, setNote] = useState('');
     const [loading, setLoading] = useState(false);
+    const [formError, setFormError] = useState('');  // ✅ alert() o'rniga
     const [cashDesks, setCashDesks] = useState([]);
     const [cashDeskId, setCashDeskId] = useState('');
+    const [cashLoading, setCashLoading] = useState(true); // kassa yuklanmoqda
 
     // Qoldiq summani avtomatik to'ldirish (foydalanuvchi qo'lda yozib o'tirmasin)
     useEffect(() => {
@@ -20,11 +22,12 @@ export default function PaymentModal({ plan, onClose, onSuccess }) {
     }, [plan]);
 
     useEffect(() => {
+        setCashLoading(true);
         http.get('/cash-desks', { limit: 50 }).then(res => {
             const items = res.desks || res.items || (Array.isArray(res) ? res : []);
             setCashDesks(items);
             if (items.length > 0) setCashDeskId(items[0]._id || items[0].id);
-        }).catch(() => {});
+        }).catch(() => {}).finally(() => setCashLoading(false));
     }, []);
 
     useEffect(() => {
@@ -40,7 +43,15 @@ export default function PaymentModal({ plan, onClose, onSuccess }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!amount || Number(amount) <= 0) return alert("Summa kiritilishi shart");
+        setFormError('');
+        if (!amount || Number(amount) <= 0) {
+            setFormError('Summa 0 dan katta bo\'lishi kerak');
+            return;
+        }
+        if (!cashDeskId) {
+            setFormError('Kassa tanlanmagan. Iltimos, kassa bo\'limida kassa yarating.');
+            return;
+        }
         setLoading(true);
         try {
             if (plan._isAppointment) {
@@ -64,7 +75,7 @@ export default function PaymentModal({ plan, onClose, onSuccess }) {
             }
             setLastPayment({ amount: Number(amount), method });
         } catch (err) {
-            alert(err?.response?.data?.message || err?.message || "Xatolik yuz berdi");
+            setFormError(err?.response?.data?.message || err?.message || 'Xatolik yuz berdi');
         } finally {
             setLoading(false);
         }
@@ -225,12 +236,18 @@ export default function PaymentModal({ plan, onClose, onSuccess }) {
                             Yopish
                         </button>
                         {remaining > 0 && (
-                            <button type="submit" disabled={loading}
-                                className="flex-1 py-2.5 rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                                <FiDollarSign /> {loading ? "Kuting..." : "Tasdiqlash"}
+                            <button type="submit" disabled={loading || cashLoading || !cashDeskId}
+                                className="flex-1 py-2.5 rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                                <FiDollarSign /> {loading ? 'Kuting...' : cashLoading ? 'Kassa yuklanmoqda...' : 'Tasdiqlash'}
                             </button>
                         )}
                     </div>
+                    {/* Xato xabari (alert() o'rniga) */}
+                    {formError && (
+                        <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 font-medium">
+                            ⚠️ {formError}
+                        </div>
+                    )}
                 </form>
             </div>
         </div>

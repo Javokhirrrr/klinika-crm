@@ -135,11 +135,11 @@ export async function createPayment(req, res) {
     }
   }
 
-  // Update appointment payment status
+  // To'lovdan keyin faqat isPaid=true, status o'zgarmaydi (done holatida qolsin)
   if (value.appointmentId) {
     await Appointment.updateOne(
       { _id: new mongoose.Types.ObjectId(value.appointmentId) },
-      { $set: { isPaid: true, status: 'paid' } }
+      { $set: { isPaid: true, paidAt: new Date() } }  // ✅ status: 'paid' emas — frontend ko'rsata olmaydi
     );
   }
 

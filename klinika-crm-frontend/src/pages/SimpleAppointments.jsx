@@ -65,6 +65,8 @@ export default function SimpleAppointments() {
     // Filters
     const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
     const [filterDoctor, setFilterDoctor] = useState('all');
+    const [searchQuery, setSearchQuery] = useState(''); // ✅ Bemor ismi/telefon qidiruv
+    const [inlineToast, setInlineToast] = useState(null); // ✅ alert() o'rniga
     const [stats, setStats] = useState({ total: 0, waiting: 0, in_progress: 0, done: 0 });
 
     // New Appointment Form Data
@@ -245,7 +247,8 @@ export default function SimpleAppointments() {
             setFormData({ patientId: '', doctorId: '', date: new Date().toISOString().split('T')[0], time: '09:00', notes: '', price: 0, appointmentType: 'in_person' });
             setSelectedServices([]);
             loadData();
-        } catch (error) { console.error('Create error:', error); alert('Xatolik!'); }
+            showToast('Qabul muvaffaqiyatli yaratildi!');
+        } catch (error) { console.error('Create error:', error); showToast('Qabul yaratishda xatolik!', 'error'); }
     };
 
     // ─── Qabul o'chirish ──────────────────────────────────────────────────────────────
@@ -255,30 +258,29 @@ export default function SimpleAppointments() {
         try {
             await http.del(`/appointments/${deleteApt._id}`);
             setDeleteApt(null);
+            showToast('Qabul o\'chirildi');
             loadData();
-        } catch (err) { alert("O'chirishda xatolik!"); }
+        } catch (err) { showToast("O'chirishda xatolik!", 'error'); }
     };
 
     // ─── Status o'zgartirish (optimistik) ────────────────────────────────
     const handleChangeStatus = async (id, status) => {
-        // 1. Darhol UI yangilash
         setAppointments(prev => prev.map(a => a._id === id ? { ...a, status } : a));
-        // 2. API fonda
         http.patch(`/appointments/${id}/update-status`, { status })
             .then(() => refreshAppointments())
             .catch(err => {
                 refreshAppointments();
-                alert('Status o\'zgartishda xatolik: ' + (err?.response?.data?.message || ''));
+                showToast('Status o\'zgartishda xatolik: ' + (err?.response?.data?.message || ''), 'error');
             });
     };
     const handleCheckIn = async (id) => {
-        if (!window.confirm("Bemor klinikaga keldimi?")) return;
+        // ✅ window.confirm o'rniga optimistik harakat
         setAppointments(prev => prev.map(a => a._id === id ? { ...a, status: 'waiting' } : a));
         http.patch(`/appointments/${id}/check-in`)
             .then(() => refreshAppointments())
             .catch(error => {
                 refreshAppointments();
-                alert(error?.response?.data?.message || "Xatolik");
+                showToast(error?.response?.data?.message || 'Check-in da xatolik', 'error');
             });
     };
 
@@ -308,7 +310,7 @@ export default function SimpleAppointments() {
     // Open Payment Modal for NEW appointment
     const handleOpenNewPayment = () => {
         if (!formData.patientId || !formData.doctorId || !formData.date) {
-            alert("Iltimos, avval Bemor, Shifokor va Sana tanlang!");
+            showToast('Iltimos, avval Bemor, Shifokor va Sana tanlang!', 'error');
             return;
         }
 
@@ -350,6 +352,23 @@ export default function SimpleAppointments() {
 
     // ─── Process Payment (Saqlash / Saqlash va Chop Etish) ─────────────────────
     const [processingPayment, setProcessingPayment] = useState(false);
+
+    // ✅ Toast helper — alert() o'rniga
+    const showToast = (msg, type = 'success') => {
+        setInlineToast({ msg, type });
+        setTimeout(() => setInlineToast(null), 3500);
+    };
+
+    // ✅ Qidiruvga qarab filterlangan qabullar
+    const filteredAppointments = useMemo(() => {
+        if (!searchQuery.trim()) return appointments;
+        const q = searchQuery.toLowerCase();
+        return appointments.filter(a => {
+            const name = `${a.patientId?.firstName || ''} ${a.patientId?.lastName || ''}`.toLowerCase();
+            const phone = (a.patientId?.phone || '').toLowerCase();
+            return name.includes(q) || phone.includes(q);
+        });
+    }, [appointments, searchQuery]);
 
     const handleProcessPayment = async (print = false) => {
         if (processingPayment) return;
@@ -436,8 +455,8 @@ export default function SimpleAppointments() {
 
         } catch (error) {
             console.error('Payment error:', error);
-            await refreshAppointments(); // Xatolik bo'lsa ham ro'yxatni yangilash
-            alert("To'lov saqlashda xatolik: " + (error?.message || ''));
+            await refreshAppointments();
+            showToast("To'lov saqlashda xatolik: " + (error?.message || ''), 'error');
         } finally {
             setProcessingPayment(false);
         }
@@ -453,10 +472,10 @@ export default function SimpleAppointments() {
             setFormData({ ...formData, patientId: newPatient._id });
             setNewPatientData({ firstName: '', lastName: '', phone: '', birthDate: '', gender: 'male', address: '', cardNo: '' });
             setShowAddPatientModal(false);
-            alert('Bemor muvaffaqiyatli qo\'shildi!');
+            showToast('Bemor muvaffaqiyatli qo\'shildi!');
         } catch (error) {
             console.error('Add patient error:', error);
-            alert(error?.response?.data?.message || 'Bemor qo\'shishda xatolik!');
+            showToast(error?.response?.data?.message || 'Bemor qo\'shishda xatolik!', 'error');
         }
     };
 
@@ -480,6 +499,16 @@ export default function SimpleAppointments() {
 
     return (
         <div className="space-y-6 animate-fade-in pb-10">
+            {/* ✅ Toast bildirishnoma (alert o'rniga) */}
+            {inlineToast && (
+                <div className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl text-white font-semibold text-sm transition-all animate-in slide-in-from-bottom-4 ${
+                    inlineToast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500'
+                }`}>
+                    <span>{inlineToast.type === 'error' ? '⚠️' : '✅'}</span>
+                    {inlineToast.msg}
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -533,7 +562,18 @@ export default function SimpleAppointments() {
                         </div>
 
                         <div className="flex items-center gap-3 w-full md:w-auto">
-                            <div className="relative w-full md:w-64">
+                            {/* ✅ Bemor ismi/telefon qidiruv */}
+                            <div className="relative w-full md:w-52">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <input
+                                    type="text"
+                                    placeholder="Bemor ismi yoki telefon..."
+                                    className="pl-9 pr-4 py-2 h-10 rounded-lg border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-card text-foreground w-full"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+                            <div className="relative w-full md:w-52">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Select value={filterDoctor} onValueChange={setFilterDoctor}>
                                     <SelectTrigger className="pl-10 h-10 bg-card border-border focus:ring-primary/20">
@@ -562,14 +602,14 @@ export default function SimpleAppointments() {
                             <Activity className="h-10 w-10 animate-spin text-primary mb-4" />
                             <p>Qabullar yuklanmoqda...</p>
                         </div>
-                    ) : appointments.length === 0 ? (
+                    ) : filteredAppointments.length === 0 ? (
                         <div className="py-20 flex flex-col items-center justify-center text-center">
                             <Calendar className="h-10 w-10 text-muted-foreground/30 mb-6" />
-                            <h3 className="text-xl font-bold text-foreground">Qabullar mavjud emas</h3>
-                            <p className="text-muted-foreground mt-2 max-w-sm">Ushbu kunga qabullar rejalashtirilmagan.</p>
-                            <Button className="mt-6 shadow-lg shadow-primary/20" onClick={() => setShowModal(true)}>
+                            <h3 className="text-xl font-bold text-foreground">{searchQuery ? 'Qidiruv bo\'yicha natija yo\'q' : 'Qabullar mavjud emas'}</h3>
+                            <p className="text-muted-foreground mt-2 max-w-sm">{searchQuery ? `"${searchQuery}" bo'yicha bemor topilmadi.` : 'Ushbu kunga qabullar rejalashtirilmagan.'}</p>
+                            {!searchQuery && <Button className="mt-6 shadow-lg shadow-primary/20" onClick={() => setShowModal(true)}>
                                 <Plus className="h-4 w-4 mr-2" /> Qabul yaratish
-                            </Button>
+                            </Button>}
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -585,7 +625,7 @@ export default function SimpleAppointments() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {appointments.map((apt) => {
+                                    {filteredAppointments.map((apt) => {
                                         const status = statusMap[apt.status] || statusMap.scheduled;
                                         const StatusIcon = status.icon;
                                         return (
@@ -722,19 +762,8 @@ export default function SimpleAppointments() {
                                 </div>
                             </div>
 
-                            {/* Shifolor va Shifokor */}
-                            <div className="space-y-2">
-                                <Label className="text-sm font-semibold text-muted-foreground mb-1.5 block">Shifolor</Label>
-                                <Combobox
-                                    options={doctors.map(d => ({ value: d._id, label: d.name }))}
-                                    value={formData.doctorId}
-                                    onValueChange={(val) => setFormData({ ...formData, doctorId: val })}
-                                    placeholder="Shifolor"
-                                    searchPlaceholder="Shifolor ismini yozing..."
-                                    emptyText="Shifolor topilmadi"
-                                />
-                            </div>
 
+                            {/* Shifokor */}
                             <div className="space-y-2">
                                 <Label className="text-sm font-semibold text-muted-foreground mb-1.5 block">Shifokor</Label>
                                 <Combobox
@@ -746,6 +775,7 @@ export default function SimpleAppointments() {
                                     emptyText="Shifokor topilmadi"
                                 />
                             </div>
+
 
                             {/* Xizmatlar */}
                             <div className="space-y-2">

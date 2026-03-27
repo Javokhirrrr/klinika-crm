@@ -204,7 +204,7 @@ export const callPatient = async (req, res) => {
         const queueEntry = await QueueEntry.findOne({
             _id: id,
             orgId: req.user.orgId,
-            status: 'waiting'
+            status: { $in: ['waiting', 'called', 'scheduled'] } // ✅ 'called' va 'scheduled' ham chaqira olish
         });
 
         if (!queueEntry) {
@@ -265,7 +265,7 @@ export const startService = async (req, res) => {
         const queueEntry = await QueueEntry.findOne({
             _id: id,
             orgId: req.user.orgId,
-            status: { $in: ['waiting', 'called'] }
+            status: { $in: ['waiting', 'called', 'scheduled'] } // ✅ 'called/waiting/scheduled' barcha holatdan boshlash mumkin
         });
 
         if (!queueEntry) {

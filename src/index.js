@@ -7,6 +7,7 @@ import mongoose from 'mongoose';
 import { createServer } from 'http';
 import { initializeSocket } from './socket/index.js';
 import { initTelegramBot } from './services/telegram.service.js';
+import { startQueueCleanupJob } from './jobs/queueCleanup.js';
 
 const PORT = env.port;
 let server;
@@ -40,6 +41,8 @@ async function main() {
     server = httpServer.listen(PORT, '0.0.0.0', () => {
       console.log(`✅ API listening on port ${PORT}`);
       console.log(`✅ WebSocket server initialized`);
+      // ✅ Avtomatik navbat tozalash (har kuni tunda)
+      startQueueCleanupJob();
     });
 
     server.on('error', (err) => {

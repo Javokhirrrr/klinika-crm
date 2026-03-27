@@ -99,13 +99,16 @@ export async function checkIn(req, res) {
         const orgId = req.orgId;
 
         const appointment = await Appointment.findOneAndUpdate(
-            { _id: id, orgId, status: "scheduled" },
+            { _id: id, orgId, status: { $in: ['scheduled', 'waiting'] } }, // ✅ ikkala holatni ham qabul qilish
             { $set: { status: "waiting", checkedInAt: new Date() } },
             { new: true }
         );
 
         if (!appointment) {
-            return res.status(404).json({ message: "Appointment not found or already checked in" });
+            // Allaqachon waiting yoki in_progress bo'lishi mumkin — bu muammo emas
+            const existing = await Appointment.findOne({ _id: id, orgId });
+            if (existing) return res.json({ message: "Bemor allaqachon navbatda", appointment: existing });
+            return res.status(404).json({ message: "Appointment not found" });
         }
 
         // 🔴 Real-time: barcha sahifalarga darhol xabar
