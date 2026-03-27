@@ -20,7 +20,7 @@ function PaymentModal({ plan, onClose, onSuccess }) {
 
     useEffect(() => {
         http.get('/cash-desks', { limit: 50 }).then(res => {
-            const items = res.items || res || [];
+            const items = res.desks || res.items || (Array.isArray(res) ? res : []);
             setCashDesks(items);
             if (items.length > 0) setCashDeskId(items[0]._id);
         }).catch(() => {});
